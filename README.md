@@ -1,6 +1,6 @@
 # boltfetch
 
-Recursively fetches all code files in the current directory, ignoring what's in `.gitignore`,  
+Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.boltfetchignore`,  
 then outputs them into a single Markdown file with line numbers.
 
 ## Usage
@@ -25,6 +25,29 @@ Or install globally:
 npm install -g boltfetch
 boltfetch -o output.md
 ```
+
+## Ignoring Files
+
+boltfetch supports two ways to ignore files:
+
+1. `.gitignore` - Respects your project's existing `.gitignore` patterns
+2. `.boltfetchignore` - Additional patterns specific to boltfetch
+
+The `.boltfetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. For example:
+
+```
+# .boltfetchignore
+*.test.js
+docs/
+temp/
+*.md
+```
+
+Both files support standard gitignore patterns including:
+- Exact matches (file.txt)
+- Directories (dir/)
+- Wildcards (*.log)
+- Negation (!important.log)
 
 ## License
 

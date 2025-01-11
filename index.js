@@ -33,8 +33,10 @@ function parseArgs(argv) {
 
 const { output } = parseArgs(process.argv);
 
-// Try reading .gitignore if it exists
+// Initialize ignore instance
 const ig = ignore();
+
+// Try reading .gitignore if it exists
 try {
   const gitignoreContent = fs.readFileSync(
     path.join(process.cwd(), ".gitignore"),
@@ -45,9 +47,20 @@ try {
   // .gitignore not found or unreadable - that's fine
 }
 
+// Try reading .boltfetchignore if it exists
+try {
+  const boltfetchignoreContent = fs.readFileSync(
+    path.join(process.cwd(), ".boltfetchignore"),
+    "utf8"
+  );
+  ig.add(boltfetchignoreContent);
+} catch {
+  // .boltfetchignore not found or unreadable - that's fine
+}
+
 /**
  * Recursively collect all files in the current working directory,
- * ignoring anything matched by .gitignore (if present).
+ * ignoring anything matched by .gitignore or .boltfetchignore (if present).
  */
 function collectFiles(dir) {
   let results = [];
@@ -59,7 +72,7 @@ function collectFiles(dir) {
     // Relative path from CWD (for ignoring logic)
     const relPath = path.relative(process.cwd(), filePath);
 
-    // If ignored by .gitignore, skip
+    // If ignored by .gitignore or .boltfetchignore, skip
     if (ig.ignores(relPath)) {
       continue;
     }

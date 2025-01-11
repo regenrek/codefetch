@@ -1,6 +1,6 @@
 {
   "name": "boltfetch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
   "bin": {
     "boltfetch": "./index.js"

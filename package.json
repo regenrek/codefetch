@@ -1,6 +1,6 @@
 {
   "name": "boltfetch",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
   "type": "module",
   "exports": {

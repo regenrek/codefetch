@@ -59,7 +59,7 @@ export function parseArgs(args: string[]) {
     excludeFiles: argv["exclude-files"]?.split(","),
     includeDirs: argv["include-dir"]?.split(","),
     excludeDirs: argv["exclude-dir"]?.split(","),
-    verbose: Number(argv.verbose) || 0,
+    verbose: argv.verbose === undefined ? 1 : Number(argv.verbose),
     projectTree: treeDepth,
     maxTokens: argv["max-tokens"] ? Number(argv["max-tokens"]) : undefined,
     help: argv.help,

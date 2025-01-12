@@ -1,18 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { generateMarkdown } from "../../src/index";
 
 const TEST_DIR = path.join(__dirname, "..", "__test__");
 
 describe("generateMarkdown", () => {
-  beforeEach(() => {
-    // Create test directory and files
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true });
+  beforeEach(async () => {
+    // Clean up any existing test files first
+    if (fs.existsSync(TEST_DIR)) {
+      fs.rmSync(TEST_DIR, { recursive: true, force: true });
     }
-    fs.writeFileSync(path.join(TEST_DIR, "test1.ts"), "test content 1");
-    fs.writeFileSync(path.join(TEST_DIR, "test2.js"), "test content 2");
+
+    // Create test directory and files
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    await Promise.all([
+      fs.promises.writeFile(path.join(TEST_DIR, "test1.ts"), "test content 1"),
+      fs.promises.writeFile(path.join(TEST_DIR, "test2.js"), "test content 2"),
+    ]);
   });
 
   afterEach(() => {
@@ -29,11 +34,17 @@ describe("generateMarkdown", () => {
       path.join(TEST_DIR, "test2.js"),
     ];
 
+    // Ensure output directory exists
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
     const tokens = await generateMarkdown(files, {
       outputPath,
       maxTokens: null,
       verbose: false,
     });
+
+    // Wait a bit for file system operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(tokens).toBeGreaterThan(0);
     expect(fs.existsSync(outputPath)).toBe(true);
@@ -49,11 +60,17 @@ describe("generateMarkdown", () => {
     const outputPath = path.join(TEST_DIR, "output.md");
     const files = [path.join(TEST_DIR, "test1.ts")];
 
+    // Ensure output directory exists
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
     const tokens = await generateMarkdown(files, {
       outputPath,
       maxTokens: 2,
       verbose: false,
     });
+
+    // Wait a bit for file system operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(tokens).toBeLessThanOrEqual(2);
     const content = fs.readFileSync(outputPath, "utf8");

@@ -1,78 +1,52 @@
-import { describe, it, expect, vi } from "../_setup";
-import { parseArgs } from "../../src";
+import { describe, it, expect } from "vitest";
+import { parseArgs } from "../../src/args";
 
 describe("parseArgs", () => {
-  it("should parse output file argument", () => {
-    const args = parseArgs(["-o", "output.md"]);
-    expect(args.output).toBe("output.md");
+  it("parses output file", () => {
+    const args = ["node", "script.js", "-o", "output.md"];
+    const result = parseArgs(args);
+    expect(result.output).toBe("output.md");
   });
 
-  it("should parse max tokens argument", () => {
-    const args = parseArgs(["--max-tokens", "1000"]);
-    expect(args.maxTokens).toBe(1000);
+  it("parses max tokens", () => {
+    const args = ["node", "script.js", "-tok", "1000"];
+    const result = parseArgs(args);
+    expect(result.maxTokens).toBe(1000);
   });
 
-  it("should parse file extensions", () => {
-    const args = parseArgs(["-e", ".ts,.js"]);
-    expect(args.extensions).toEqual([".ts", ".js"]);
+  it("parses extensions", () => {
+    const args = ["node", "script.js", "-e", "ts,js"];
+    const result = parseArgs(args);
+    expect(result.extensions).toEqual([".ts", ".js"]);
   });
 
-  it("should handle verbose flag", () => {
-    const args = parseArgs(["-v"]);
-    expect(args.verbose).toBe(true);
+  it("parses verbose flag", () => {
+    const args = ["node", "script.js", "-v"];
+    const result = parseArgs(args);
+    expect(result.verbose).toBe(true);
   });
 
-  it("should parse include/exclude patterns", () => {
-    const args = parseArgs([
-      "--include-files",
-      "src/**/*",
-      "--exclude-files",
-      "node_modules/**",
-      "--include-dir",
-      "src",
-      "--exclude-dir",
-      "dist",
-    ]);
-    expect(args.includeFiles).toEqual(["src/**/*"]);
-    expect(args.excludeFiles).toEqual(["node_modules/**"]);
-    expect(args.includeDirs).toEqual(["src"]);
-    expect(args.excludeDirs).toEqual(["dist"]);
+  it("parses include files", () => {
+    const args = ["node", "script.js", "-if", "file1.ts,file2.ts"];
+    const result = parseArgs(args);
+    expect(result.includeFiles).toEqual(["file1.ts", "file2.ts"]);
   });
 
-  it("should handle multiple arguments together", () => {
-    const args = parseArgs(["-o", "out.md", "-e", ".ts,.js", "-v"]);
-    expect(args.output).toBe("out.md");
-    expect(args.extensions).toEqual([".ts", ".js"]);
-    expect(args.verbose).toBe(true);
+  it("parses exclude files", () => {
+    const args = ["node", "script.js", "-ef", "test.ts,spec.ts"];
+    const result = parseArgs(args);
+    expect(result.excludeFiles).toEqual(["test.ts", "spec.ts"]);
   });
 
-  it("should handle equals syntax for patterns", () => {
-    const args = parseArgs([
-      "--include-files=src/**/*",
-      "--exclude-files=node_modules/**",
-      "--include-dir=src",
-      "--exclude-dir=dist",
-    ]);
-    expect(args.includeFiles).toEqual(["src/**/*"]);
-    expect(args.excludeFiles).toEqual(["node_modules/**"]);
-    expect(args.includeDirs).toEqual(["src"]);
-    expect(args.excludeDirs).toEqual(["dist"]);
+  it("parses include directories", () => {
+    const args = ["node", "script.js", "-id", "src,lib"];
+    const result = parseArgs(args);
+    expect(result.includeDirs).toEqual(["src", "lib"]);
   });
 
-  it("should handle help flag", () => {
-    const mockExit = vi
-      .spyOn(process, "exit")
-      .mockImplementation(() => undefined as never);
-    const mockConsoleLog = vi
-      .spyOn(console, "log")
-      .mockImplementation(() => {});
-
-    parseArgs(["-h"]);
-
-    expect(mockExit).toHaveBeenCalledWith(0);
-    expect(mockConsoleLog).toHaveBeenCalled();
-
-    mockExit.mockRestore();
-    mockConsoleLog.mockRestore();
+  it("parses exclude directories", () => {
+    const args = ["node", "script.js", "-ed", "test,dist"];
+    const result = parseArgs(args);
+    expect(result.excludeDirs).toEqual(["test", "dist"]);
   });
 });

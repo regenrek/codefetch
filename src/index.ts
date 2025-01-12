@@ -15,28 +15,45 @@ const __dirname = path.dirname(__filename);
 
 interface ParsedArgs {
   output: string | null;
+  maxTokens: number | null;
+  extensions: string[] | null;
 }
 
 /**
  * Simple function to parse CLI args:
  *
  * -o, --output <file> : specify output filename
+ * --max-tokens, -tok <number> : limit output tokens
+ * -e, --extension <ext,...> : filter by file extensions (.ts,.js etc)
  */
 function parseArgs(argv: string[]): ParsedArgs {
   const result: ParsedArgs = {
     output: null,
+    maxTokens: null,
+    extensions: null,
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if ((arg === "-o" || arg === "--output") && argv[i + 1]) {
       result.output = argv[i + 1];
       i++;
+    } else if ((arg === "--max-tokens" || arg === "-tok") && argv[i + 1]) {
+      const tokens = parseInt(argv[i + 1]);
+      if (!isNaN(tokens)) {
+        result.maxTokens = tokens;
+      }
+      i++;
+    } else if ((arg === "-e" || arg === "--extension") && argv[i + 1]) {
+      result.extensions = argv[i + 1]
+        .split(",")
+        .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+      i++;
     }
   }
   return result;
 }
 
-const { output } = parseArgs(process.argv);
+const { output, maxTokens, extensions } = parseArgs(process.argv);
 
 // Initialize ignore instance with default patterns
 const ig = ignore().add(DEFAULT_IGNORE_PATTERNS);
@@ -72,12 +89,9 @@ function collectFiles(dir: string): string[] {
   const list = fs.readdirSync(dir);
 
   for (const filename of list) {
-    // Full path
     const filePath = path.join(dir, filename);
-    // Relative path from CWD (for ignoring logic)
     const relPath = path.relative(process.cwd(), filePath);
 
-    // If ignored by .gitignore or .codefetchignore, skip
     if (ig.ignores(relPath)) {
       continue;
     }
@@ -85,10 +99,15 @@ function collectFiles(dir: string): string[] {
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
-      // Recurse into subdirectory
       results.push(...collectFiles(filePath));
     } else {
-      // It's a file
+      // Check file extension if extensions filter is active
+      if (extensions) {
+        const ext = path.extname(filename);
+        if (!extensions.includes(ext)) {
+          continue;
+        }
+      }
       results.push(filePath);
     }
   }
@@ -97,6 +116,15 @@ function collectFiles(dir: string): string[] {
 
 // Actually gather up the file list
 const allFiles = collectFiles(process.cwd());
+
+/**
+ * Very rough token count estimation.
+ * This is a simple approximation - actual tokens may vary by tokenizer.
+ */
+function estimateTokens(text: string): number {
+  // Rough estimate: Split on whitespace and punctuation
+  return text.split(/[\s\p{P}]+/u).length;
+}
 
 /**
  * Generate the final markdown content.
@@ -110,22 +138,31 @@ const allFiles = collectFiles(process.cwd());
  */
 function generateMarkdown(files: string[]): string {
   const lines: string[] = [];
+  let totalTokens = 0;
 
   for (const file of files) {
-    // Turn absolute path into something relative
     const relativePath = path.relative(process.cwd(), file);
     const content = fs.readFileSync(file, "utf8");
 
-    // Start of file block
+    // Estimate tokens for this file
+    const fileTokens = estimateTokens(content);
+
+    // Skip if we would exceed max tokens
+    if (maxTokens && totalTokens + fileTokens > maxTokens) {
+      lines.push(`\n// Skipped ${relativePath} to stay within token limit...`);
+      continue;
+    }
+
+    totalTokens += fileTokens;
+
+    // Rest of the existing code...
     lines.push(`/${relativePath}:`);
     lines.push(
       "--------------------------------------------------------------------------------"
     );
 
-    // Add line numbers
     const fileLines = content.split("\n");
     fileLines.forEach((line, i) => {
-      // +1 because line numbers start at 1
       lines.push(`${i + 1} | ${line}`);
     });
 
@@ -133,6 +170,10 @@ function generateMarkdown(files: string[]): string {
     lines.push(
       "--------------------------------------------------------------------------------"
     );
+  }
+
+  if (maxTokens) {
+    lines.unshift(`// Approximate token count: ${totalTokens}\n`);
   }
 
   return lines.join("\n");

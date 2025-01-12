@@ -1,4 +1,8 @@
 export const DEFAULT_IGNORE_PATTERNS = `
+# Git
+.git
+.git/**/*
+
 # Version Control
 .git/
 .gitignore

@@ -3,7 +3,7 @@
 ![Codefetch Cover](/public/cover.png)
 
 
-Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.boltfetchignore`,  
+Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.codefetchignore`,  
 then outputs them into a single Markdown file with line numbers.
 
 ## Usage
@@ -13,6 +13,8 @@ npx codefetch -o my-complete-source.md
 ```
 
 If -o (or --output) is not provided, it will print to stdout.
+
+You can also use this command to create code-to-markdown in [bolt.new](https://bolt.new) and ask the AI chat for guidance about your codebase.
 
 ## Installation
 

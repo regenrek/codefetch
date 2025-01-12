@@ -65,7 +65,7 @@ try {
 
 /**
  * Recursively collect all files in the current working directory,
- * ignoring anything matched by .gitignore or .boltfetchignore (if present).
+ * ignoring anything matched by .gitignore or .codefetchignore (if present).
  */
 function collectFiles(dir: string): string[] {
   const results: string[] = [];
@@ -77,7 +77,7 @@ function collectFiles(dir: string): string[] {
     // Relative path from CWD (for ignoring logic)
     const relPath = path.relative(process.cwd(), filePath);
 
-    // If ignored by .gitignore or .boltfetchignore, skip
+    // If ignored by .gitignore or .codefetchignore, skip
     if (ig.ignores(relPath)) {
       continue;
     }

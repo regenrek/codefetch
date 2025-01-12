@@ -109,10 +109,10 @@ function collectFiles(dir: string): string[] {
     const filePath = path.join(dir, filename);
     const relPath = path.relative(process.cwd(), filePath);
 
-    if (ig.ignores(relPath)) {
-      verbose && console.log(`Ignoring: ${relPath}`);
-      continue;
-    }
+    // if (ig.ignores(relPath)) {
+    //   verbose && console.log(`Ignoring: ${relPath}`);
+    //   continue;
+    // }
 
     const stat = fs.statSync(filePath);
 
@@ -120,13 +120,13 @@ function collectFiles(dir: string): string[] {
       verbose && console.log(`Processing directory: ${relPath}`);
       results.push(...collectFiles(filePath));
     } else {
-      if (extensions) {
-        const ext = path.extname(filename);
-        if (!extensions.includes(ext)) {
-          verbose && console.log(`Skipping non-matching extension: ${relPath}`);
-          continue;
-        }
-      }
+      // if (extensions) {
+      //   const ext = path.extname(filename);
+      //   if (!extensions.includes(ext)) {
+      //     verbose && console.log(`Skipping non-matching extension: ${relPath}`);
+      //     continue;
+      //   }
+      // }
       verbose && console.log(`Processing file: ${relPath}`);
       results.push(filePath);
     }

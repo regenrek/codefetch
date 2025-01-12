@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 // We'll use `ignore` to handle ignoring files
 import ignore from "ignore";
+import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
 
 // Resolve current directory in ESM context
 const __filename = fileURLToPath(import.meta.url);
@@ -36,116 +37,6 @@ function parseArgs(argv: string[]): ParsedArgs {
 }
 
 const { output } = parseArgs(process.argv);
-
-// Default ignore patterns that will always be applied
-const DEFAULT_IGNORE_PATTERNS = `
-# Version Control
-.git/
-.gitignore
-.gitattributes
-.svn/
-.hg/
-
-# Package Manager Files
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-bun.lockb
-.npmrc
-.yarnrc
-.pnpmrc
-.npmignore
-
-# Project Config
-.boltfetchignore
-.editorconfig
-.eslintrc*
-.prettierrc*
-.stylelintrc*
-
-# Binary and Image Files
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.ico
-*.webp
-*.bmp
-*.tiff
-*.svg
-*.eps
-*.pdf
-*.exe
-*.dll
-*.so
-*.dylib
-*.zip
-*.tar
-*.gz
-*.rar
-*.7z
-*.bin
-*.dat
-*.db
-*.sqlite
-
-# IDE and Editor Files
-.idea/
-.vscode/
-*.swp
-*.swo
-*.swn
-*.bak
-
-# Build and Cache
-dist/
-build/
-out/
-.cache/
-.temp/
-tmp/
-*.min.js
-*.min.css
-
-# Logs and Debug
-*.log
-debug.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment and Secrets
-.env
-.env.*
-.env-*
-*.env
-env.*
-*.pem
-*.key
-*.cert
-*.secret
-*.secrets
-*secret*
-*secrets*
-*credential*
-*credentials*
-*password*
-*passwords*
-*token*
-*tokens*
-
-# Documentation
-LICENSE*
-LICENCE*
-README*
-CHANGELOG*
-CONTRIBUTING*
-
-# OS Files
-.DS_Store
-Thumbs.db
-desktop.ini
-`.trim();
 
 // Initialize ignore instance with default patterns
 const ig = ignore().add(DEFAULT_IGNORE_PATTERNS);

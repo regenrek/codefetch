@@ -1,3 +1,4 @@
+export const DEFAULT_IGNORE_PATTERNS = `
 # Version Control
 .git/
 .gitignore
@@ -180,11 +181,21 @@ bun.lockb
 dist/
 build/
 out/
+workspace-data/
 .cache/
 .temp/
 tmp/
 *.min.js
 *.min.css
+
+# NXT Files
+*.nxt
+.nxt/
+.nxt-cache/
+nxt-env.d.ts
+nxt.config.*
+.nxtrc
+.nxt-workspace/
 
 # Logs and Debug
 *.log
@@ -224,3 +235,4 @@ CONTRIBUTING*
 .DS_Store
 Thumbs.db
 desktop.ini
+`.trim();

@@ -7,15 +7,15 @@ Usage: codefetch [options]
 
 Options:
   -o, --output <file>         Specify output filename
-  -tok, --max-tokens <n>      Limit output tokens (useful for AI models)
+  --max-tokens <n>            Limit output tokens (useful for AI models)
   -e, --extension <ext,...>   Filter by file extensions (e.g., .ts,.js)
-  -if, --include-files <p,..> Include specific files (supports patterns)
-  -ef, --exclude-files <p,..> Exclude specific files (supports patterns)
-  -id, --include-dir <d,...>  Include specific directories
-  -ed, --exclude-dir <d,...>  Exclude specific directories
+  --include-files <p,...>     Include specific files (supports patterns)
+  --exclude-files <p,...>     Exclude specific files (supports patterns)
+  --include-dir <d,...>       Include specific directories
+  --exclude-dir <d,...>       Exclude specific directories
   -t, --project-tree <level>  Generate project tree with specified depth (default: 2)
   -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
-  -h, --help                 Display this help message
+  -h, --help                  Display this help message
 `);
 }
 
@@ -28,18 +28,14 @@ export function parseArgs(args: string[]) {
       "exclude-files",
       "include-dir",
       "exclude-dir",
+      "max-tokens",
     ],
     boolean: ["help", "project-tree"],
     alias: {
       o: "output",
       e: "extension",
-      if: "include-files",
-      ef: "exclude-files",
-      id: "include-dir",
-      ed: "exclude-dir",
       v: "verbose",
       t: "project-tree",
-      tok: "max-tokens",
       h: "help",
     },
   });
@@ -47,7 +43,6 @@ export function parseArgs(args: string[]) {
   // Handle project-tree flag with default value
   let treeDepth: number | undefined;
   if (argv["project-tree"]) {
-    // If -t or --project-tree is used without a value, use default of 2
     treeDepth =
       typeof argv["project-tree"] === "number" ? argv["project-tree"] : 2;
   }

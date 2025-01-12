@@ -16,7 +16,7 @@ npx codefetch -o my-complete-source.md -t
 
 With token limit (useful for AI models):
 ```bash
-npx codefetch -tok 20000 -o output.md
+npx codefetch --max-tokens 20000 -o output.md
 ```
 
 Filter by file extensions:
@@ -27,30 +27,30 @@ npx codefetch -e .ts,.js -o typescript-files.md
 Include or exclude specific files and directories:
 ```bash
 # Exclude node_modules and public directories
-npx codefetch --exclude-dir=node_modules,public -o output.md
+npx codefetch --exclude-dir node_modules,public -o output.md
 
 # Include only TypeScript files
-npx codefetch --include-files=*.ts -o typescript-only.md
+npx codefetch --include-files "*.ts" -o typescript-only.md
 
 # Include src directory, exclude test files
-npx codefetch --include-dir=src --exclude-files=*.test.ts -o src-no-tests.md
+npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
 ```
 
 If no output file is specified (`-o` or `--output`), it will print to stdout.
 
 ### Options
 
-| Option | Alias | Description |
-|--------|-------|-------------|
-| `--output <file>` | `-o` | Specify output filename |
-| `--max-tokens <number>` | `-tok` | Limit output tokens (useful for AI models) |
-| `--extension <ext,...>` | `-e` | Filter by file extensions (e.g., .ts,.js) |
-| `--include-files <pattern,...>` | `-if` | Include specific files (supports simple patterns like *.ts) |
-| `--exclude-files <pattern,...>` | `-ef` | Exclude specific files (supports simple patterns like *.test.ts) |
-| `--include-dir <dir,...>` | `-id` | Include specific directories |
-| `--exclude-dir <dir,...>` | `-ed` | Exclude specific directories |
-| `--verbose [level]` | `-v` | Show processing information (0=none, 1=basic, 2=debug) |
-| `--project-tree [depth]` | `-t` | Generate visual project tree (optional depth, default: 2) |
+| Option | Description |
+|--------|-------------|
+| `-o, --output <file>` | Specify output filename |
+| `--max-tokens <number>` | Limit output tokens (useful for AI models) |
+| `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
+| `--include-files <pattern,...>` | Include specific files (supports patterns like *.ts) |
+| `--exclude-files <pattern,...>` | Exclude specific files (supports patterns like *.test.ts) |
+| `--include-dir <dir,...>` | Include specific directories |
+| `--exclude-dir <dir,...>` | Exclude specific directories |
+| `-v, --verbose [level]` | Show processing information (0=none, 1=basic, 2=debug) |
+| `-t, --project-tree [depth]` | Generate visual project tree (optional depth, default: 2) |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
 - `*` matches any number of characters

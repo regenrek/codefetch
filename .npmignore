@@ -1,0 +1,7 @@
+src/
+*.test.js
+build.config.ts
+tsconfig.json
+.babelrc
+# Don't ignore dist/*.d.ts files
+!dist/**/*.d.ts 

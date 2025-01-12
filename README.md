@@ -1,5 +1,8 @@
 # boltfetch
 
+![Boltfetch Cover](/public/cover.png)
+
+
 Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.boltfetchignore`,  
 then outputs them into a single Markdown file with line numbers.
 

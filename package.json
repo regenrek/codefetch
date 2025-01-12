@@ -2,19 +2,36 @@
   "name": "boltfetch",
   "version": "1.0.1",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
-  "bin": {
-    "boltfetch": "./index.js"
-  },
   "type": "module",
-  "keywords": [
-    "boltfetch",
-    "cli",
-    "markdown",
-    "source-code"
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "boltfetch": "./dist/index.mjs"
+  },
+  "engines": {
+    "node": ">=14.16"
+  },
+  "scripts": {
+    "build": "unbuild && chmod +x dist/index.mjs",
+    "dev": "unbuild --stub",
+    "prepack": "unbuild"
+  },
+  "files": [
+    "dist"
   ],
-  "author": "Your Name <you@example.com>",
-  "license": "MIT",
   "dependencies": {
     "ignore": "^5.3.0"
-  }
+  },
+  "devDependencies": {
+    "unbuild": "^2.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts"
 }

@@ -12,13 +12,17 @@ import ignore from "ignore";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+interface ParsedArgs {
+  output: string | null;
+}
+
 /**
  * Simple function to parse CLI args:
  *
  * -o, --output <file> : specify output filename
  */
-function parseArgs(argv) {
-  const result = {
+function parseArgs(argv: string[]): ParsedArgs {
+  const result: ParsedArgs = {
     output: null,
   };
   for (let i = 2; i < argv.length; i++) {
@@ -33,8 +37,106 @@ function parseArgs(argv) {
 
 const { output } = parseArgs(process.argv);
 
-// Initialize ignore instance
-const ig = ignore();
+// Default ignore patterns that will always be applied
+const DEFAULT_IGNORE_PATTERNS = `
+# Version Control
+.git/
+.gitignore
+.gitattributes
+.svn/
+.hg/
+
+# Package Manager Files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+.npmrc
+.yarnrc
+.pnpmrc
+.npmignore
+
+# Project Config
+.boltfetchignore
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# Binary and Image Files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.bmp
+*.tiff
+*.svg
+*.eps
+*.pdf
+*.exe
+*.dll
+*.so
+*.dylib
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.bin
+*.dat
+*.db
+*.sqlite
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# Build and Cache
+dist/
+build/
+out/
+.cache/
+.temp/
+tmp/
+*.min.js
+*.min.css
+
+# Logs and Debug
+*.log
+debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and Secrets
+.env*
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Documentation
+LICENSE*
+LICENCE*
+README*
+CHANGELOG*
+CONTRIBUTING*
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+`.trim();
+
+// Initialize ignore instance with default patterns
+const ig = ignore().add(DEFAULT_IGNORE_PATTERNS);
 
 // Try reading .gitignore if it exists
 try {
@@ -62,8 +164,8 @@ try {
  * Recursively collect all files in the current working directory,
  * ignoring anything matched by .gitignore or .boltfetchignore (if present).
  */
-function collectFiles(dir) {
-  let results = [];
+function collectFiles(dir: string): string[] {
+  const results: string[] = [];
   const list = fs.readdirSync(dir);
 
   for (const filename of list) {
@@ -81,7 +183,7 @@ function collectFiles(dir) {
 
     if (stat.isDirectory()) {
       // Recurse into subdirectory
-      results = results.concat(collectFiles(filePath));
+      results.push(...collectFiles(filePath));
     } else {
       // It's a file
       results.push(filePath);
@@ -102,10 +204,9 @@ const allFiles = collectFiles(process.cwd());
  * 1 | ...
  * 2 | ...
  * --------------------------------------------------------------------------------
- *
  */
-function generateMarkdown(files) {
-  const lines = [];
+function generateMarkdown(files: string[]): string {
+  const lines: string[] = [];
 
   for (const file of files) {
     // Turn absolute path into something relative

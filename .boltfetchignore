@@ -1,0 +1,94 @@
+# Version Control
+.git/
+.gitignore
+.gitattributes
+.svn/
+.hg/
+
+# Package Manager Files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+.npmrc
+.yarnrc
+.pnpmrc
+.npmignore
+
+# Project Config
+.boltfetchignore
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# Binary and Image Files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.webp
+*.bmp
+*.tiff
+*.svg
+*.eps
+*.pdf
+*.exe
+*.dll
+*.so
+*.dylib
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.bin
+*.dat
+*.db
+*.sqlite
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# Build and Cache
+dist/
+build/
+out/
+.cache/
+.temp/
+tmp/
+*.min.js
+*.min.css
+
+# Logs and Debug
+*.log
+debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and Secrets
+.env*
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Documentation
+LICENSE*
+LICENCE*
+README*
+CHANGELOG*
+CONTRIBUTING*
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini

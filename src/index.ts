@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ignore from "ignore";
 import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
-import { parseArgs } from "./args";
+import { parseArgs, printHelp } from "./args";
 import {
   collectFiles,
   resolveCodefetchPath,
@@ -26,82 +26,75 @@ export {
 export { generateMarkdown } from "./markdown";
 
 // Main function for CLI
-async function main() {
-  const {
-    output: outputFile,
-    maxTokens,
-    extensions,
-    verbose,
-    includeFiles,
-    excludeFiles,
-    includeDirs,
-    excludeDirs,
-    treeLevel,
-  } = parseArgs(process.argv);
-
-  function logVerbose(message: string, level: number) {
-    if (verbose >= level) {
-      console.log(message);
-    }
-  }
-
-  logVerbose("Starting codefetch...", 1);
-  logVerbose(`Working directory: ${process.cwd()}`, 2);
-
-  // Initialize ignore instance with default patterns
-  const ig = ignore().add(
-    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-      (line) => line && !line.startsWith("#")
-    )
-  );
-  logVerbose("Initialized ignore patterns", 2);
-
-  // Try reading .gitignore if it exists
+export async function main(args: string[] = process.argv) {
   try {
-    const gitignoreContent = fs.readFileSync(
-      path.join(process.cwd(), ".gitignore"),
-      "utf8"
+    const parsedArgs = parseArgs(args);
+
+    if (parsedArgs.help) {
+      printHelp();
+      return;
+    }
+
+    // Create ignore instance with default patterns
+    const ig = ignore().add(
+      DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+        (line) => line && !line.startsWith("#")
+      )
     );
-    ig.add(gitignoreContent);
-    logVerbose("Added .gitignore patterns", 2);
-  } catch {
-    logVerbose(".gitignore not found - skipping", 2);
-  }
 
-  // Create a Set for O(1) lookup
-  const extensionSet = extensions ? new Set(extensions) : null;
-  if (extensionSet) {
-    logVerbose(`Filtering for extensions: ${[...extensionSet].join(", ")}`, 1);
-  }
+    // Add .gitignore patterns if exists
+    const defaultIgnorePath = path.join(process.cwd(), ".gitignore");
+    if (fs.existsSync(defaultIgnorePath)) {
+      ig.add(fs.readFileSync(defaultIgnorePath, "utf8"));
+    }
 
-  // Collect files
-  logVerbose("Collecting files...", 1);
-  const allFiles = await collectFiles(process.cwd(), {
-    ig,
-    extensionSet,
-    excludeFiles,
-    includeFiles,
-    excludeDirs,
-    includeDirs,
-    verbose, // Pass verbose level to collectFiles
-  });
-  logVerbose(`Found ${allFiles.length} files to process`, 1);
+    // Add .codefetchignore patterns if exists
+    const codefetchIgnorePath = path.join(process.cwd(), ".codefetchignore");
+    if (fs.existsSync(codefetchIgnorePath)) {
+      ig.add(fs.readFileSync(codefetchIgnorePath, "utf8"));
+    }
 
-  // Generate markdown with project tree
-  logVerbose("Generating markdown...", 1);
-  const totalTokens = await generateMarkdown(allFiles, {
-    outputPath: outputFile && resolveCodefetchPath(outputFile),
-    maxTokens,
-    verbose,
-    projectTree:
-      treeLevel === null
-        ? undefined
-        : generateProjectTree(process.cwd(), treeLevel),
-  });
+    // Collect files
+    const files = await collectFiles(process.cwd(), {
+      ig,
+      extensionSet: parsedArgs.extensions
+        ? new Set(parsedArgs.extensions)
+        : null,
+      excludeFiles: parsedArgs.excludeFiles || null,
+      includeFiles: parsedArgs.includeFiles || null,
+      excludeDirs: parsedArgs.excludeDirs || null,
+      includeDirs: parsedArgs.includeDirs || null,
+      verbose: parsedArgs.verbose,
+    });
 
-  if (outputFile) {
-    console.log(`\n✓ Output written to: codefetch/${outputFile}`);
-    console.log(`✓ Approximate token count: ${totalTokens}`);
+    // Generate markdown
+    const markdown = await generateMarkdown(files, {
+      outputPath: parsedArgs.output
+        ? resolveCodefetchPath(parsedArgs.output)
+        : null,
+      maxTokens: parsedArgs.maxTokens || null,
+      verbose: parsedArgs.verbose,
+      projectTree:
+        parsedArgs.projectTree === undefined
+          ? undefined
+          : generateProjectTree(process.cwd(), parsedArgs.projectTree),
+    });
+
+    // Output
+    if (parsedArgs.output) {
+      if (parsedArgs.verbose > 0) {
+        console.log(
+          `Output written to ${resolveCodefetchPath(parsedArgs.output)}`
+        );
+      }
+    } else {
+      console.log(markdown);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === "Help message displayed") {
+      return;
+    }
+    throw error;
   }
 }
 

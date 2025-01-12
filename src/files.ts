@@ -12,7 +12,8 @@ export function resolveCodefetchPath(outputFile: string) {
     // Create .codefetchignore if it doesn't exist
     const ignorePath = path.join(process.cwd(), ".codefetchignore");
     if (!fs.existsSync(ignorePath)) {
-      fs.writeFileSync(ignorePath, "codefetch/\n");
+      // Add trailing slash to ensure directory is ignored
+      fs.writeFileSync(ignorePath, "test/\nvitest.config.ts\n");
     }
   }
 
@@ -55,6 +56,10 @@ export async function collectFiles(
   for (const entry of entries) {
     const fullPath = path.join(baseDir, entry.name);
     const relativePath = path.relative(process.cwd(), fullPath);
+    // Add trailing slash for directories when checking ignore patterns
+    const ignoreCheckPath = entry.isDirectory()
+      ? `${relativePath}/`
+      : relativePath;
 
     if (entry.isDirectory()) {
       // Directory handling
@@ -66,7 +71,7 @@ export async function collectFiles(
         logVerbose(`Skipping non-included directory: ${relativePath}`, 2);
         continue;
       }
-      if (ig.ignores(relativePath)) {
+      if (ig.ignores(ignoreCheckPath)) {
         logVerbose(`Skipping ignored directory: ${relativePath}`, 2);
         continue;
       }
@@ -74,7 +79,7 @@ export async function collectFiles(
       results.push(...(await collectFiles(fullPath, options)));
     } else if (entry.isFile()) {
       // File handling
-      if (ig.ignores(relativePath)) {
+      if (ig.ignores(ignoreCheckPath)) {
         logVerbose(`Skipping ignored file: ${relativePath}`, 2);
         continue;
       }

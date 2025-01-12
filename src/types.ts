@@ -1,11 +1,12 @@
 export interface ParsedArgs {
-  output: string | null;
-  maxTokens: number | null;
-  extensions: string[] | null;
+  output: string | undefined;
+  maxTokens: number | undefined;
+  extensions: string[] | undefined;
   verbose: number;
-  includeFiles: string[] | null;
-  excludeFiles: string[] | null;
-  includeDirs: string[] | null;
-  excludeDirs: string[] | null;
-  treeLevel: number | null;
+  includeFiles: string[] | undefined;
+  excludeFiles: string[] | undefined;
+  includeDirs: string[] | undefined;
+  excludeDirs: string[] | undefined;
+  projectTree: number | undefined;
+  help: boolean;
 }

@@ -104,11 +104,22 @@ codefetch supports two ways to ignore files:
 1. `.gitignore` - Respects your project's existing `.gitignore` patterns
 2. `.codefetchignore` - Additional patterns specific to codefetch
 
-The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. For example:
+The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. 
+
+By default, it includes:
+- `test/` - All test files and directories
+- `vitest.config.ts` - Vitest configuration file
+
+You can add more patterns to ignore additional files:
 
 ```gitignore
-codefetch # the codefetch folder itself
+# Default patterns (automatically added)
+test/
+vitest.config.ts
+
+# Your additional patterns
 *.css # all css files
+docs/ # documentation directory
 ```
 
 Both files support standard gitignore patterns including:
@@ -117,31 +128,29 @@ Both files support standard gitignore patterns including:
 - Wildcards (`*.log`)
 - Negation (`!important.log`)
 
-
 ### Default Ignore Patterns
 
-This tool uses a comprehensive set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis. You can view the complete list of default patterns in [default-ignore.ts](src/default-ignore.ts).
+Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis. 
+
+You can view the complete list of default patterns in [default-ignore.ts](src/default-ignore.ts).
 
 ## Output Directory
 
 By default, when using the `-o` or `--output` option, codefetch will:
 1. Create a `codefetch/` directory in your project
 2. Store all output files in this directory
-3. Create a `.codefetchignore` file (if it doesn't exist) that includes the `codefetch/` directory
+3. Create a `.codefetchignore` file (if it doesn't exist) that includes test files and configuration
 
 This ensures that:
 - Your fetched code is organized in one place
-- Subsequent runs don't fetch already fetched code
+- Test files and configuration are excluded by default
 - The output directory can be safely ignored in version control
 
 We recommend adding `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase. 
 
-
 ## Use with AI Tools
 
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. The `-tok` option helps ensure your output stays within AI model token limits.
-
-
 
 ### Debugging
 

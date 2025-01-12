@@ -1,4 +1,7 @@
 export const DEFAULT_IGNORE_PATTERNS = `
+# avoid recursion
+codefetch/
+
 # Git
 .git/**
 **/.git/**

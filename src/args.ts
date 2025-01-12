@@ -1,4 +1,5 @@
 import type { ParsedArgs } from "./types";
+import minimist from "minimist";
 
 export function printHelp() {
   console.log(`
@@ -18,69 +19,49 @@ Options:
 `);
 }
 
-export function parseArgs(argv: string[]): ParsedArgs {
-  const result: ParsedArgs = {
-    output: null,
-    maxTokens: null,
-    extensions: null,
-    verbose: 0,
-    includeFiles: null,
-    excludeFiles: null,
-    includeDirs: null,
-    excludeDirs: null,
-    treeLevel: null,
-  };
+export function parseArgs(args: string[]) {
+  const argv = minimist(args, {
+    string: [
+      "output",
+      "extension",
+      "include-files",
+      "exclude-files",
+      "include-dir",
+      "exclude-dir",
+    ],
+    boolean: ["help", "project-tree"],
+    alias: {
+      o: "output",
+      e: "extension",
+      if: "include-files",
+      ef: "exclude-files",
+      id: "include-dir",
+      ed: "exclude-dir",
+      v: "verbose",
+      t: "project-tree",
+      tok: "max-tokens",
+      h: "help",
+    },
+  });
 
-  // Skip node and script name if running from CLI
-  const args = argv[0]?.endsWith("node") ? argv.slice(2) : argv;
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "-h" || arg === "--help") {
-      printHelp();
-      throw new Error("Help message displayed");
-    } else if (arg === "-v" || arg === "--verbose") {
-      // Check if next argument is a number
-      const nextArg = args[i + 1];
-      if (nextArg && /^[0-2]$/.test(nextArg)) {
-        result.verbose = Number(nextArg);
-        i++; // Skip the next argument
-      } else {
-        result.verbose = 1; // Default to basic verbosity if no level specified
-      }
-    } else if ((arg === "-t" || arg === "--project-tree") && args[i + 1]) {
-      const level = Number.parseInt(args[i + 1], 10);
-      if (!Number.isNaN(level)) {
-        result.treeLevel = level;
-      }
-      i++;
-    } else if ((arg === "-o" || arg === "--output") && args[i + 1]) {
-      result.output = args[i + 1];
-      i++;
-    } else if ((arg === "--max-tokens" || arg === "-tok") && args[i + 1]) {
-      const tokens = Number.parseInt(args[i + 1], 10);
-      if (!Number.isNaN(tokens)) {
-        result.maxTokens = tokens;
-      }
-      i++;
-    } else if ((arg === "-e" || arg === "--extension") && args[i + 1]) {
-      result.extensions = args[i + 1]
-        .split(",")
-        .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
-      i++;
-    } else if ((arg === "-if" || arg === "--include-files") && args[i + 1]) {
-      result.includeFiles = args[i + 1].split(",");
-      i++;
-    } else if ((arg === "-ef" || arg === "--exclude-files") && args[i + 1]) {
-      result.excludeFiles = args[i + 1].split(",");
-      i++;
-    } else if ((arg === "-id" || arg === "--include-dir") && args[i + 1]) {
-      result.includeDirs = args[i + 1].split(",");
-      i++;
-    } else if ((arg === "-ed" || arg === "--exclude-dir") && args[i + 1]) {
-      result.excludeDirs = args[i + 1].split(",");
-      i++;
-    }
+  // Handle project-tree flag with default value
+  let treeDepth: number | undefined;
+  if (argv["project-tree"]) {
+    // If -t or --project-tree is used without a value, use default of 2
+    treeDepth =
+      typeof argv["project-tree"] === "number" ? argv["project-tree"] : 2;
   }
-  return result;
+
+  return {
+    output: argv.output,
+    extensions: argv.extension?.split(","),
+    includeFiles: argv["include-files"]?.split(","),
+    excludeFiles: argv["exclude-files"]?.split(","),
+    includeDirs: argv["include-dir"]?.split(","),
+    excludeDirs: argv["exclude-dir"]?.split(","),
+    verbose: Number(argv.verbose) || 0,
+    projectTree: treeDepth,
+    maxTokens: argv["max-tokens"] ? Number(argv["max-tokens"]) : undefined,
+    help: argv.help,
+  };
 }

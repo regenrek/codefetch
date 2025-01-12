@@ -52,15 +52,15 @@ try {
   // .gitignore not found or unreadable - that's fine
 }
 
-// Try reading .boltfetchignore if it exists
+// Try reading .codefetchignore if it exists
 try {
-  const boltfetchignoreContent = fs.readFileSync(
-    path.join(process.cwd(), ".boltfetchignore"),
+  const codefetchignoreContent = fs.readFileSync(
+    path.join(process.cwd(), ".codefetchignore"),
     "utf8"
   );
-  ig.add(boltfetchignoreContent);
+  ig.add(codefetchignoreContent);
 } catch {
-  // .boltfetchignore not found or unreadable - that's fine
+  // .codefetchignore not found or unreadable - that's fine
 }
 
 /**

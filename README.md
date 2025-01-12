@@ -1,6 +1,6 @@
-# boltfetch
+# codefetch
 
-![Boltfetch Cover](/public/cover.png)
+![Codefetch Cover](/public/cover.png)
 
 
 Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.boltfetchignore`,  
@@ -9,7 +9,7 @@ then outputs them into a single Markdown file with line numbers.
 ## Usage
 
 ```bash
-npx boltfetch -o my-complete-source.md
+npx codefetch -o my-complete-source.md
 ```
 
 If -o (or --output) is not provided, it will print to stdout.
@@ -19,27 +19,27 @@ If -o (or --output) is not provided, it will print to stdout.
 You can run directly with npx:
 
 ```bash
-npx boltfetch
+npx codefetch
 ```
 
 Or install globally:
 
 ```bash
-npm install -g boltfetch
-boltfetch -o output.md
+npm install -g codefetch
+codefetch -o output.md
 ```
 
 ## Ignoring Files
 
-boltfetch supports two ways to ignore files:
+codefetch supports two ways to ignore files:
 
 1. `.gitignore` - Respects your project's existing `.gitignore` patterns
-2. `.boltfetchignore` - Additional patterns specific to boltfetch
+2. `.codefetchignore` - Additional patterns specific to codefetch
 
-The `.boltfetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. For example:
+The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. For example:
 
 ```
-# .boltfetchignore
+# .codefetchignore
 *.test.js
 docs/
 temp/

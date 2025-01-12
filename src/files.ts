@@ -46,24 +46,41 @@ export async function collectFiles(
   const results: string[] = [];
   const entries = await fs.promises.readdir(baseDir, { withFileTypes: true });
 
+  // Check if current directory should be included when includeDirs is specified
+  const relativeBaseDir = path.relative(process.cwd(), baseDir);
+  if (includeDirs && relativeBaseDir) {
+    const shouldInclude = includeDirs.some(
+      (dir) =>
+        relativeBaseDir === dir || relativeBaseDir.startsWith(dir + path.sep)
+    );
+    if (!shouldInclude) {
+      logVerbose(
+        `Skipping directory not in include list: ${relativeBaseDir}`,
+        2
+      );
+      return results;
+    }
+  }
+
   for (const entry of entries) {
     const fullPath = path.join(baseDir, entry.name);
     const relativePath = path.relative(process.cwd(), fullPath);
-    // Add trailing slash for directories when checking ignore patterns
     const ignoreCheckPath = entry.isDirectory()
       ? `${relativePath}/`
       : relativePath;
 
     if (entry.isDirectory()) {
       // Directory handling
-      if (excludeDirs?.some((dir) => fullPath.includes(dir))) {
+      if (
+        excludeDirs?.some(
+          (dir) =>
+            relativePath === dir || relativePath.startsWith(dir + path.sep)
+        )
+      ) {
         logVerbose(`Skipping excluded directory: ${relativePath}`, 2);
         continue;
       }
-      if (includeDirs && !includeDirs.some((dir) => fullPath.includes(dir))) {
-        logVerbose(`Skipping non-included directory: ${relativePath}`, 2);
-        continue;
-      }
+
       if (ig.ignores(ignoreCheckPath)) {
         logVerbose(`Skipping ignored directory: ${relativePath}`, 2);
         continue;

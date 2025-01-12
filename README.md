@@ -115,9 +115,6 @@ You can use this command to create code-to-markdown in [bolt.new](https://bolt.n
 
 MIT 
 
-## Credits
-
-This project was heavily inspired by the [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
 
 ## Links
 
@@ -125,3 +122,9 @@ This project was heavily inspired by the [sitefetch](https://github.com/egoist/s
 - Bluesky: [@kevinkern.dev](https://bsky.app/profile/kevinkern.dev)
 - Ultimate Cursor AI Course: [Instructa.ai](https://www.instructa.ai/en/cursor-ai)
 
+## Credits
+
+This project was inspired by 
+
+* [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
+* [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.

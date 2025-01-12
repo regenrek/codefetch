@@ -20,7 +20,7 @@ if (!DEFAULT_IGNORE_PATTERNS || typeof DEFAULT_IGNORE_PATTERNS !== "string") {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-interface ParsedArgs {
+export interface ParsedArgs {
   output: string | null;
   maxTokens: number | null;
   extensions: string[] | null;
@@ -42,7 +42,7 @@ interface ParsedArgs {
  * -id, --include-dir <pattern,...> : include specific directories
  * -ed, --exclude-dir <pattern,...> : exclude specific directories
  */
-function parseArgs(argv: string[]): ParsedArgs {
+export function parseArgs(argv: string[]): ParsedArgs {
   const result: ParsedArgs = {
     output: null,
     maxTokens: null,
@@ -53,38 +53,42 @@ function parseArgs(argv: string[]): ParsedArgs {
     includeDirs: null,
     excludeDirs: null,
   };
-  for (let i = 2; i < argv.length; i++) {
-    const arg = argv[i];
+
+  // Skip node and script name if running from CLI
+  const args = argv[0]?.endsWith("node") ? argv.slice(2) : argv;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
     if (arg === "-h" || arg === "--help") {
       printHelp();
       process.exit(0);
     } else if (arg === "-v" || arg === "--verbose") {
       result.verbose = true;
-    } else if ((arg === "-o" || arg === "--output") && argv[i + 1]) {
-      result.output = argv[i + 1];
+    } else if ((arg === "-o" || arg === "--output") && args[i + 1]) {
+      result.output = args[i + 1];
       i++;
-    } else if ((arg === "--max-tokens" || arg === "-tok") && argv[i + 1]) {
-      const tokens = parseInt(argv[i + 1]);
+    } else if ((arg === "--max-tokens" || arg === "-tok") && args[i + 1]) {
+      const tokens = parseInt(args[i + 1]);
       if (!isNaN(tokens)) {
         result.maxTokens = tokens;
       }
       i++;
-    } else if ((arg === "-e" || arg === "--extension") && argv[i + 1]) {
-      result.extensions = argv[i + 1]
+    } else if ((arg === "-e" || arg === "--extension") && args[i + 1]) {
+      result.extensions = args[i + 1]
         .split(",")
         .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
       i++;
-    } else if ((arg === "-if" || arg === "--include-files") && argv[i + 1]) {
-      result.includeFiles = argv[i + 1].split(",");
+    } else if ((arg === "-if" || arg === "--include-files") && args[i + 1]) {
+      result.includeFiles = args[i + 1].split(",");
       i++;
-    } else if ((arg === "-ef" || arg === "--exclude-files") && argv[i + 1]) {
-      result.excludeFiles = argv[i + 1].split(",");
+    } else if ((arg === "-ef" || arg === "--exclude-files") && args[i + 1]) {
+      result.excludeFiles = args[i + 1].split(",");
       i++;
-    } else if ((arg === "-id" || arg === "--include-dir") && argv[i + 1]) {
-      result.includeDirs = argv[i + 1].split(",");
+    } else if ((arg === "-id" || arg === "--include-dir") && args[i + 1]) {
+      result.includeDirs = args[i + 1].split(",");
       i++;
-    } else if ((arg === "-ed" || arg === "--exclude-dir") && argv[i + 1]) {
-      result.excludeDirs = argv[i + 1].split(",");
+    } else if ((arg === "-ed" || arg === "--exclude-dir") && args[i + 1]) {
+      result.excludeDirs = args[i + 1].split(",");
       i++;
     } else if (arg.startsWith("--include-files=")) {
       result.includeFiles = arg.split("=")[1].split(",");
@@ -192,7 +196,7 @@ async function main() {
 }
 
 // Update collectFiles to accept options object
-async function collectFiles(
+export async function collectFiles(
   dir: string,
   options: {
     ig: ReturnType<typeof ignore>;
@@ -272,7 +276,7 @@ async function collectFiles(
 }
 
 // Update generateMarkdown to handle stream types correctly
-async function generateMarkdown(
+export async function generateMarkdown(
   files: string[],
   options: {
     outputPath: string | null;
@@ -280,6 +284,14 @@ async function generateMarkdown(
     verbose: boolean;
   }
 ): Promise<number> {
+  // Create output directory if needed
+  if (options.outputPath) {
+    const outputDir = path.dirname(options.outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+  }
+
   // Cast output to NodeJS.WritableStream to unify the type
   const output = options.outputPath
     ? (fs.createWriteStream(options.outputPath) as NodeJS.WritableStream)
@@ -301,22 +313,32 @@ async function generateMarkdown(
 
     let lineNumber = 1;
     for await (const line of rl) {
-      const formattedLine = `${lineNumber} | ${line}\n`;
-      output.write(formattedLine);
-      totalTokens += estimateTokens(line);
-      lineNumber++;
-
-      if (options.maxTokens && totalTokens > options.maxTokens) {
+      const lineTokens = estimateTokens(line);
+      if (options.maxTokens && totalTokens + lineTokens > options.maxTokens) {
         break;
       }
+
+      const formattedLine = `${lineNumber} | ${line}\n`;
+      output.write(formattedLine);
+      totalTokens += lineTokens;
+      lineNumber++;
     }
 
     output.write("-".repeat(80) + "\n\n");
+
+    if (options.maxTokens && totalTokens >= options.maxTokens) {
+      break;
+    }
   }
 
-  // Only end the stream if it's a file stream
+  // Only end the stream if it's a file stream and wait for it to finish
   if (options.outputPath) {
-    (output as fs.WriteStream).end();
+    await new Promise<void>((resolve, reject) => {
+      (output as fs.WriteStream).end((err: NodeJS.ErrnoException | null) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 
   return totalTokens;
@@ -327,8 +349,8 @@ async function generateMarkdown(
  * This is a simple approximation - actual tokens may vary by tokenizer.
  */
 function estimateTokens(text: string): number {
-  // Rough estimate: Split on whitespace and punctuation
-  return text.split(/[\s\p{P}]+/u).length;
+  // Split on whitespace and punctuation, filter out empty strings
+  return text.split(/[\s\p{P}]+/u).filter(Boolean).length;
 }
 
 function printHelp() {

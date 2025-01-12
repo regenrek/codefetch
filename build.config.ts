@@ -1,17 +1,10 @@
 import { defineBuildConfig } from "unbuild";
 
 export default defineBuildConfig({
-  entries: ["src/index"],
+  entries: ["./src/index"],
   declaration: true,
   clean: true,
   rollup: {
     emitCJS: true,
-    inlineDependencies: true,
   },
-  assets: [
-    {
-      from: "./src/.codefetch.tpl",
-      to: "./.codefetch.tpl",
-    },
-  ],
 });

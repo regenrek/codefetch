@@ -21,8 +21,7 @@
     "prepack": "unbuild"
   },
   "files": [
-    "dist",
-    "src/.codefetch.tpl"
+    "dist"
   ],
   "dependencies": {
     "ignore": "^5.3.0"

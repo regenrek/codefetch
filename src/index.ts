@@ -192,12 +192,6 @@ function generateMarkdown(files: string[]): string {
 // Build the final output
 const final = generateMarkdown(allFiles);
 
-// Add new constant for the template
-const CODEFETCH_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, ".codefetch.tpl"),
-  "utf8"
-);
-
 // Write to file if `-o/--output` was given, else print to stdout
 if (output) {
   // Create codefetch directory if it doesn't exist
@@ -210,7 +204,8 @@ if (output) {
   // Create .codefetchignore if it doesn't exist
   const codefetchignorePath = path.join(process.cwd(), ".codefetchignore");
   if (!fs.existsSync(codefetchignorePath)) {
-    fs.writeFileSync(codefetchignorePath, CODEFETCH_TEMPLATE, "utf8");
+    const ignoreContent = "# Codefetch specific ignores\ncodefetch/\n";
+    fs.writeFileSync(codefetchignorePath, ignoreContent, "utf8");
     console.log(
       "Created .codefetchignore file. Add 'codefetch/' to your .gitignore to avoid committing fetched code."
     );

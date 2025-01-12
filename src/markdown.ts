@@ -13,7 +13,8 @@ export async function generateMarkdown(
     outputPath: string | null;
     maxTokens: number | null;
     verbose: boolean;
-  },
+    projectTree?: string;
+  }
 ): Promise<number> {
   let totalTokens = 0;
 
@@ -28,7 +29,7 @@ export async function generateMarkdown(
   // Type-safe write function
   const writeToOutput = (
     output: Writable | typeof process.stdout,
-    text: string,
+    text: string
   ) => {
     if (output instanceof Writable) {
       output.write(text);
@@ -41,6 +42,15 @@ export async function generateMarkdown(
     ? fs.createWriteStream(options.outputPath)
     : process.stdout;
 
+  // Write project tree if available
+  if (options.projectTree) {
+    writeToOutput(output, "```\n");
+    writeToOutput(output, options.projectTree);
+    writeToOutput(output, "```\n\n");
+    totalTokens += estimateTokens(options.projectTree);
+  }
+
+  // Write files
   for (const file of files) {
     const relativePath = path.relative(process.cwd(), file);
 
@@ -50,7 +60,7 @@ export async function generateMarkdown(
       crlfDelay: Infinity,
     });
 
-    writeToOutput(output, `<open_file>\n${relativePath}\n`);
+    writeToOutput(output, `${relativePath}\n`);
     writeToOutput(output, "```\n");
 
     let lineNumber = 1;
@@ -65,8 +75,7 @@ export async function generateMarkdown(
       lineNumber++;
     }
 
-    writeToOutput(output, "```\n");
-    writeToOutput(output, "</open_file>\n\n");
+    writeToOutput(output, "```\n\n");
 
     if (options.maxTokens && totalTokens >= options.maxTokens) {
       break;

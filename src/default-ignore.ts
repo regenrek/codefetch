@@ -26,9 +26,11 @@ bun.lockb
 .codefetchignore
 .editorconfig
 .eslintrc*
+.eslintcache
 .prettierrc*
 .stylelintrc*
 .tsbuildinfo
+.prettierignore
 
 # Binary and Image Files
 # Images

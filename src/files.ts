@@ -2,6 +2,23 @@ import fs from "node:fs";
 import path from "node:path";
 import type { default as ignore } from "ignore";
 
+export function resolveCodefetchPath(outputFile: string) {
+  const codefetchDir = path.join(process.cwd(), "codefetch");
+
+  // Create codefetch directory if it doesn't exist
+  if (!fs.existsSync(codefetchDir)) {
+    fs.mkdirSync(codefetchDir, { recursive: true });
+
+    // Create .codefetchignore if it doesn't exist
+    const ignorePath = path.join(process.cwd(), ".codefetchignore");
+    if (!fs.existsSync(ignorePath)) {
+      fs.writeFileSync(ignorePath, "codefetch/\n");
+    }
+  }
+
+  return path.join(codefetchDir, outputFile);
+}
+
 export async function collectFiles(
   dir: string,
   options: {
@@ -11,17 +28,17 @@ export async function collectFiles(
     includeFiles: string[] | null;
     excludeDirs: string[] | null;
     includeDirs: string[] | null;
-  },
+  }
 ): Promise<string[]> {
   const results: string[] = [];
   const list = await fs.promises.readdir(dir);
 
   // Move regex compilation outside the loop
   const excludePatterns = options.excludeFiles?.map(
-    (pattern) => new RegExp(pattern.replace(/\*/g, ".*")),
+    (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
   );
   const includePatterns = options.includeFiles?.map(
-    (pattern) => new RegExp(pattern.replace(/\*/g, ".*")),
+    (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
   );
 
   for (const filename of list) {
@@ -70,4 +87,59 @@ export async function collectFiles(
     }
   }
   return results;
+}
+
+function generateTree(
+  dir: string,
+  level: number,
+  prefix = "",
+  isLast = true,
+  maxLevel = 2,
+  currentLevel = 0
+): string {
+  if (currentLevel >= maxLevel) return "";
+
+  // Don't add root directory to output
+  let tree =
+    currentLevel === 0
+      ? ""
+      : `${prefix}${isLast ? "└── " : "├── "}${path.basename(dir)}\n`;
+
+  try {
+    const files = fs.readdirSync(dir);
+    const filteredFiles = files.filter(
+      (file) => !file.startsWith(".") && file !== "node_modules"
+    );
+
+    for (const [index, file] of filteredFiles.entries()) {
+      const filePath = path.join(dir, file);
+      const isDirectory = fs.statSync(filePath).isDirectory();
+      const newPrefix =
+        currentLevel === 0 ? "" : prefix + (isLast ? "    " : "│   ");
+      const isLastItem = index === filteredFiles.length - 1;
+
+      if (isDirectory) {
+        tree += generateTree(
+          filePath,
+          level + 1,
+          newPrefix,
+          isLastItem,
+          maxLevel,
+          currentLevel + 1
+        );
+      } else if (currentLevel < maxLevel) {
+        tree += `${newPrefix}${isLastItem ? "└── " : "├── "}${file}\n`;
+      }
+    }
+  } catch {
+    // Handle any file system errors silently
+  }
+
+  return tree;
+}
+
+export function generateProjectTree(baseDir: string, maxLevel = 2): string {
+  return (
+    "Project Structure:\n" + generateTree(baseDir, 1, "", true, maxLevel, 0)
+  );
 }

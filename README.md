@@ -9,10 +9,9 @@
 Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.codefetchignore`, then outputs them into a single Markdown file with line numbers.
 
 ## Usage
-
-Basic usage with output file:
+Basic usage with output file and tree
 ```bash
-npx codefetch -o my-complete-source.md
+npx codefetch -o my-complete-source.md -t
 ```
 
 With token limit (useful for AI models):
@@ -51,6 +50,9 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--include-dir <dir,...>` | `-id` | Include specific directories |
 | `--exclude-dir <dir,...>` | `-ed` | Exclude specific directories |
 | `--verbose` | `-v` | Show detailed processing information |
+| `--project-tree [depth]` | `-t` | Generate visual project tree (optional depth, default: 2) |
+
+// ... rest of the file ...
 
 All options that accept multiple values use comma-separated lists. File patterns support wildcards (e.g., `*.ts`, `src/*.js`).
 
@@ -65,6 +67,34 @@ Or install globally:
 ```bash
 npm install -g codefetch
 codefetch -o output.md
+```
+
+### Project Tree
+
+You can generate a visual tree representation of your project structure:
+
+```bash
+# Generate tree with default depth (2 levels)
+npx codefetch --project-tree
+
+# Generate tree with custom depth
+npx codefetch -t 3
+
+# Generate tree and save code to file
+npx codefetch -t 2 -o output.md
+```
+
+Example output:
+```
+Project Tree:
+└── my-project
+    ├── src
+    │   ├── index.ts
+    │   ├── types.ts
+    │   └── utils
+    ├── tests
+    │   └── index.test.ts
+    └── package.json
 ```
 
 ## Ignoring Files
@@ -128,3 +158,4 @@ This project was inspired by
 
 * [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
 * [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
+

@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 import ignore from "ignore";
 import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
 import { parseArgs } from "./args";
-import { collectFiles } from "./files";
+import {
+  collectFiles,
+  resolveCodefetchPath,
+  generateProjectTree,
+} from "./files";
 import { generateMarkdown } from "./markdown";
 
 // Type exports
@@ -14,7 +18,11 @@ export type { ParsedArgs } from "./types";
 
 // Function exports
 export { parseArgs } from "./args";
-export { collectFiles } from "./files";
+export {
+  collectFiles,
+  resolveCodefetchPath,
+  generateProjectTree,
+} from "./files";
 export { generateMarkdown } from "./markdown";
 
 // Main function for CLI
@@ -28,6 +36,7 @@ async function main() {
     excludeFiles,
     includeDirs,
     excludeDirs,
+    treeLevel,
   } = parseArgs(process.argv);
 
   // Initialize ignore instance with default patterns
@@ -61,19 +70,24 @@ async function main() {
     includeDirs,
   });
 
-  // Generate markdown
+  // Generate markdown with project tree
   const totalTokens = await generateMarkdown(allFiles, {
-    outputPath: outputFile ? path.join(process.cwd(), outputFile) : null,
+    outputPath: outputFile && resolveCodefetchPath(outputFile),
     maxTokens,
     verbose,
+    projectTree:
+      treeLevel === null
+        ? undefined
+        : generateProjectTree(process.cwd(), treeLevel),
   });
 
   if (outputFile) {
-    console.log(`\n✓ Output written to: ${outputFile}`);
+    console.log(`\n✓ Output written to: codefetch/${outputFile}`);
     console.log(`✓ Approximate token count: ${totalTokens}`);
   }
 }
 
+// Use top-level await instead of .catch()
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
     console.error("Error:", error);

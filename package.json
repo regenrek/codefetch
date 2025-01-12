@@ -1,6 +1,6 @@
 {
   "name": "codefetch",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
   "repository": "regenrek/codefetch",
   "license": "MIT",
@@ -32,6 +32,7 @@
     "build": "unbuild",
     "dev": "vitest",
     "lint": "eslint --cache . && prettier -c src test",
+    "start": "tsx src/index.ts",
     "lint:fix": "eslint --cache . --fix && prettier -c src test -w",
     "release": "npm test && npm run build && npm publish",
     "test": "npm run lint && npm run test:types && vitest run --coverage",
@@ -44,6 +45,7 @@
     "eslint": "^9.18.0",
     "eslint-config-unjs": "^0.4.2",
     "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "unbuild": "3.2.0",
     "vitest": "^2.1.8"

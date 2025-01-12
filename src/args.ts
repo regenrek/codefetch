@@ -12,6 +12,7 @@ Options:
   -ef, --exclude-files <p,..> Exclude specific files (supports patterns)
   -id, --include-dir <d,...>  Include specific directories
   -ed, --exclude-dir <d,...>  Exclude specific directories
+  -t, --project-tree <level>  Generate project tree with specified depth (default: 2)
   -v, --verbose              Show detailed processing information
   -h, --help                 Display this help message
 `);
@@ -27,6 +28,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     excludeFiles: null,
     includeDirs: null,
     excludeDirs: null,
+    treeLevel: null,
   };
 
   // Skip node and script name if running from CLI
@@ -39,6 +41,12 @@ export function parseArgs(argv: string[]): ParsedArgs {
       throw new Error("Help message displayed");
     } else if (arg === "-v" || arg === "--verbose") {
       result.verbose = true;
+    } else if ((arg === "-t" || arg === "--project-tree") && args[i + 1]) {
+      const level = Number.parseInt(args[i + 1], 10);
+      if (!Number.isNaN(level)) {
+        result.treeLevel = level;
+      }
+      i++;
     } else if ((arg === "-o" || arg === "--output") && args[i + 1]) {
       result.output = args[i + 1];
       i++;

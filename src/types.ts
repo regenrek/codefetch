@@ -7,4 +7,5 @@ export interface ParsedArgs {
   excludeFiles: string[] | null;
   includeDirs: string[] | null;
   excludeDirs: string[] | null;
+  treeLevel: number | null;
 }

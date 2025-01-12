@@ -1,6 +1,6 @@
 {
   "name": "codefetch",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
   "type": "module",
   "exports": {

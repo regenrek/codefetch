@@ -9,6 +9,12 @@ import { fileURLToPath } from "node:url";
 import ignore from "ignore";
 import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
 
+// Add this right after the imports
+if (!DEFAULT_IGNORE_PATTERNS || typeof DEFAULT_IGNORE_PATTERNS !== "string") {
+  console.error("Warning: Default ignore patterns could not be loaded");
+  process.exit(1);
+}
+
 // Resolve current directory in ESM context
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +62,11 @@ function parseArgs(argv: string[]): ParsedArgs {
 const { output, maxTokens, extensions } = parseArgs(process.argv);
 
 // Initialize ignore instance with default patterns
-const ig = ignore().add(DEFAULT_IGNORE_PATTERNS);
+const ig = ignore().add(
+  DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+    (line) => line && !line.startsWith("#")
+  )
+);
 
 // Try reading .gitignore if it exists
 try {

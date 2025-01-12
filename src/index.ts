@@ -23,6 +23,7 @@ interface ParsedArgs {
   output: string | null;
   maxTokens: number | null;
   extensions: string[] | null;
+  verbose: boolean;
 }
 
 /**
@@ -37,10 +38,16 @@ function parseArgs(argv: string[]): ParsedArgs {
     output: null,
     maxTokens: null,
     extensions: null,
+    verbose: false,
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
-    if ((arg === "-o" || arg === "--output") && argv[i + 1]) {
+    if (arg === "-h" || arg === "--help") {
+      printHelp();
+      process.exit(0);
+    } else if (arg === "-v" || arg === "--verbose") {
+      result.verbose = true;
+    } else if ((arg === "-o" || arg === "--output") && argv[i + 1]) {
       result.output = argv[i + 1];
       i++;
     } else if ((arg === "--max-tokens" || arg === "-tok") && argv[i + 1]) {
@@ -59,7 +66,7 @@ function parseArgs(argv: string[]): ParsedArgs {
   return result;
 }
 
-const { output, maxTokens, extensions } = parseArgs(process.argv);
+const { output, maxTokens, extensions, verbose } = parseArgs(process.argv);
 
 // Initialize ignore instance with default patterns
 const ig = ignore().add(
@@ -103,21 +110,24 @@ function collectFiles(dir: string): string[] {
     const relPath = path.relative(process.cwd(), filePath);
 
     if (ig.ignores(relPath)) {
+      verbose && console.log(`Ignoring: ${relPath}`);
       continue;
     }
 
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
+      verbose && console.log(`Processing directory: ${relPath}`);
       results.push(...collectFiles(filePath));
     } else {
-      // Check file extension if extensions filter is active
       if (extensions) {
         const ext = path.extname(filename);
         if (!extensions.includes(ext)) {
+          verbose && console.log(`Skipping non-matching extension: ${relPath}`);
           continue;
         }
       }
+      verbose && console.log(`Processing file: ${relPath}`);
       results.push(filePath);
     }
   }
@@ -150,22 +160,24 @@ function generateMarkdown(files: string[]): string {
   const lines: string[] = [];
   let totalTokens = 0;
 
+  verbose && console.log("\nGenerating markdown output...");
+
   for (const file of files) {
     const relativePath = path.relative(process.cwd(), file);
     const content = fs.readFileSync(file, "utf8");
-
-    // Estimate tokens for this file
     const fileTokens = estimateTokens(content);
 
-    // Skip if we would exceed max tokens
     if (maxTokens && totalTokens + fileTokens > maxTokens) {
-      // lines.push(`\n// Skipped ${relativePath} to stay within token limit...`);
+      verbose &&
+        console.log(`Skipping ${relativePath} (would exceed token limit)`);
       continue;
     }
 
+    verbose &&
+      console.log(`Adding to output: ${relativePath} (${fileTokens} tokens)`);
     totalTokens += fileTokens;
 
-    // Rest of the existing code...
+    // Rest of the existing markdown generation code...
     lines.push(`/${relativePath}:`);
     lines.push(
       "--------------------------------------------------------------------------------"
@@ -224,4 +236,17 @@ if (output) {
   console.log(`✓ Approximate token count: ${totalTokens}`);
 } else {
   console.log(final);
+}
+
+function printHelp() {
+  console.log(`
+Usage: codefetch [options]
+
+Options:
+  -o, --output <file>       Specify output filename
+  -tok, --max-tokens <n>    Limit output tokens (useful for AI models)
+  -e, --extension <ext,...> Filter by file extensions (e.g., .ts,.js)
+  -v, --verbose            Show detailed processing information
+  -h, --help               Display this help message
+`);
 }

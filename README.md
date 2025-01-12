@@ -34,6 +34,7 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--output <file>` | `-o` | Specify output filename |
 | `--max-tokens <number>` | `-tok` | Limit output tokens (useful for AI models) |
 | `--extension <ext,...>` | `-e` | Filter by file extensions (e.g., .ts,.js) |
+| `--verbose` | `-v` | Show detailed processing information |
 
 ## Installation
 

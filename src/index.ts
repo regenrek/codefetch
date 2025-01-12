@@ -105,10 +105,4 @@ async function main() {
   }
 }
 
-// Use top-level await instead of .catch()
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((error) => {
-    console.error("Error:", error);
-    process.exit(1);
-  });
-}
+main();

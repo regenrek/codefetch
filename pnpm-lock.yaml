@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      codefetch:
+        specifier: ^1.1.12
+        version: 1.1.12
       ignore:
         specifier: ^7.0.0
         version: 7.0.0
@@ -1019,6 +1022,10 @@ packages:
   clean-regexp@1.0.0:
     resolution: {integrity: sha512-GfisEZEJvzKrmGWkvfhgzcz/BllN1USeqD2V6tg14OAOgaCD2Z/PUEuxnAZ/nPvmaHRG7a8y77p1T/IRQ4D1Hw==}
     engines: {node: '>=4'}
+
+  codefetch@1.1.12:
+    resolution: {integrity: sha512-hNHXc2tkSQjFKS+wUK7Gc7y5xV+wL/bctF8cw/pF7yRnYxOsw4QmwDIpJySVO/CxjvpXX3CdTx6NdMMzRnIkuA==}
+    hasBin: true
 
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
@@ -3045,6 +3052,11 @@ snapshots:
   clean-regexp@1.0.0:
     dependencies:
       escape-string-regexp: 1.0.5
+
+  codefetch@1.1.12:
+    dependencies:
+      ignore: 7.0.0
+      minimatch: 10.0.1
 
   color-convert@2.0.1:
     dependencies:

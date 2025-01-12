@@ -69,7 +69,7 @@ package.json
 ```
 1 | {
 2 |   "name": "codefetch",
-3 |   "version": "1.1.11",
+3 |   "version": "1.1.12",
 4 |   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
 5 |   "repository": "regenrek/codefetch",
 6 |   "license": "MIT",

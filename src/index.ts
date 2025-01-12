@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import readline from "readline";
 
 // We'll use `ignore` to handle ignoring files
 import ignore from "ignore";
@@ -24,6 +25,10 @@ interface ParsedArgs {
   maxTokens: number | null;
   extensions: string[] | null;
   verbose: boolean;
+  includeFiles: string[] | null;
+  excludeFiles: string[] | null;
+  includeDirs: string[] | null;
+  excludeDirs: string[] | null;
 }
 
 /**
@@ -32,6 +37,10 @@ interface ParsedArgs {
  * -o, --output <file> : specify output filename
  * --max-tokens, -tok <number> : limit output tokens
  * -e, --extension <ext,...> : filter by file extensions (.ts,.js etc)
+ * -if, --include-files <pattern,...> : include specific files
+ * -ef, --exclude-files <pattern,...> : exclude specific files
+ * -id, --include-dir <pattern,...> : include specific directories
+ * -ed, --exclude-dir <pattern,...> : exclude specific directories
  */
 function parseArgs(argv: string[]): ParsedArgs {
   const result: ParsedArgs = {
@@ -39,6 +48,10 @@ function parseArgs(argv: string[]): ParsedArgs {
     maxTokens: null,
     extensions: null,
     verbose: false,
+    includeFiles: null,
+    excludeFiles: null,
+    includeDirs: null,
+    excludeDirs: null,
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -61,12 +74,41 @@ function parseArgs(argv: string[]): ParsedArgs {
         .split(",")
         .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
       i++;
+    } else if ((arg === "-if" || arg === "--include-files") && argv[i + 1]) {
+      result.includeFiles = argv[i + 1].split(",");
+      i++;
+    } else if ((arg === "-ef" || arg === "--exclude-files") && argv[i + 1]) {
+      result.excludeFiles = argv[i + 1].split(",");
+      i++;
+    } else if ((arg === "-id" || arg === "--include-dir") && argv[i + 1]) {
+      result.includeDirs = argv[i + 1].split(",");
+      i++;
+    } else if ((arg === "-ed" || arg === "--exclude-dir") && argv[i + 1]) {
+      result.excludeDirs = argv[i + 1].split(",");
+      i++;
+    } else if (arg.startsWith("--include-files=")) {
+      result.includeFiles = arg.split("=")[1].split(",");
+    } else if (arg.startsWith("--exclude-files=")) {
+      result.excludeFiles = arg.split("=")[1].split(",");
+    } else if (arg.startsWith("--include-dir=")) {
+      result.includeDirs = arg.split("=")[1].split(",");
+    } else if (arg.startsWith("--exclude-dir=")) {
+      result.excludeDirs = arg.split("=")[1].split(",");
     }
   }
   return result;
 }
 
-const { output, maxTokens, extensions, verbose } = parseArgs(process.argv);
+const {
+  output,
+  maxTokens,
+  extensions,
+  verbose,
+  includeFiles,
+  excludeFiles,
+  includeDirs,
+  excludeDirs,
+} = parseArgs(process.argv);
 
 // Initialize ignore instance with default patterns
 const ig = ignore().add(
@@ -97,13 +139,24 @@ try {
   // .codefetchignore not found or unreadable - that's fine
 }
 
+// Create a Set for O(1) lookup instead of array includes
+const extensionSet = extensions ? new Set(extensions) : null;
+
 /**
  * Recursively collect all files in the current working directory,
  * ignoring anything matched by .gitignore or .codefetchignore (if present).
  */
-function collectFiles(dir: string): string[] {
+async function collectFiles(dir: string): Promise<string[]> {
   const results: string[] = [];
-  const list = fs.readdirSync(dir);
+  const list = await fs.promises.readdir(dir);
+
+  // Move regex compilation outside the loop
+  const excludePatterns = excludeFiles?.map(
+    (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
+  );
+  const includePatterns = includeFiles?.map(
+    (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
+  );
 
   for (const filename of list) {
     const filePath = path.join(dir, filename);
@@ -113,19 +166,40 @@ function collectFiles(dir: string): string[] {
       continue;
     }
 
-    const stat = fs.statSync(filePath);
+    const stat = await fs.promises.stat(filePath);
 
     if (stat.isDirectory()) {
-      verbose && console.log(`Processing directory: ${relPath}`);
-      results.push(...collectFiles(filePath));
+      // Check directory filters
+      const dirName = path.basename(filePath);
+      if (excludeDirs && excludeDirs.includes(dirName)) {
+        continue;
+      }
+      if (includeDirs && !includeDirs.includes(dirName)) {
+        continue;
+      }
+
+      results.push(...(await collectFiles(filePath)));
     } else {
-      if (extensions) {
+      // Check file filters
+      if (
+        excludePatterns &&
+        excludePatterns.some((pattern) => pattern.test(filename))
+      ) {
+        continue;
+      }
+      if (
+        includePatterns &&
+        !includePatterns.some((pattern) => pattern.test(filename))
+      ) {
+        continue;
+      }
+      if (extensionSet) {
         const ext = path.extname(filename);
-        if (!extensions.includes(ext)) {
+        if (!extensionSet.has(ext)) {
           continue;
         }
       }
-      verbose && console.log(`Processing file: ${relPath}`);
+
       results.push(filePath);
     }
   }
@@ -133,7 +207,7 @@ function collectFiles(dir: string): string[] {
 }
 
 // Actually gather up the file list
-const allFiles = collectFiles(process.cwd());
+const allFiles = await collectFiles(process.cwd());
 
 /**
  * Very rough token count estimation.
@@ -154,97 +228,91 @@ function estimateTokens(text: string): number {
  * 2 | ...
  * --------------------------------------------------------------------------------
  */
-function generateMarkdown(files: string[]): string {
-  const lines: string[] = [];
+async function generateMarkdown(files: string[]): Promise<string> {
+  const output = output ? fs.createWriteStream(outputPath) : process.stdout;
   let totalTokens = 0;
-
-  verbose && console.log("\nGenerating markdown output...");
 
   for (const file of files) {
     const relativePath = path.relative(process.cwd(), file);
-    const content = fs.readFileSync(file, "utf8");
-    const fileTokens = estimateTokens(content);
 
-    if (maxTokens && totalTokens + fileTokens > maxTokens) {
-      verbose &&
-        console.log(`Skipping ${relativePath} (would exceed token limit)`);
-      continue;
-    }
-
-    verbose &&
-      console.log(`Adding to output: ${relativePath} (${fileTokens} tokens)`);
-    totalTokens += fileTokens;
-
-    // Rest of the existing markdown generation code...
-    lines.push(`/${relativePath}:`);
-    lines.push(
-      "--------------------------------------------------------------------------------"
-    );
-
-    const fileLines = content.split("\n");
-    fileLines.forEach((line, i) => {
-      lines.push(`${i + 1} | ${line}`);
+    // Stream the file instead of reading it all at once
+    const fileStream = fs.createReadStream(file, { encoding: "utf8" });
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
     });
 
-    lines.push("");
-    lines.push(
-      "--------------------------------------------------------------------------------"
-    );
+    output.write(`/${relativePath}:\n`);
+    output.write("-".repeat(80) + "\n");
+
+    let lineNumber = 1;
+    for await (const line of rl) {
+      const formattedLine = `${lineNumber} | ${line}\n`;
+      output.write(formattedLine);
+      totalTokens += estimateTokens(line);
+      lineNumber++;
+
+      if (maxTokens && totalTokens > maxTokens) {
+        break;
+      }
+    }
+
+    output.write("-".repeat(80) + "\n\n");
   }
 
-  // if (maxTokens) {
-  //   lines.unshift(`// Approximate token count: ${totalTokens}\n`);
-  // }
+  if (output !== process.stdout) {
+    output.end();
+  }
 
-  return lines.join("\n");
+  return totalTokens;
 }
 
-// Build the final output
-const final = generateMarkdown(allFiles);
-
-// Write to file if `-o/--output` was given, else print to stdout
-if (output) {
-  // Create codefetch directory if it doesn't exist
-  const codefetchDir = path.join(process.cwd(), "codefetch");
-  if (!fs.existsSync(codefetchDir)) {
-    fs.mkdirSync(codefetchDir, { recursive: true });
-    console.log("Created codefetch directory.");
+async function processFilesInBatches(files: string[], batchSize = 100) {
+  const results = [];
+  for (let i = 0; i < files.length; i += batchSize) {
+    const batch = files.slice(i, i + batchSize);
+    const batchPromises = batch.map(async (file) => {
+      // Process each file
+      return processFile(file);
+    });
+    results.push(...(await Promise.all(batchPromises)));
   }
-
-  // Create .codefetchignore if it doesn't exist
-  const codefetchignorePath = path.join(process.cwd(), ".codefetchignore");
-  if (!fs.existsSync(codefetchignorePath)) {
-    const ignoreContent = "# Codefetch specific ignores\ncodefetch/\n";
-    fs.writeFileSync(codefetchignorePath, ignoreContent, "utf8");
-    console.log(
-      "Created .codefetchignore file. Add 'codefetch/' to your .gitignore to avoid committing fetched code."
-    );
-  }
-
-  // Write the output file to the codefetch directory
-  const outputPath = path.join(codefetchDir, output);
-  fs.writeFileSync(outputPath, final, "utf8");
-
-  // Calculate and display token count
-  const totalTokens = estimateTokens(final);
-
-  console.log("\nSummary:");
-  console.log("✓ Code was successfully fetched");
-  console.log(`✓ Output written to: ${outputPath}`);
-  console.log(`✓ Approximate token count: ${totalTokens}`);
-} else {
-  console.log(final);
+  return results;
 }
+
+async function processFile(file: string) {
+  // Process individual file
+  const content = await fs.promises.readFile(file, "utf8");
+  // ... process content ...
+  return { file, content };
+}
+
+async function main() {
+  const allFiles = await collectFiles(process.cwd());
+  const totalTokens = await generateMarkdown(allFiles);
+  // ... rest of the code
+}
+
+main().catch(console.error);
 
 function printHelp() {
   console.log(`
 Usage: codefetch [options]
 
 Options:
-  -o, --output <file>       Specify output filename
-  -tok, --max-tokens <n>    Limit output tokens (useful for AI models)
-  -e, --extension <ext,...> Filter by file extensions (e.g., .ts,.js)
-  -v, --verbose            Show detailed processing information
-  -h, --help               Display this help message
+  -o, --output <file>         Specify output filename
+  -tok, --max-tokens <n>      Limit output tokens (useful for AI models)
+  -e, --extension <ext,...>   Filter by file extensions (e.g., .ts,.js)
+  -if, --include-files <p,..> Include specific files (supports patterns)
+  -ef, --exclude-files <p,..> Exclude specific files (supports patterns)
+  -id, --include-dir <d,...>  Include specific directories
+  -ed, --exclude-dir <d,...>  Exclude specific directories
+  -v, --verbose              Show detailed processing information
+  -h, --help                 Display this help message
+
+Examples:
+  codefetch --exclude-dir=node_modules,public
+  codefetch --include-files=*.ts,*.js
+  codefetch -ef test.ts,temp.js -id src
 `);
 }

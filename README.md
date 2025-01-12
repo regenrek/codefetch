@@ -25,6 +25,18 @@ Filter by file extensions:
 npx codefetch -e .ts,.js -o typescript-files.md
 ```
 
+Include or exclude specific files and directories:
+```bash
+# Exclude node_modules and public directories
+npx codefetch --exclude-dir=node_modules,public -o output.md
+
+# Include only TypeScript files
+npx codefetch --include-files=*.ts -o typescript-only.md
+
+# Include src directory, exclude test files
+npx codefetch --include-dir=src --exclude-files=*.test.ts -o src-no-tests.md
+```
+
 If no output file is specified (`-o` or `--output`), it will print to stdout.
 
 ### Options
@@ -34,7 +46,13 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--output <file>` | `-o` | Specify output filename |
 | `--max-tokens <number>` | `-tok` | Limit output tokens (useful for AI models) |
 | `--extension <ext,...>` | `-e` | Filter by file extensions (e.g., .ts,.js) |
+| `--include-files <pattern,...>` | `-if` | Include specific files (supports patterns like *.ts) |
+| `--exclude-files <pattern,...>` | `-ef` | Exclude specific files (supports patterns like *.test.ts) |
+| `--include-dir <dir,...>` | `-id` | Include specific directories |
+| `--exclude-dir <dir,...>` | `-ed` | Exclude specific directories |
 | `--verbose` | `-v` | Show detailed processing information |
+
+All options that accept multiple values use comma-separated lists. File patterns support wildcards (e.g., `*.ts`, `src/*.js`).
 
 ## Installation
 

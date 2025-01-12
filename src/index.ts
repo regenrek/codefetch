@@ -149,7 +149,7 @@ function generateMarkdown(files: string[]): string {
 
     // Skip if we would exceed max tokens
     if (maxTokens && totalTokens + fileTokens > maxTokens) {
-      lines.push(`\n// Skipped ${relativePath} to stay within token limit...`);
+      // lines.push(`\n// Skipped ${relativePath} to stay within token limit...`);
       continue;
     }
 
@@ -172,9 +172,9 @@ function generateMarkdown(files: string[]): string {
     );
   }
 
-  if (maxTokens) {
-    lines.unshift(`// Approximate token count: ${totalTokens}\n`);
-  }
+  // if (maxTokens) {
+  //   lines.unshift(`// Approximate token count: ${totalTokens}\n`);
+  // }
 
   return lines.join("\n");
 }

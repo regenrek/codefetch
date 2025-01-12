@@ -25,6 +25,14 @@ export {
 } from "./files";
 export { generateMarkdown } from "./markdown";
 
+// Add this helper function at the top level
+function ensureCodefetchIgnore() {
+  const ignorePath = path.join(process.cwd(), ".codefetchignore");
+  if (!fs.existsSync(ignorePath)) {
+    fs.writeFileSync(ignorePath, "test/\nvitest.config.ts\n");
+  }
+}
+
 // Main function for CLI
 export async function main(args: string[] = process.argv) {
   try {
@@ -34,6 +42,9 @@ export async function main(args: string[] = process.argv) {
       printHelp();
       return;
     }
+
+    // Ensure .codefetchignore exists
+    ensureCodefetchIgnore();
 
     // Create ignore instance with default patterns
     const ig = ignore().add(

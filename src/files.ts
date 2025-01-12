@@ -8,13 +8,6 @@ export function resolveCodefetchPath(outputFile: string) {
   // Create codefetch directory if it doesn't exist
   if (!fs.existsSync(codefetchDir)) {
     fs.mkdirSync(codefetchDir, { recursive: true });
-
-    // Create .codefetchignore if it doesn't exist
-    const ignorePath = path.join(process.cwd(), ".codefetchignore");
-    if (!fs.existsSync(ignorePath)) {
-      // Add trailing slash to ensure directory is ignored
-      fs.writeFileSync(ignorePath, "test/\nvitest.config.ts\n");
-    }
   }
 
   return path.join(codefetchDir, outputFile);

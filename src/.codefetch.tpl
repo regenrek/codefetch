@@ -1,2 +1,0 @@
-# Codefetch specific ignores
-codefetch/

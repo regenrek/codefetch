@@ -99,62 +99,118 @@ function parseArgs(argv: string[]): ParsedArgs {
   return result;
 }
 
-const {
-  output,
-  maxTokens,
-  extensions,
-  verbose,
-  includeFiles,
-  excludeFiles,
-  includeDirs,
-  excludeDirs,
-} = parseArgs(process.argv);
+// Move all the main logic into the main function
+async function main() {
+  const {
+    output: outputFile, // rename to avoid conflict
+    maxTokens,
+    extensions,
+    verbose,
+    includeFiles,
+    excludeFiles,
+    includeDirs,
+    excludeDirs,
+  } = parseArgs(process.argv);
 
-// Initialize ignore instance with default patterns
-const ig = ignore().add(
-  DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-    (line) => line && !line.startsWith("#")
-  )
-);
-
-// Try reading .gitignore if it exists
-try {
-  const gitignoreContent = fs.readFileSync(
-    path.join(process.cwd(), ".gitignore"),
-    "utf8"
+  // Initialize ignore instance with default patterns
+  const ig = ignore().add(
+    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+      (line) => line && !line.startsWith("#")
+    )
   );
-  ig.add(gitignoreContent);
-} catch {
-  // .gitignore not found or unreadable - that's fine
+
+  // Try reading .gitignore if it exists
+  try {
+    const gitignoreContent = fs.readFileSync(
+      path.join(process.cwd(), ".gitignore"),
+      "utf8"
+    );
+    ig.add(gitignoreContent);
+  } catch {
+    // .gitignore not found or unreadable - that's fine
+  }
+
+  // Try reading .codefetchignore if it exists
+  try {
+    const codefetchignoreContent = fs.readFileSync(
+      path.join(process.cwd(), ".codefetchignore"),
+      "utf8"
+    );
+    ig.add(codefetchignoreContent);
+  } catch {
+    // .codefetchignore not found or unreadable - that's fine
+  }
+
+  // Create a Set for O(1) lookup instead of array includes
+  const extensionSet = extensions ? new Set(extensions) : null;
+
+  // Actually gather up the file list
+  const allFiles = await collectFiles(process.cwd(), {
+    ig,
+    extensionSet,
+    excludeFiles,
+    includeFiles,
+    excludeDirs,
+    includeDirs,
+  });
+
+  // Create output directory if needed
+  if (outputFile) {
+    const codefetchDir = path.join(process.cwd(), "codefetch");
+    if (!fs.existsSync(codefetchDir)) {
+      fs.mkdirSync(codefetchDir, { recursive: true });
+      console.log("Created codefetch directory.");
+    }
+
+    // Create .codefetchignore if it doesn't exist
+    const codefetchignorePath = path.join(process.cwd(), ".codefetchignore");
+    if (!fs.existsSync(codefetchignorePath)) {
+      const ignoreContent = "# Codefetch specific ignores\ncodefetch/\n";
+      fs.writeFileSync(codefetchignorePath, ignoreContent, "utf8");
+      console.log(
+        "Created .codefetchignore file. Add 'codefetch/' to your .gitignore to avoid committing fetched code."
+      );
+    }
+  }
+
+  const outputPath = outputFile
+    ? path.join(process.cwd(), "codefetch", outputFile)
+    : null;
+
+  const totalTokens = await generateMarkdown(allFiles, {
+    outputPath,
+    maxTokens,
+    verbose,
+  });
+
+  if (outputFile) {
+    console.log("\nSummary:");
+    console.log("✓ Code was successfully fetched");
+    console.log(`✓ Output written to: ${outputPath}`);
+    console.log(`✓ Approximate token count: ${totalTokens}`);
+  }
 }
 
-// Try reading .codefetchignore if it exists
-try {
-  const codefetchignoreContent = fs.readFileSync(
-    path.join(process.cwd(), ".codefetchignore"),
-    "utf8"
-  );
-  ig.add(codefetchignoreContent);
-} catch {
-  // .codefetchignore not found or unreadable - that's fine
-}
-
-// Create a Set for O(1) lookup instead of array includes
-const extensionSet = extensions ? new Set(extensions) : null;
-
-/**
- * Recursively collect all files in the current working directory,
- * ignoring anything matched by .gitignore or .codefetchignore (if present).
- */
-async function collectFiles(dir: string): Promise<string[]> {
+// Update collectFiles to accept options object
+async function collectFiles(
+  dir: string,
+  options: {
+    ig: ReturnType<typeof ignore>;
+    extensionSet: Set<string> | null;
+    excludeFiles: string[] | null;
+    includeFiles: string[] | null;
+    excludeDirs: string[] | null;
+    includeDirs: string[] | null;
+  }
+): Promise<string[]> {
   const results: string[] = [];
   const list = await fs.promises.readdir(dir);
 
   // Move regex compilation outside the loop
-  const excludePatterns = excludeFiles?.map(
+  const excludePatterns = options.excludeFiles?.map(
     (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
   );
-  const includePatterns = includeFiles?.map(
+  const includePatterns = options.includeFiles?.map(
     (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
   );
 
@@ -162,7 +218,7 @@ async function collectFiles(dir: string): Promise<string[]> {
     const filePath = path.join(dir, filename);
     const relPath = path.relative(process.cwd(), filePath);
 
-    if (ig.ignores(relPath)) {
+    if (options.ig.ignores(relPath)) {
       continue;
     }
 
@@ -171,14 +227,23 @@ async function collectFiles(dir: string): Promise<string[]> {
     if (stat.isDirectory()) {
       // Check directory filters
       const dirName = path.basename(filePath);
-      if (excludeDirs && excludeDirs.includes(dirName)) {
+      if (options.excludeDirs && options.excludeDirs.includes(dirName)) {
         continue;
       }
-      if (includeDirs && !includeDirs.includes(dirName)) {
+      if (options.includeDirs && !options.includeDirs.includes(dirName)) {
         continue;
       }
 
-      results.push(...(await collectFiles(filePath)));
+      results.push(
+        ...(await collectFiles(filePath, {
+          ig: options.ig,
+          extensionSet: options.extensionSet,
+          excludeFiles: options.excludeFiles,
+          includeFiles: options.includeFiles,
+          excludeDirs: options.excludeDirs,
+          includeDirs: options.includeDirs,
+        }))
+      );
     } else {
       // Check file filters
       if (
@@ -193,9 +258,9 @@ async function collectFiles(dir: string): Promise<string[]> {
       ) {
         continue;
       }
-      if (extensionSet) {
+      if (options.extensionSet) {
         const ext = path.extname(filename);
-        if (!extensionSet.has(ext)) {
+        if (!options.extensionSet.has(ext)) {
           continue;
         }
       }
@@ -206,42 +271,31 @@ async function collectFiles(dir: string): Promise<string[]> {
   return results;
 }
 
-// Actually gather up the file list
-const allFiles = await collectFiles(process.cwd());
-
-/**
- * Very rough token count estimation.
- * This is a simple approximation - actual tokens may vary by tokenizer.
- */
-function estimateTokens(text: string): number {
-  // Rough estimate: Split on whitespace and punctuation
-  return text.split(/[\s\p{P}]+/u).length;
-}
-
-/**
- * Generate the final markdown content.
- * We replicate the style:
- *
- * /path/to/file:
- * --------------------------------------------------------------------------------
- * 1 | ...
- * 2 | ...
- * --------------------------------------------------------------------------------
- */
-async function generateMarkdown(files: string[]): Promise<string> {
-  const output = output ? fs.createWriteStream(outputPath) : process.stdout;
+// Update generateMarkdown to handle stream types correctly
+async function generateMarkdown(
+  files: string[],
+  options: {
+    outputPath: string | null;
+    maxTokens: number | null;
+    verbose: boolean;
+  }
+): Promise<number> {
+  // Cast output to NodeJS.WritableStream to unify the type
+  const output = options.outputPath
+    ? (fs.createWriteStream(options.outputPath) as NodeJS.WritableStream)
+    : (process.stdout as NodeJS.WritableStream);
   let totalTokens = 0;
 
   for (const file of files) {
     const relativePath = path.relative(process.cwd(), file);
 
-    // Stream the file instead of reading it all at once
     const fileStream = fs.createReadStream(file, { encoding: "utf8" });
     const rl = readline.createInterface({
       input: fileStream,
       crlfDelay: Infinity,
     });
 
+    // Now these write calls are unambiguous
     output.write(`/${relativePath}:\n`);
     output.write("-".repeat(80) + "\n");
 
@@ -252,7 +306,7 @@ async function generateMarkdown(files: string[]): Promise<string> {
       totalTokens += estimateTokens(line);
       lineNumber++;
 
-      if (maxTokens && totalTokens > maxTokens) {
+      if (options.maxTokens && totalTokens > options.maxTokens) {
         break;
       }
     }
@@ -260,40 +314,22 @@ async function generateMarkdown(files: string[]): Promise<string> {
     output.write("-".repeat(80) + "\n\n");
   }
 
-  if (output !== process.stdout) {
-    output.end();
+  // Only end the stream if it's a file stream
+  if (options.outputPath) {
+    (output as fs.WriteStream).end();
   }
 
   return totalTokens;
 }
 
-async function processFilesInBatches(files: string[], batchSize = 100) {
-  const results = [];
-  for (let i = 0; i < files.length; i += batchSize) {
-    const batch = files.slice(i, i + batchSize);
-    const batchPromises = batch.map(async (file) => {
-      // Process each file
-      return processFile(file);
-    });
-    results.push(...(await Promise.all(batchPromises)));
-  }
-  return results;
+/**
+ * Very rough token count estimation.
+ * This is a simple approximation - actual tokens may vary by tokenizer.
+ */
+function estimateTokens(text: string): number {
+  // Rough estimate: Split on whitespace and punctuation
+  return text.split(/[\s\p{P}]+/u).length;
 }
-
-async function processFile(file: string) {
-  // Process individual file
-  const content = await fs.promises.readFile(file, "utf8");
-  // ... process content ...
-  return { file, content };
-}
-
-async function main() {
-  const allFiles = await collectFiles(process.cwd());
-  const totalTokens = await generateMarkdown(allFiles);
-  // ... rest of the code
-}
-
-main().catch(console.error);
 
 function printHelp() {
   console.log(`
@@ -315,4 +351,12 @@ Examples:
   codefetch --include-files=*.ts,*.js
   codefetch -ef test.ts,temp.js -id src
 `);
+}
+
+// Start the program
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("Error:", error);
+    process.exit(1);
+  });
 }

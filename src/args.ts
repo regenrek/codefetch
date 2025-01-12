@@ -13,7 +13,7 @@ Options:
   -id, --include-dir <d,...>  Include specific directories
   -ed, --exclude-dir <d,...>  Exclude specific directories
   -t, --project-tree <level>  Generate project tree with specified depth (default: 2)
-  -v, --verbose              Show detailed processing information
+  -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
   -h, --help                 Display this help message
 `);
 }
@@ -23,7 +23,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     output: null,
     maxTokens: null,
     extensions: null,
-    verbose: false,
+    verbose: 0,
     includeFiles: null,
     excludeFiles: null,
     includeDirs: null,
@@ -40,7 +40,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
       printHelp();
       throw new Error("Help message displayed");
     } else if (arg === "-v" || arg === "--verbose") {
-      result.verbose = true;
+      // Check if next argument is a number
+      const nextArg = args[i + 1];
+      if (nextArg && /^[0-2]$/.test(nextArg)) {
+        result.verbose = Number(nextArg);
+        i++; // Skip the next argument
+      } else {
+        result.verbose = 1; // Default to basic verbosity if no level specified
+      }
     } else if ((arg === "-t" || arg === "--project-tree") && args[i + 1]) {
       const level = Number.parseInt(args[i + 1], 10);
       if (!Number.isNaN(level)) {

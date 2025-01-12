@@ -49,4 +49,22 @@ describe("parseArgs", () => {
     const result = parseArgs(args);
     expect(result.excludeDirs).toEqual(["test", "dist"]);
   });
+
+  it("parses verbose level", () => {
+    const args = ["node", "script.js", "-v", "2"];
+    const result = parseArgs(args);
+    expect(result.verbose).toBe(2);
+  });
+
+  it("defaults to verbose level 1 when no level specified", () => {
+    const args = ["node", "script.js", "-v"];
+    const result = parseArgs(args);
+    expect(result.verbose).toBe(1);
+  });
+
+  it("ignores invalid verbose levels", () => {
+    const args = ["node", "script.js", "-v", "3"];
+    const result = parseArgs(args);
+    expect(result.verbose).toBe(1);
+  });
 });

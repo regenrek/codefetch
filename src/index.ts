@@ -39,12 +39,22 @@ async function main() {
     treeLevel,
   } = parseArgs(process.argv);
 
+  function logVerbose(message: string, level: number) {
+    if (verbose >= level) {
+      console.log(message);
+    }
+  }
+
+  logVerbose("Starting codefetch...", 1);
+  logVerbose(`Working directory: ${process.cwd()}`, 2);
+
   // Initialize ignore instance with default patterns
   const ig = ignore().add(
     DEFAULT_IGNORE_PATTERNS.split("\n").filter(
       (line) => line && !line.startsWith("#")
     )
   );
+  logVerbose("Initialized ignore patterns", 2);
 
   // Try reading .gitignore if it exists
   try {
@@ -53,14 +63,19 @@ async function main() {
       "utf8"
     );
     ig.add(gitignoreContent);
+    logVerbose("Added .gitignore patterns", 2);
   } catch {
-    // .gitignore not found or unreadable - that's fine
+    logVerbose(".gitignore not found - skipping", 2);
   }
 
   // Create a Set for O(1) lookup
   const extensionSet = extensions ? new Set(extensions) : null;
+  if (extensionSet) {
+    logVerbose(`Filtering for extensions: ${[...extensionSet].join(", ")}`, 1);
+  }
 
   // Collect files
+  logVerbose("Collecting files...", 1);
   const allFiles = await collectFiles(process.cwd(), {
     ig,
     extensionSet,
@@ -68,9 +83,12 @@ async function main() {
     includeFiles,
     excludeDirs,
     includeDirs,
+    verbose, // Pass verbose level to collectFiles
   });
+  logVerbose(`Found ${allFiles.length} files to process`, 1);
 
   // Generate markdown with project tree
+  logVerbose("Generating markdown...", 1);
   const totalTokens = await generateMarkdown(allFiles, {
     outputPath: outputFile && resolveCodefetchPath(outputFile),
     maxTokens,

@@ -69,7 +69,7 @@ package.json
 ```
 1 | {
 2 |   "name": "codefetch",
-3 |   "version": "1.1.9",
+3 |   "version": "1.1.11",
 4 |   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
 5 |   "repository": "regenrek/codefetch",
 6 |   "license": "MIT",
@@ -121,9 +121,10 @@ package.json
 52 |   },
 53 |   "packageManager": "pnpm@9.14.4",
 54 |   "dependencies": {
-55 |     "ignore": "^7.0.0"
-56 |   }
-57 | }
+55 |     "ignore": "^7.0.0",
+56 |     "minimatch": "^10.0.1"
+57 |   }
+58 | }
 ```
 
 src/args.ts
@@ -143,7 +144,7 @@ src/args.ts
 13 |   -id, --include-dir <d,...>  Include specific directories
 14 |   -ed, --exclude-dir <d,...>  Exclude specific directories
 15 |   -t, --project-tree <level>  Generate project tree with specified depth (default: 2)
-16 |   -v, --verbose              Show detailed processing information
+16 |   -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
 17 |   -h, --help                 Display this help message
 18 | `);
 19 | }
@@ -153,7 +154,7 @@ src/args.ts
 23 |     output: null,
 24 |     maxTokens: null,
 25 |     extensions: null,
-26 |     verbose: false,
+26 |     verbose: 0,
 27 |     includeFiles: null,
 28 |     excludeFiles: null,
 29 |     includeDirs: null,
@@ -170,43 +171,50 @@ src/args.ts
 40 |       printHelp();
 41 |       throw new Error("Help message displayed");
 42 |     } else if (arg === "-v" || arg === "--verbose") {
-43 |       result.verbose = true;
-44 |     } else if ((arg === "-t" || arg === "--project-tree") && args[i + 1]) {
-45 |       const level = Number.parseInt(args[i + 1], 10);
-46 |       if (!Number.isNaN(level)) {
-47 |         result.treeLevel = level;
-48 |       }
-49 |       i++;
-50 |     } else if ((arg === "-o" || arg === "--output") && args[i + 1]) {
-51 |       result.output = args[i + 1];
-52 |       i++;
-53 |     } else if ((arg === "--max-tokens" || arg === "-tok") && args[i + 1]) {
-54 |       const tokens = Number.parseInt(args[i + 1], 10);
-55 |       if (!Number.isNaN(tokens)) {
-56 |         result.maxTokens = tokens;
-57 |       }
-58 |       i++;
-59 |     } else if ((arg === "-e" || arg === "--extension") && args[i + 1]) {
-60 |       result.extensions = args[i + 1]
-61 |         .split(",")
-62 |         .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
-63 |       i++;
-64 |     } else if ((arg === "-if" || arg === "--include-files") && args[i + 1]) {
-65 |       result.includeFiles = args[i + 1].split(",");
-66 |       i++;
-67 |     } else if ((arg === "-ef" || arg === "--exclude-files") && args[i + 1]) {
-68 |       result.excludeFiles = args[i + 1].split(",");
-69 |       i++;
-70 |     } else if ((arg === "-id" || arg === "--include-dir") && args[i + 1]) {
-71 |       result.includeDirs = args[i + 1].split(",");
-72 |       i++;
-73 |     } else if ((arg === "-ed" || arg === "--exclude-dir") && args[i + 1]) {
-74 |       result.excludeDirs = args[i + 1].split(",");
-75 |       i++;
-76 |     }
-77 |   }
-78 |   return result;
-79 | }
+43 |       // Check if next argument is a number
+44 |       const nextArg = args[i + 1];
+45 |       if (nextArg && /^[0-2]$/.test(nextArg)) {
+46 |         result.verbose = Number(nextArg);
+47 |         i++; // Skip the next argument
+48 |       } else {
+49 |         result.verbose = 1; // Default to basic verbosity if no level specified
+50 |       }
+51 |     } else if ((arg === "-t" || arg === "--project-tree") && args[i + 1]) {
+52 |       const level = Number.parseInt(args[i + 1], 10);
+53 |       if (!Number.isNaN(level)) {
+54 |         result.treeLevel = level;
+55 |       }
+56 |       i++;
+57 |     } else if ((arg === "-o" || arg === "--output") && args[i + 1]) {
+58 |       result.output = args[i + 1];
+59 |       i++;
+60 |     } else if ((arg === "--max-tokens" || arg === "-tok") && args[i + 1]) {
+61 |       const tokens = Number.parseInt(args[i + 1], 10);
+62 |       if (!Number.isNaN(tokens)) {
+63 |         result.maxTokens = tokens;
+64 |       }
+65 |       i++;
+66 |     } else if ((arg === "-e" || arg === "--extension") && args[i + 1]) {
+67 |       result.extensions = args[i + 1]
+68 |         .split(",")
+69 |         .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+70 |       i++;
+71 |     } else if ((arg === "-if" || arg === "--include-files") && args[i + 1]) {
+72 |       result.includeFiles = args[i + 1].split(",");
+73 |       i++;
+74 |     } else if ((arg === "-ef" || arg === "--exclude-files") && args[i + 1]) {
+75 |       result.excludeFiles = args[i + 1].split(",");
+76 |       i++;
+77 |     } else if ((arg === "-id" || arg === "--include-dir") && args[i + 1]) {
+78 |       result.includeDirs = args[i + 1].split(",");
+79 |       i++;
+80 |     } else if ((arg === "-ed" || arg === "--exclude-dir") && args[i + 1]) {
+81 |       result.excludeDirs = args[i + 1].split(",");
+82 |       i++;
+83 |     }
+84 |   }
+85 |   return result;
+86 | }
 ```
 
 src/default-ignore.ts
@@ -465,148 +473,165 @@ src/files.ts
 1 | import fs from "node:fs";
 2 | import path from "node:path";
 3 | import type { default as ignore } from "ignore";
-4 | 
-5 | export function resolveCodefetchPath(outputFile: string) {
-6 |   const codefetchDir = path.join(process.cwd(), "codefetch");
-7 | 
-8 |   // Create codefetch directory if it doesn't exist
-9 |   if (!fs.existsSync(codefetchDir)) {
-10 |     fs.mkdirSync(codefetchDir, { recursive: true });
-11 | 
-12 |     // Create .codefetchignore if it doesn't exist
-13 |     const ignorePath = path.join(process.cwd(), ".codefetchignore");
-14 |     if (!fs.existsSync(ignorePath)) {
-15 |       fs.writeFileSync(ignorePath, "codefetch/\n");
-16 |     }
-17 |   }
-18 | 
-19 |   return path.join(codefetchDir, outputFile);
-20 | }
-21 | 
-22 | export async function collectFiles(
-23 |   dir: string,
-24 |   options: {
-25 |     ig: ReturnType<typeof ignore>;
-26 |     extensionSet: Set<string> | null;
-27 |     excludeFiles: string[] | null;
-28 |     includeFiles: string[] | null;
-29 |     excludeDirs: string[] | null;
-30 |     includeDirs: string[] | null;
-31 |   }
-32 | ): Promise<string[]> {
-33 |   const results: string[] = [];
-34 |   const list = await fs.promises.readdir(dir);
-35 | 
-36 |   // Move regex compilation outside the loop
-37 |   const excludePatterns = options.excludeFiles?.map(
-38 |     (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
-39 |   );
-40 |   const includePatterns = options.includeFiles?.map(
-41 |     (pattern) => new RegExp(pattern.replace(/\*/g, ".*"))
-42 |   );
-43 | 
-44 |   for (const filename of list) {
-45 |     const filePath = path.join(dir, filename);
-46 |     const relPath = path.relative(process.cwd(), filePath);
-47 | 
-48 |     if (options.ig.ignores(relPath)) {
-49 |       continue;
-50 |     }
-51 | 
-52 |     const stat = await fs.promises.stat(filePath);
-53 | 
-54 |     if (stat.isDirectory()) {
-55 |       // Check directory filters
-56 |       const dirName = path.basename(filePath);
-57 |       if (options.excludeDirs && options.excludeDirs.includes(dirName)) {
-58 |         continue;
-59 |       }
-60 |       if (options.includeDirs && !options.includeDirs.includes(dirName)) {
-61 |         continue;
-62 |       }
-63 | 
-64 |       results.push(...(await collectFiles(filePath, options)));
-65 |     } else {
-66 |       // Check file filters
-67 |       if (
-68 |         excludePatterns &&
-69 |         excludePatterns.some((pattern) => pattern.test(filename))
-70 |       ) {
-71 |         continue;
-72 |       }
-73 |       if (
-74 |         includePatterns &&
-75 |         !includePatterns.some((pattern) => pattern.test(filename))
-76 |       ) {
-77 |         continue;
-78 |       }
-79 |       if (options.extensionSet) {
-80 |         const ext = path.extname(filename);
-81 |         if (!options.extensionSet.has(ext)) {
-82 |           continue;
-83 |         }
-84 |       }
-85 | 
-86 |       results.push(filePath);
-87 |     }
-88 |   }
-89 |   return results;
-90 | }
-91 | 
-92 | function generateTree(
-93 |   dir: string,
-94 |   level: number,
-95 |   prefix = "",
-96 |   isLast = true,
-97 |   maxLevel = 2,
-98 |   currentLevel = 0
-99 | ): string {
-100 |   if (currentLevel >= maxLevel) return "";
-101 | 
-102 |   // Don't add root directory to output
-103 |   let tree =
-104 |     currentLevel === 0
-105 |       ? ""
-106 |       : `${prefix}${isLast ? "└── " : "├── "}${path.basename(dir)}\n`;
-107 | 
-108 |   try {
-109 |     const files = fs.readdirSync(dir);
-110 |     const filteredFiles = files.filter(
-111 |       (file) => !file.startsWith(".") && file !== "node_modules"
-112 |     );
-113 | 
-114 |     for (const [index, file] of filteredFiles.entries()) {
-115 |       const filePath = path.join(dir, file);
-116 |       const isDirectory = fs.statSync(filePath).isDirectory();
-117 |       const newPrefix =
-118 |         currentLevel === 0 ? "" : prefix + (isLast ? "    " : "│   ");
-119 |       const isLastItem = index === filteredFiles.length - 1;
-120 | 
-121 |       if (isDirectory) {
-122 |         tree += generateTree(
-123 |           filePath,
-124 |           level + 1,
-125 |           newPrefix,
-126 |           isLastItem,
-127 |           maxLevel,
-128 |           currentLevel + 1
-129 |         );
-130 |       } else if (currentLevel < maxLevel) {
-131 |         tree += `${newPrefix}${isLastItem ? "└── " : "├── "}${file}\n`;
-132 |       }
-133 |     }
-134 |   } catch {
-135 |     // Handle any file system errors silently
-136 |   }
+4 | import { minimatch } from "minimatch";
+5 | 
+6 | export function resolveCodefetchPath(outputFile: string) {
+7 |   const codefetchDir = path.join(process.cwd(), "codefetch");
+8 | 
+9 |   // Create codefetch directory if it doesn't exist
+10 |   if (!fs.existsSync(codefetchDir)) {
+11 |     fs.mkdirSync(codefetchDir, { recursive: true });
+12 | 
+13 |     // Create .codefetchignore if it doesn't exist
+14 |     const ignorePath = path.join(process.cwd(), ".codefetchignore");
+15 |     if (!fs.existsSync(ignorePath)) {
+16 |       fs.writeFileSync(ignorePath, "codefetch/\n");
+17 |     }
+18 |   }
+19 | 
+20 |   return path.join(codefetchDir, outputFile);
+21 | }
+22 | 
+23 | export async function collectFiles(
+24 |   baseDir: string,
+25 |   options: {
+26 |     ig: ReturnType<typeof ignore>;
+27 |     extensionSet: Set<string> | null;
+28 |     excludeFiles: string[] | null;
+29 |     includeFiles: string[] | null;
+30 |     excludeDirs: string[] | null;
+31 |     includeDirs: string[] | null;
+32 |     verbose: number;
+33 |   }
+34 | ): Promise<string[]> {
+35 |   const {
+36 |     ig,
+37 |     extensionSet,
+38 |     excludeFiles,
+39 |     includeFiles,
+40 |     excludeDirs,
+41 |     includeDirs,
+42 |     verbose,
+43 |   } = options;
+44 | 
+45 |   function logVerbose(message: string, level: number) {
+46 |     if (verbose >= level) {
+47 |       console.log(message);
+48 |     }
+49 |   }
+50 | 
+51 |   logVerbose(`Scanning directory: ${baseDir}`, 2);
+52 | 
+53 |   const results: string[] = [];
+54 |   const entries = await fs.promises.readdir(baseDir, { withFileTypes: true });
+55 | 
+56 |   for (const entry of entries) {
+57 |     const fullPath = path.join(baseDir, entry.name);
+58 |     const relativePath = path.relative(process.cwd(), fullPath);
+59 | 
+60 |     if (entry.isDirectory()) {
+61 |       // Directory handling
+62 |       if (excludeDirs?.some((dir) => fullPath.includes(dir))) {
+63 |         logVerbose(`Skipping excluded directory: ${relativePath}`, 2);
+64 |         continue;
+65 |       }
+66 |       if (includeDirs && !includeDirs.some((dir) => fullPath.includes(dir))) {
+67 |         logVerbose(`Skipping non-included directory: ${relativePath}`, 2);
+68 |         continue;
+69 |       }
+70 |       if (ig.ignores(relativePath)) {
+71 |         logVerbose(`Skipping ignored directory: ${relativePath}`, 2);
+72 |         continue;
+73 |       }
+74 | 
+75 |       results.push(...(await collectFiles(fullPath, options)));
+76 |     } else if (entry.isFile()) {
+77 |       // File handling
+78 |       if (ig.ignores(relativePath)) {
+79 |         logVerbose(`Skipping ignored file: ${relativePath}`, 2);
+80 |         continue;
+81 |       }
+82 |       if (excludeFiles?.some((pattern) => minimatch(entry.name, pattern))) {
+83 |         logVerbose(`Skipping excluded file: ${relativePath}`, 2);
+84 |         continue;
+85 |       }
+86 |       if (
+87 |         includeFiles &&
+88 |         !includeFiles.some((pattern) => minimatch(entry.name, pattern))
+89 |       ) {
+90 |         logVerbose(`Skipping non-included file: ${relativePath}`, 2);
+91 |         continue;
+92 |       }
+93 |       if (extensionSet && !extensionSet.has(path.extname(entry.name))) {
+94 |         logVerbose(
+95 |           `Skipping file with non-matching extension: ${relativePath}`,
+96 |           2
+97 |         );
+98 |         continue;
+99 |       }
+100 | 
+101 |       logVerbose(`Adding file: ${relativePath}`, 2);
+102 |       results.push(fullPath);
+103 |     }
+104 |   }
+105 | 
+106 |   return results;
+107 | }
+108 | 
+109 | function generateTree(
+110 |   dir: string,
+111 |   level: number,
+112 |   prefix = "",
+113 |   isLast = true,
+114 |   maxLevel = 2,
+115 |   currentLevel = 0
+116 | ): string {
+117 |   if (currentLevel >= maxLevel) return "";
+118 | 
+119 |   // Don't add root directory to output
+120 |   let tree =
+121 |     currentLevel === 0
+122 |       ? ""
+123 |       : `${prefix}${isLast ? "└── " : "├── "}${path.basename(dir)}\n`;
+124 | 
+125 |   try {
+126 |     const files = fs.readdirSync(dir);
+127 |     const filteredFiles = files.filter(
+128 |       (file) => !file.startsWith(".") && file !== "node_modules"
+129 |     );
+130 | 
+131 |     for (const [index, file] of filteredFiles.entries()) {
+132 |       const filePath = path.join(dir, file);
+133 |       const isDirectory = fs.statSync(filePath).isDirectory();
+134 |       const newPrefix =
+135 |         currentLevel === 0 ? "" : prefix + (isLast ? "    " : "│   ");
+136 |       const isLastItem = index === filteredFiles.length - 1;
 137 | 
-138 |   return tree;
-139 | }
-140 | 
-141 | export function generateProjectTree(baseDir: string, maxLevel = 2): string {
-142 |   return (
-143 |     "Project Structure:\n" + generateTree(baseDir, 1, "", true, maxLevel, 0)
-144 |   );
-145 | }
+138 |       if (isDirectory) {
+139 |         tree += generateTree(
+140 |           filePath,
+141 |           level + 1,
+142 |           newPrefix,
+143 |           isLastItem,
+144 |           maxLevel,
+145 |           currentLevel + 1
+146 |         );
+147 |       } else if (currentLevel < maxLevel) {
+148 |         tree += `${newPrefix}${isLastItem ? "└── " : "├── "}${file}\n`;
+149 |       }
+150 |     }
+151 |   } catch {
+152 |     // Handle any file system errors silently
+153 |   }
+154 | 
+155 |   return tree;
+156 | }
+157 | 
+158 | export function generateProjectTree(baseDir: string, maxLevel = 2): string {
+159 |   return (
+160 |     "Project Structure:\n" + generateTree(baseDir, 1, "", true, maxLevel, 0)
+161 |   );
+162 | }
 ```
 
 src/index.ts
@@ -652,61 +677,79 @@ src/index.ts
 39 |     treeLevel,
 40 |   } = parseArgs(process.argv);
 41 | 
-42 |   // Initialize ignore instance with default patterns
-43 |   const ig = ignore().add(
-44 |     DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-45 |       (line) => line && !line.startsWith("#")
-46 |     )
-47 |   );
-48 | 
-49 |   // Try reading .gitignore if it exists
-50 |   try {
-51 |     const gitignoreContent = fs.readFileSync(
-52 |       path.join(process.cwd(), ".gitignore"),
-53 |       "utf8"
-54 |     );
-55 |     ig.add(gitignoreContent);
-56 |   } catch {
-57 |     // .gitignore not found or unreadable - that's fine
-58 |   }
-59 | 
-60 |   // Create a Set for O(1) lookup
-61 |   const extensionSet = extensions ? new Set(extensions) : null;
-62 | 
-63 |   // Collect files
-64 |   const allFiles = await collectFiles(process.cwd(), {
-65 |     ig,
-66 |     extensionSet,
-67 |     excludeFiles,
-68 |     includeFiles,
-69 |     excludeDirs,
-70 |     includeDirs,
-71 |   });
-72 | 
-73 |   // Generate markdown with project tree
-74 |   const totalTokens = await generateMarkdown(allFiles, {
-75 |     outputPath: outputFile && resolveCodefetchPath(outputFile),
-76 |     maxTokens,
-77 |     verbose,
-78 |     projectTree:
-79 |       treeLevel === null
-80 |         ? undefined
-81 |         : generateProjectTree(process.cwd(), treeLevel),
-82 |   });
-83 | 
-84 |   if (outputFile) {
-85 |     console.log(`\n✓ Output written to: codefetch/${outputFile}`);
-86 |     console.log(`✓ Approximate token count: ${totalTokens}`);
-87 |   }
-88 | }
+42 |   function logVerbose(message: string, level: number) {
+43 |     if (verbose >= level) {
+44 |       console.log(message);
+45 |     }
+46 |   }
+47 | 
+48 |   logVerbose("Starting codefetch...", 1);
+49 |   logVerbose(`Working directory: ${process.cwd()}`, 2);
+50 | 
+51 |   // Initialize ignore instance with default patterns
+52 |   const ig = ignore().add(
+53 |     DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+54 |       (line) => line && !line.startsWith("#")
+55 |     )
+56 |   );
+57 |   logVerbose("Initialized ignore patterns", 2);
+58 | 
+59 |   // Try reading .gitignore if it exists
+60 |   try {
+61 |     const gitignoreContent = fs.readFileSync(
+62 |       path.join(process.cwd(), ".gitignore"),
+63 |       "utf8"
+64 |     );
+65 |     ig.add(gitignoreContent);
+66 |     logVerbose("Added .gitignore patterns", 2);
+67 |   } catch {
+68 |     logVerbose(".gitignore not found - skipping", 2);
+69 |   }
+70 | 
+71 |   // Create a Set for O(1) lookup
+72 |   const extensionSet = extensions ? new Set(extensions) : null;
+73 |   if (extensionSet) {
+74 |     logVerbose(`Filtering for extensions: ${[...extensionSet].join(", ")}`, 1);
+75 |   }
+76 | 
+77 |   // Collect files
+78 |   logVerbose("Collecting files...", 1);
+79 |   const allFiles = await collectFiles(process.cwd(), {
+80 |     ig,
+81 |     extensionSet,
+82 |     excludeFiles,
+83 |     includeFiles,
+84 |     excludeDirs,
+85 |     includeDirs,
+86 |     verbose, // Pass verbose level to collectFiles
+87 |   });
+88 |   logVerbose(`Found ${allFiles.length} files to process`, 1);
 89 | 
-90 | // Use top-level await instead of .catch()
-91 | if (process.argv[1] === fileURLToPath(import.meta.url)) {
-92 |   main().catch((error) => {
-93 |     console.error("Error:", error);
-94 |     process.exit(1);
-95 |   });
-96 | }
+90 |   // Generate markdown with project tree
+91 |   logVerbose("Generating markdown...", 1);
+92 |   const totalTokens = await generateMarkdown(allFiles, {
+93 |     outputPath: outputFile && resolveCodefetchPath(outputFile),
+94 |     maxTokens,
+95 |     verbose,
+96 |     projectTree:
+97 |       treeLevel === null
+98 |         ? undefined
+99 |         : generateProjectTree(process.cwd(), treeLevel),
+100 |   });
+101 | 
+102 |   if (outputFile) {
+103 |     console.log(`\n✓ Output written to: codefetch/${outputFile}`);
+104 |     console.log(`✓ Approximate token count: ${totalTokens}`);
+105 |   }
+106 | }
+107 | 
+108 | // Use top-level await instead of .catch()
+109 | if (process.argv[1] === fileURLToPath(import.meta.url)) {
+110 |   main().catch((error) => {
+111 |     console.error("Error:", error);
+112 |     process.exit(1);
+113 |   });
+114 | }
 ```
 
 src/markdown.ts
@@ -720,89 +763,118 @@ src/markdown.ts
 7 |   return text.split(/[\s\p{P}]+/u).filter(Boolean).length;
 8 | }
 9 | 
-10 | export async function generateMarkdown(
-11 |   files: string[],
-12 |   options: {
-13 |     outputPath: string | null;
-14 |     maxTokens: number | null;
-15 |     verbose: boolean;
-16 |     projectTree?: string;
-17 |   }
-18 | ): Promise<number> {
-19 |   let totalTokens = 0;
-20 | 
-21 |   // Create output directory if needed
-22 |   if (options.outputPath) {
-23 |     const outputDir = path.dirname(options.outputPath);
-24 |     if (!fs.existsSync(outputDir)) {
-25 |       fs.mkdirSync(outputDir, { recursive: true });
-26 |     }
-27 |   }
-28 | 
-29 |   // Type-safe write function
-30 |   const writeToOutput = (
-31 |     output: Writable | typeof process.stdout,
-32 |     text: string
-33 |   ) => {
-34 |     if (output instanceof Writable) {
-35 |       output.write(text);
-36 |     } else {
-37 |       output.write(text);
-38 |     }
-39 |   };
-40 | 
-41 |   const output = options.outputPath
-42 |     ? fs.createWriteStream(options.outputPath)
-43 |     : process.stdout;
-44 | 
-45 |   // Write project tree if available
-46 |   if (options.projectTree) {
-47 |     writeToOutput(output, "```\n");
-48 |     writeToOutput(output, options.projectTree);
-49 |     writeToOutput(output, "```\n\n");
-50 |     totalTokens += estimateTokens(options.projectTree);
-51 |   }
-52 | 
-53 |   // Write files
-54 |   for (const file of files) {
-55 |     const relativePath = path.relative(process.cwd(), file);
-56 | 
-57 |     const fileStream = fs.createReadStream(file, { encoding: "utf8" });
-58 |     const rl = readline.createInterface({
-59 |       input: fileStream,
-60 |       crlfDelay: Infinity,
-61 |     });
-62 | 
-63 |     writeToOutput(output, `${relativePath}\n`);
-64 |     writeToOutput(output, "```\n");
+10 | function logVerbose(message: string, level: number, currentVerbosity: number) {
+11 |   if (currentVerbosity >= level) {
+12 |     console.log(message);
+13 |   }
+14 | }
+15 | 
+16 | export async function generateMarkdown(
+17 |   files: string[],
+18 |   options: {
+19 |     outputPath: string | null;
+20 |     maxTokens: number | null;
+21 |     verbose: number;
+22 |     projectTree?: string;
+23 |   }
+24 | ): Promise<number> {
+25 |   let totalTokens = 0;
+26 | 
+27 |   // Create output directory if needed
+28 |   if (options.outputPath) {
+29 |     const outputDir = path.dirname(options.outputPath);
+30 |     if (!fs.existsSync(outputDir)) {
+31 |       fs.mkdirSync(outputDir, { recursive: true });
+32 |       logVerbose(`Created output directory: ${outputDir}`, 2, options.verbose);
+33 |     }
+34 |   }
+35 | 
+36 |   // Type-safe write function
+37 |   const writeToOutput = (
+38 |     output: Writable | typeof process.stdout,
+39 |     text: string
+40 |   ) => {
+41 |     if (output instanceof Writable) {
+42 |       output.write(text);
+43 |     } else {
+44 |       output.write(text);
+45 |     }
+46 |   };
+47 | 
+48 |   const output = options.outputPath
+49 |     ? fs.createWriteStream(options.outputPath)
+50 |     : process.stdout;
+51 | 
+52 |   // Write project tree if available
+53 |   if (options.projectTree) {
+54 |     logVerbose("Writing project tree...", 2, options.verbose);
+55 |     writeToOutput(output, "```\n");
+56 |     writeToOutput(output, options.projectTree);
+57 |     writeToOutput(output, "```\n\n");
+58 |     totalTokens += estimateTokens(options.projectTree);
+59 |     logVerbose(
+60 |       `Project tree tokens: ${estimateTokens(options.projectTree)}`,
+61 |       2,
+62 |       options.verbose
+63 |     );
+64 |   }
 65 | 
-66 |     let lineNumber = 1;
-67 |     for await (const line of rl) {
-68 |       const lineTokens = estimateTokens(line);
-69 |       if (options.maxTokens && totalTokens + lineTokens > options.maxTokens) {
-70 |         break;
-71 |       }
-72 | 
-73 |       writeToOutput(output, `${lineNumber} | ${line}\n`);
-74 |       totalTokens += lineTokens;
-75 |       lineNumber++;
-76 |     }
-77 | 
-78 |     writeToOutput(output, "```\n\n");
+66 |   // Write files
+67 |   for (const file of files) {
+68 |     const relativePath = path.relative(process.cwd(), file);
+69 |     logVerbose(`Processing file: ${relativePath}`, 1, options.verbose);
+70 | 
+71 |     const fileStream = fs.createReadStream(file, { encoding: "utf8" });
+72 |     const rl = readline.createInterface({
+73 |       input: fileStream,
+74 |       crlfDelay: Infinity,
+75 |     });
+76 | 
+77 |     writeToOutput(output, `${relativePath}\n`);
+78 |     writeToOutput(output, "```\n");
 79 | 
-80 |     if (options.maxTokens && totalTokens >= options.maxTokens) {
-81 |       break;
-82 |     }
-83 |   }
-84 | 
-85 |   if (options.outputPath && output instanceof fs.WriteStream) {
-86 |     await new Promise<void>((resolve) => {
-87 |       output.end(resolve);
-88 |     });
-89 |   }
-90 | 
-91 |   return totalTokens;
-92 | }
+80 |     let lineNumber = 1;
+81 |     let fileTokens = 0;
+82 | 
+83 |     for await (const line of rl) {
+84 |       const lineTokens = estimateTokens(line);
+85 |       if (options.maxTokens && totalTokens + lineTokens > options.maxTokens) {
+86 |         logVerbose(
+87 |           `Max tokens reached (${totalTokens}/${options.maxTokens})`,
+88 |           1,
+89 |           options.verbose
+90 |         );
+91 |         break;
+92 |       }
+93 | 
+94 |       writeToOutput(output, `${lineNumber} | ${line}\n`);
+95 |       totalTokens += lineTokens;
+96 |       fileTokens += lineTokens;
+97 |       lineNumber++;
+98 |     }
+99 | 
+100 |     writeToOutput(output, "```\n\n");
+101 |     logVerbose(`File tokens: ${fileTokens}`, 2, options.verbose);
+102 | 
+103 |     if (options.maxTokens && totalTokens >= options.maxTokens) {
+104 |       logVerbose(
+105 |         "Max tokens limit reached, stopping processing",
+106 |         1,
+107 |         options.verbose
+108 |       );
+109 |       break;
+110 |     }
+111 |   }
+112 | 
+113 |   if (options.outputPath && output instanceof fs.WriteStream) {
+114 |     await new Promise<void>((resolve) => {
+115 |       output.end(resolve);
+116 |     });
+117 |     logVerbose(`Total tokens processed: ${totalTokens}`, 1, options.verbose);
+118 |   }
+119 | 
+120 |   return totalTokens;
+121 | }
 ```
 
 src/types.ts
@@ -811,7 +883,7 @@ src/types.ts
 2 |   output: string | null;
 3 |   maxTokens: number | null;
 4 |   extensions: string[] | null;
-5 |   verbose: boolean;
+5 |   verbose: number;
 6 |   includeFiles: string[] | null;
 7 |   excludeFiles: string[] | null;
 8 |   includeDirs: string[] | null;
@@ -906,7 +978,25 @@ test/unit/args.test.ts
 49 |     const result = parseArgs(args);
 50 |     expect(result.excludeDirs).toEqual(["test", "dist"]);
 51 |   });
-52 | });
+52 | 
+53 |   it("parses verbose level", () => {
+54 |     const args = ["node", "script.js", "-v", "2"];
+55 |     const result = parseArgs(args);
+56 |     expect(result.verbose).toBe(2);
+57 |   });
+58 | 
+59 |   it("defaults to verbose level 1 when no level specified", () => {
+60 |     const args = ["node", "script.js", "-v"];
+61 |     const result = parseArgs(args);
+62 |     expect(result.verbose).toBe(1);
+63 |   });
+64 | 
+65 |   it("ignores invalid verbose levels", () => {
+66 |     const args = ["node", "script.js", "-v", "3"];
+67 |     const result = parseArgs(args);
+68 |     expect(result.verbose).toBe(1);
+69 |   });
+70 | });
 ```
 
 test/unit/files.test.ts

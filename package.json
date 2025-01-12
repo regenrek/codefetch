@@ -52,6 +52,7 @@
   },
   "packageManager": "pnpm@9.14.4",
   "dependencies": {
-    "ignore": "^7.0.0"
+    "ignore": "^7.0.0",
+    "minimatch": "^10.0.1"
   }
 }

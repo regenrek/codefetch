@@ -49,10 +49,8 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--exclude-files <pattern,...>` | `-ef` | Exclude specific files (supports patterns like *.test.ts) |
 | `--include-dir <dir,...>` | `-id` | Include specific directories |
 | `--exclude-dir <dir,...>` | `-ed` | Exclude specific directories |
-| `--verbose` | `-v` | Show detailed processing information |
+| `--verbose [level]` | `-v` | Show processing information (0=none, 1=basic, 2=debug) |
 | `--project-tree [depth]` | `-t` | Generate visual project tree (optional depth, default: 2) |
-
-// ... rest of the file ...
 
 All options that accept multiple values use comma-separated lists. File patterns support wildcards (e.g., `*.ts`, `src/*.js`).
 
@@ -140,6 +138,30 @@ We recommend adding `codefetch/` to your `.gitignore` file to avoid committing t
 ## Use with AI Tools
 
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. The `-tok` option helps ensure your output stays within AI model token limits.
+
+
+
+### Debugging
+
+The `--verbose` or `-v` option supports different levels of output:
+
+```bash
+# No verbose output (just results)
+npx codefetch -o output.md
+
+# Basic progress information (level 1)
+npx codefetch -v -o output.md
+# or
+npx codefetch -v 1 -o output.md
+
+# Detailed debug information (level 2)
+npx codefetch -v 2 -o output.md
+```
+
+Verbose levels:
+- Level 0: Only shows essential output (final results)
+- Level 1: Shows basic progress (file counts, processing stages)
+- Level 2: Shows detailed debug information (individual file processing, skipped files, etc.)
 
 ## License
 

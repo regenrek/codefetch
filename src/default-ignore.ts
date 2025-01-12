@@ -28,6 +28,7 @@ bun.lockb
 .eslintrc*
 .prettierrc*
 .stylelintrc*
+.tsbuildinfo
 
 # Binary and Image Files
 # Images

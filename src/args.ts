@@ -1,5 +1,6 @@
 import type { ParsedArgs } from "./types";
 import minimist from "minimist";
+import path from "node:path";
 
 export function printHelp() {
   console.log(`
@@ -47,13 +48,24 @@ export function parseArgs(args: string[]) {
       typeof argv["project-tree"] === "number" ? argv["project-tree"] : 2;
   }
 
+  // Process extensions to ensure they start with a dot
+  const extensions = argv.extension
+    ?.split(",")
+    .map((ext: string) => (ext.startsWith(".") ? ext : `.${ext}`));
+
+  // Normalize directory paths to use platform-specific separators
+  const normalizeDirs = (dirs: string[] | undefined) =>
+    dirs?.map((dir: string) =>
+      path.normalize(dir.trim().replace(/^['"]+|['"]+$/g, ""))
+    );
+
   return {
     output: argv.output,
-    extensions: argv.extension?.split(","),
+    extensions,
     includeFiles: argv["include-files"]?.split(","),
     excludeFiles: argv["exclude-files"]?.split(","),
-    includeDirs: argv["include-dir"]?.split(","),
-    excludeDirs: argv["exclude-dir"]?.split(","),
+    includeDirs: normalizeDirs(argv["include-dir"]?.split(",")),
+    excludeDirs: normalizeDirs(argv["exclude-dir"]?.split(",")),
     verbose: argv.verbose === undefined ? 1 : Number(argv.verbose),
     projectTree: treeDepth,
     maxTokens: argv["max-tokens"] ? Number(argv["max-tokens"]) : undefined,

@@ -46,22 +46,6 @@ export async function collectFiles(
   const results: string[] = [];
   const entries = await fs.promises.readdir(baseDir, { withFileTypes: true });
 
-  // Check if current directory should be included when includeDirs is specified
-  const relativeBaseDir = path.relative(process.cwd(), baseDir);
-  if (includeDirs && relativeBaseDir) {
-    const shouldInclude = includeDirs.some(
-      (dir) =>
-        relativeBaseDir === dir || relativeBaseDir.startsWith(dir + path.sep)
-    );
-    if (!shouldInclude) {
-      logVerbose(
-        `Skipping directory not in include list: ${relativeBaseDir}`,
-        2
-      );
-      return results;
-    }
-  }
-
   for (const entry of entries) {
     const fullPath = path.join(baseDir, entry.name);
     const relativePath = path.relative(process.cwd(), fullPath);
@@ -69,30 +53,49 @@ export async function collectFiles(
       ? `${relativePath}/`
       : relativePath;
 
+    // Check if path should be ignored
+    if (ig.ignores(ignoreCheckPath)) {
+      logVerbose(`Skipping ignored path: ${relativePath}`, 2);
+      continue;
+    }
+
+    // Check directory filters
+    if (includeDirs) {
+      const isIncluded = includeDirs.some((dir) => {
+        const normalizedDir = path.normalize(dir);
+        // Get the first part of the path to match top-level directories
+        const topLevelPath = relativePath.split(path.sep)[0];
+
+        logVerbose(
+          `Checking if ${topLevelPath} matches included dir ${normalizedDir}`,
+          2
+        );
+
+        return topLevelPath === normalizedDir;
+      });
+
+      if (!isIncluded) {
+        logVerbose(`Skipping non-included directory: ${relativePath}`, 2);
+        continue;
+      }
+    }
+
     if (entry.isDirectory()) {
       // Directory handling
       if (
-        excludeDirs?.some(
-          (dir) =>
-            relativePath === dir || relativePath.startsWith(dir + path.sep)
-        )
+        excludeDirs?.some((dir) => {
+          const normalizedDir = path.normalize(dir);
+          const normalizedPath = path.normalize(relativePath);
+          return normalizedPath === normalizedDir;
+        })
       ) {
         logVerbose(`Skipping excluded directory: ${relativePath}`, 2);
-        continue;
-      }
-
-      if (ig.ignores(ignoreCheckPath)) {
-        logVerbose(`Skipping ignored directory: ${relativePath}`, 2);
         continue;
       }
 
       results.push(...(await collectFiles(fullPath, options)));
     } else if (entry.isFile()) {
       // File handling
-      if (ig.ignores(ignoreCheckPath)) {
-        logVerbose(`Skipping ignored file: ${relativePath}`, 2);
-        continue;
-      }
       if (excludeFiles?.some((pattern) => matchPattern(entry.name, pattern))) {
         logVerbose(`Skipping excluded file: ${relativePath}`, 2);
         continue;

@@ -8,4 +8,10 @@ export default defineBuildConfig({
     emitCJS: true,
     inlineDependencies: true,
   },
+  assets: [
+    {
+      from: "./src/.codefetch.tpl",
+      to: "./.codefetch.tpl",
+    },
+  ],
 });

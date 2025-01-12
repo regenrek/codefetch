@@ -192,10 +192,41 @@ function generateMarkdown(files: string[]): string {
 // Build the final output
 const final = generateMarkdown(allFiles);
 
+// Add new constant for the template
+const CODEFETCH_TEMPLATE = fs.readFileSync(
+  path.join(__dirname, ".codefetch.tpl"),
+  "utf8"
+);
+
 // Write to file if `-o/--output` was given, else print to stdout
 if (output) {
-  fs.writeFileSync(output, final, "utf8");
-  console.log(`All files are written to ${output}.`);
+  // Create codefetch directory if it doesn't exist
+  const codefetchDir = path.join(process.cwd(), "codefetch");
+  if (!fs.existsSync(codefetchDir)) {
+    fs.mkdirSync(codefetchDir, { recursive: true });
+    console.log("Created codefetch directory.");
+  }
+
+  // Create .codefetchignore if it doesn't exist
+  const codefetchignorePath = path.join(process.cwd(), ".codefetchignore");
+  if (!fs.existsSync(codefetchignorePath)) {
+    fs.writeFileSync(codefetchignorePath, CODEFETCH_TEMPLATE, "utf8");
+    console.log(
+      "Created .codefetchignore file. Add 'codefetch/' to your .gitignore to avoid committing fetched code."
+    );
+  }
+
+  // Write the output file to the codefetch directory
+  const outputPath = path.join(codefetchDir, output);
+  fs.writeFileSync(outputPath, final, "utf8");
+
+  // Calculate and display token count
+  const totalTokens = estimateTokens(final);
+
+  console.log("\nSummary:");
+  console.log("✓ Code was successfully fetched");
+  console.log(`✓ Output written to: ${outputPath}`);
+  console.log(`✓ Approximate token count: ${totalTokens}`);
 } else {
   console.log(final);
 }

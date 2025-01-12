@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { default as ignore } from "ignore";
-import { minimatch } from "minimatch";
 
 export function resolveCodefetchPath(outputFile: string) {
   const codefetchDir = path.join(process.cwd(), "codefetch");
@@ -79,13 +78,13 @@ export async function collectFiles(
         logVerbose(`Skipping ignored file: ${relativePath}`, 2);
         continue;
       }
-      if (excludeFiles?.some((pattern) => minimatch(entry.name, pattern))) {
+      if (excludeFiles?.some((pattern) => matchPattern(entry.name, pattern))) {
         logVerbose(`Skipping excluded file: ${relativePath}`, 2);
         continue;
       }
       if (
         includeFiles &&
-        !includeFiles.some((pattern) => minimatch(entry.name, pattern))
+        !includeFiles.some((pattern) => matchPattern(entry.name, pattern))
       ) {
         logVerbose(`Skipping non-included file: ${relativePath}`, 2);
         continue;
@@ -104,6 +103,15 @@ export async function collectFiles(
   }
 
   return results;
+}
+
+function matchPattern(filename: string, pattern: string): boolean {
+  // Convert glob pattern to regex pattern
+  const regexPattern = pattern
+    .replace(/\./g, "\\.")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
+  return new RegExp(`^${regexPattern}$`).test(filename);
 }
 
 function generateTree(

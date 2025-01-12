@@ -45,14 +45,16 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--output <file>` | `-o` | Specify output filename |
 | `--max-tokens <number>` | `-tok` | Limit output tokens (useful for AI models) |
 | `--extension <ext,...>` | `-e` | Filter by file extensions (e.g., .ts,.js) |
-| `--include-files <pattern,...>` | `-if` | Include specific files (supports patterns like *.ts) |
-| `--exclude-files <pattern,...>` | `-ef` | Exclude specific files (supports patterns like *.test.ts) |
+| `--include-files <pattern,...>` | `-if` | Include specific files (supports simple patterns like *.ts) |
+| `--exclude-files <pattern,...>` | `-ef` | Exclude specific files (supports simple patterns like *.test.ts) |
 | `--include-dir <dir,...>` | `-id` | Include specific directories |
 | `--exclude-dir <dir,...>` | `-ed` | Exclude specific directories |
 | `--verbose [level]` | `-v` | Show processing information (0=none, 1=basic, 2=debug) |
 | `--project-tree [depth]` | `-t` | Generate visual project tree (optional depth, default: 2) |
 
-All options that accept multiple values use comma-separated lists. File patterns support wildcards (e.g., `*.ts`, `src/*.js`).
+All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
+- `*` matches any number of characters
+- `?` matches a single character
 
 ## Installation
 

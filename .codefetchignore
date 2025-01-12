@@ -16,7 +16,6 @@ bun.lockb
 .npmignore
 
 # Project Config
-.boltfetchignore
 .editorconfig
 .eslintrc*
 .prettierrc*

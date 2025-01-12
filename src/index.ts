@@ -115,12 +115,24 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment and Secrets
-.env*
-.env.local
-.env.*.local
+.env
+.env.*
+.env-*
+*.env
+env.*
 *.pem
 *.key
 *.cert
+*.secret
+*.secrets
+*secret*
+*secrets*
+*credential*
+*credentials*
+*password*
+*passwords*
+*token*
+*tokens*
 
 # Documentation
 LICENSE*

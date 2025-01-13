@@ -43,6 +43,7 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | Option | Description |
 |--------|-------------|
 | `-o, --output <file>` | Specify output filename |
+| `--dir <path>` | Specify the directory to scan (defaults to current directory) |
 | `--max-tokens <number>` | Limit output tokens (useful for AI models) |
 | `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
 | `--include-files <pattern,...>` | Include specific files (supports patterns like *.ts) |

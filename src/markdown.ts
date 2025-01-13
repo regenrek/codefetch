@@ -1,121 +1,65 @@
 import fs from "node:fs";
 import path from "node:path";
+import consola from "consola";
+import type { TokenEncoder } from "./types";
+import { generateProjectTree } from "./tree";
 import readline from "node:readline";
-import { Writable } from "node:stream";
-
-function estimateTokens(text: string): number {
-  return text.split(/[\s\p{P}]+/u).filter(Boolean).length;
-}
 
 function logVerbose(message: string, level: number, currentVerbosity: number) {
   if (currentVerbosity >= level) {
-    console.log(message);
+    consola.log(message);
   }
 }
 
 export async function generateMarkdown(
   files: string[],
   options: {
-    outputPath: string | null;
     maxTokens: number | null;
     verbose: number;
-    projectTree?: string;
+    projectTree: number;
+    tokenEncoder: TokenEncoder;
   }
-): Promise<number> {
-  let totalTokens = 0;
+): Promise<string> {
+  const markdownContent: string[] = [];
 
-  // Create output directory if needed
-  if (options.outputPath) {
-    const outputDir = path.dirname(options.outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-      logVerbose(`Created output directory: ${outputDir}`, 2, options.verbose);
-    }
-  }
-
-  // Type-safe write function
-  const writeToOutput = (
-    output: Writable | typeof process.stdout,
-    text: string
-  ) => {
-    if (output instanceof Writable) {
-      output.write(text);
-    } else {
-      output.write(text);
-    }
-  };
-
-  const output = options.outputPath
-    ? fs.createWriteStream(options.outputPath)
-    : process.stdout;
-
-  // Write project tree if available
-  if (options.projectTree) {
+  // Add project tree if level > 0
+  if (options.projectTree > 0) {
     logVerbose("Writing project tree...", 2, options.verbose);
-    writeToOutput(output, "```\n");
-    writeToOutput(output, options.projectTree);
-    writeToOutput(output, "```\n\n");
-    totalTokens += estimateTokens(options.projectTree);
-    logVerbose(
-      `Project tree tokens: ${estimateTokens(options.projectTree)}`,
-      2,
-      options.verbose
+    markdownContent.push(
+      "```",
+      generateProjectTree(process.cwd(), options.projectTree),
+      "```",
+      ""
     );
   }
 
-  // Write files
+  // Process files
   for (const file of files) {
     const relativePath = path.relative(process.cwd(), file);
-    logVerbose(`Processing file: ${relativePath}`, 1, options.verbose);
+    logVerbose(`${relativePath}`, 1, options.verbose);
 
-    const fileStream = fs.createReadStream(file, { encoding: "utf8" });
-    const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity,
-    });
+    try {
+      const stream = fs.createReadStream(file, { encoding: "utf8" });
+      const rl = readline.createInterface({
+        input: stream,
+        crlfDelay: Infinity,
+      });
 
-    writeToOutput(output, `${relativePath}\n`);
-    writeToOutput(output, "```\n");
+      markdownContent.push(relativePath, "```");
 
-    let lineNumber = 1;
-    let fileTokens = 0;
-
-    for await (const line of rl) {
-      const lineTokens = estimateTokens(line);
-      if (options.maxTokens && totalTokens + lineTokens > options.maxTokens) {
-        logVerbose(
-          `Max tokens reached (${totalTokens}/${options.maxTokens})`,
-          1,
-          options.verbose
-        );
-        break;
+      let lineNumber = 1;
+      for await (const line of rl) {
+        markdownContent.push(`${lineNumber} | ${line}`);
+        lineNumber++;
       }
 
-      writeToOutput(output, `${lineNumber} | ${line}\n`);
-      totalTokens += lineTokens;
-      fileTokens += lineTokens;
-      lineNumber++;
-    }
-
-    writeToOutput(output, "```\n\n");
-    logVerbose(`File tokens: ${fileTokens}`, 2, options.verbose);
-
-    if (options.maxTokens && totalTokens >= options.maxTokens) {
-      logVerbose(
-        "Max tokens limit reached, stopping processing",
-        1,
-        options.verbose
-      );
-      break;
+      markdownContent.push("```", "");
+    } catch (error_: unknown) {
+      const errorMessage =
+        error_ instanceof Error ? error_.message : String(error_);
+      consola.warn(`Error processing file ${file}: ${errorMessage}`);
     }
   }
 
-  if (options.outputPath && output instanceof fs.WriteStream) {
-    await new Promise<void>((resolve) => {
-      output.end(resolve);
-    });
-    logVerbose(`Total tokens processed: ${totalTokens}`, 1, options.verbose);
-  }
-
-  return totalTokens;
+  return markdownContent.join("\n");
 }

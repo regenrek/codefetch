@@ -32,6 +32,7 @@ describe("collectFiles", () => {
       includeFiles: null,
       excludeDirs: null,
       includeDirs: null,
+      verbose: 0,
     });
 
     expect(files).toHaveLength(1);
@@ -46,6 +47,7 @@ describe("collectFiles", () => {
       includeFiles: ["test*"],
       excludeDirs: null,
       includeDirs: null,
+      verbose: 0,
     });
 
     expect(files).toHaveLength(1);
@@ -65,6 +67,7 @@ describe("collectFiles", () => {
       includeFiles: null,
       excludeDirs: ["subdir"],
       includeDirs: null,
+      verbose: 0,
     });
 
     expect(files).toHaveLength(3); // test1.ts, test2.js, .gitignore
@@ -80,6 +83,7 @@ describe("collectFiles", () => {
       includeFiles: null,
       excludeDirs: null,
       includeDirs: null,
+      verbose: 0,
     });
 
     expect(files).toHaveLength(2); // test2.js and .gitignore

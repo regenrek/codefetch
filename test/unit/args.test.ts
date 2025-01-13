@@ -23,7 +23,7 @@ describe("parseArgs", () => {
   it("parses verbose flag", () => {
     const args = ["node", "script.js", "-v"];
     const result = parseArgs(args);
-    expect(result.verbose).toBe(true);
+    expect(result.verbose).toBe(1);
   });
 
   it("parses include files", () => {
@@ -66,5 +66,57 @@ describe("parseArgs", () => {
     const args = ["node", "script.js", "-v", "3"];
     const result = parseArgs(args);
     expect(result.verbose).toBe(1);
+  });
+});
+
+describe("parseArgs project-tree handling", () => {
+  it("handles project-tree flag with various formats", () => {
+    // Default when flag is present without value
+    expect(parseArgs(["-t"]).projectTree).toBe(2);
+    expect(parseArgs(["--project-tree"]).projectTree).toBe(2);
+
+    // Explicit values with space
+    expect(parseArgs(["-t", "10"]).projectTree).toBe(10);
+    expect(parseArgs(["--project-tree", "5"]).projectTree).toBe(5);
+
+    // Explicit values with equals
+    expect(parseArgs(["-t=10"]).projectTree).toBe(10);
+    expect(parseArgs(["--project-tree=5"]).projectTree).toBe(5);
+
+    // No flag = undefined
+    expect(parseArgs([]).projectTree).toBeUndefined();
+  });
+});
+
+describe("parseArgs token-encoder handling", () => {
+  it("should parse token-encoder correctly", () => {
+    const args = ["--token-encoder", "cl100k"];
+    const result = parseArgs(args);
+    expect(result.tokenEncoder).toBe("cl100k");
+  });
+
+  it("should return undefined for missing token-encoder", () => {
+    const args: string[] = [];
+    const result = parseArgs(args);
+    expect(result.tokenEncoder).toBeUndefined();
+  });
+
+  it("should throw error for invalid token-encoder", () => {
+    const args = ["--token-encoder", "invalid"];
+    expect(() => parseArgs(args)).toThrow(/Invalid token encoder/);
+  });
+});
+
+describe("parseArgs dry-run handling", () => {
+  it("should parse dry-run flag", () => {
+    const args = ["--dry-run"];
+    const result = parseArgs(args);
+    expect(result.dryRun).toBe(true);
+  });
+
+  it("should parse -d shorthand", () => {
+    const args = ["-d"];
+    const result = parseArgs(args);
+    expect(result.dryRun).toBe(true);
   });
 });

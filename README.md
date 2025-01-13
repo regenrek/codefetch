@@ -1,33 +1,35 @@
 # codefetch
 
-![Codefetch Cover](/public/cover.png)
+![Codefetch Cover](/public/cover.jpeg)
 
 >Turn code into Markdown for LLMs with one simple terminal command
 
 
+Fetches all code files in the current directory, ignoring what's in `.gitignore` and `.codefetchignore`, then outputs them into a single Markdown file with line numbers.
 
-Recursively fetches all code files in the current directory, ignoring what's in `.gitignore` and `.codefetchignore`, then outputs them into a single Markdown file with line numbers.
+Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 
 ## Usage
 Basic usage with output file and tree
 ```bash
-npx codefetch -o my-complete-source.md -t
-```
+npx codefetch -t
 
-With token limit (useful for AI models):
-```bash
-npx codefetch --max-tokens 20000 -o output.md
+# save codebase to
+# codefetch/codebase.md
 ```
 
 Filter by file extensions:
 ```bash
 npx codefetch -e .ts,.js -o typescript-files.md
+
+# Result
+# codefetch/typescript-files.md
 ```
 
 Include or exclude specific files and directories:
 ```bash
 # Exclude node_modules and public directories
-npx codefetch --exclude-dir node_modules,public -o output.md
+npx codefetch --exclude-dir test,public
 
 # Include only TypeScript files
 npx codefetch --include-files "*.ts" -o typescript-only.md
@@ -36,15 +38,39 @@ npx codefetch --include-files "*.ts" -o typescript-only.md
 npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
 ```
 
+Dry run (only output to console)
+```bash
+npx codefetch --d
+```
+
+## Integrate codefetch into your project
+
+Initialize your project with codefetch:
+
+```bash
+npx codefetch init
+```
+
+This will:
+1. Create a `.codefetchignore` file for excluding files
+2. Generate a `codefetch.config.ts` with your preferences
+3. Set up the project structure
+
+## Or install globally:
+```bash
+npm install -g codefetch
+codefetch -o output.md
+```
+
 If no output file is specified (`-o` or `--output`), it will print to stdout.
 
-### Options
+## Options
 
 | Option | Description |
 |--------|-------------|
-| `-o, --output <file>` | Specify output filename |
+| `-o, --output <file>` | Specify output filename (defaults to codebase.md) |
 | `--dir <path>` | Specify the directory to scan (defaults to current directory) |
-| `--max-tokens <number>` | Limit output tokens (useful for AI models) |
+| `--max-tokens <number>` | Limit output tokens (default: 500,000) |
 | `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
 | `--include-files <pattern,...>` | Include specific files (supports patterns like *.ts) |
 | `--exclude-files <pattern,...>` | Exclude specific files (supports patterns like *.test.ts) |
@@ -52,23 +78,12 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--exclude-dir <dir,...>` | Exclude specific directories |
 | `-v, --verbose [level]` | Show processing information (0=none, 1=basic, 2=debug) |
 | `-t, --project-tree [depth]` | Generate visual project tree (optional depth, default: 2) |
+| `--token-encoder <type>` | Token encoding method (simple, p50k, o200k, cl100k) |
+| `-d, --dry-run` | Output markdown to stdout instead of file |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
 - `*` matches any number of characters
 - `?` matches a single character
-
-## Installation
-
-You can run directly with npx:
-```bash
-npx codefetch
-```
-
-Or install globally:
-```bash
-npm install -g codefetch
-codefetch -o output.md
-```
 
 ### Project Tree
 
@@ -107,20 +122,12 @@ codefetch supports two ways to ignore files:
 
 The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. 
 
-By default, it includes:
-- `test/` - All test files and directories
-- `vitest.config.ts` - Vitest configuration file
-
 You can add more patterns to ignore additional files:
 
 ```gitignore
 # Default patterns (automatically added)
 test/
 vitest.config.ts
-
-# Your additional patterns
-*.css # all css files
-docs/ # documentation directory
 ```
 
 Both files support standard gitignore patterns including:
@@ -135,23 +142,69 @@ Codefetch uses a set of default ignore patterns to exclude common files and dire
 
 You can view the complete list of default patterns in [default-ignore.ts](src/default-ignore.ts).
 
+## Token Counting
+
+Codefetch supports different token counting methods to match various AI models:
+
+- `simple`: Basic word-based estimation (not very accurate but fastest!)
+- `p50k`: GPT-3 style tokenization
+- `o200k`: gpt-4o style tokenization  
+- `cl100k`: GPT-4 style tokenization
+
+Select the appropriate encoder based on your target model:
+
+```bash
+# For GPT-4o
+npx codefetch --token-encoder o200k
+```
+
+### Supported Models
+
+Codefetch tracks token counts for these models:
+- gpt-4o
+- claude-3.5-sonnet
+- o1
+
+## Model Information
+
+You can get information about supported AI models using the model command:
+
+```bash
+# Get info about specific model
+npx codefetch model info gpt-4o
+
+# Show all latest models
+npx codefetch model info latest
+
+# Show all preview models
+npx codefetch model info preview
+
+# Show models by provider
+npx codefetch model info gpt4    # GPT-4 models
+npx codefetch model info claude  # Claude models
+npx codefetch model info mistral # Mistral models
+npx codefetch model info gemini  # Google/Gemini models
+npx codefetch model info qwen    # Qwen models
+
+# Show all available models
+npx codefetch model info all
+```
+
 ## Output Directory
 
-By default, when using the `-o` or `--output` option, codefetch will:
+By default (unless using --dry-run) codefetch will:
 1. Create a `codefetch/` directory in your project
 2. Store all output files in this directory
-3. Create a `.codefetchignore` file (if it doesn't exist) that includes test files and configuration
 
 This ensures that:
 - Your fetched code is organized in one place
-- Test files and configuration are excluded by default
-- The output directory can be safely ignored in version control
+- The output directory won't be fetched so we avoid fetching the codebase again
 
-We recommend adding `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase. 
+Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase. 
 
 ## Use with AI Tools
 
-You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. The `-tok` option helps ensure your output stays within AI model token limits.
+You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
 
 ### Debugging
 
@@ -159,15 +212,15 @@ The `--verbose` or `-v` option supports different levels of output:
 
 ```bash
 # No verbose output (just results)
-npx codefetch -o output.md
+npx codefetch -o
 
 # Basic progress information (level 1)
-npx codefetch -v -o output.md
+npx codefetch -v
 # or
-npx codefetch -v 1 -o output.md
+npx codefetch -v 1
 
 # Detailed debug information (level 2)
-npx codefetch -v 2 -o output.md
+npx codefetch -v 2
 ```
 
 Verbose levels:
@@ -192,4 +245,3 @@ This project was inspired by
 
 * [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
 * [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
-

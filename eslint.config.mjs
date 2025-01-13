@@ -1,19 +1,12 @@
 import unjs from "eslint-config-unjs";
 
-export default unjs(
-  {
-    ignores: ["**/.nuxt", "**/.output"],
+// https://github.com/unjs/eslint-config
+export default unjs({
+  ignores: [],
+  rules: {
+    "unicorn/no-null": 0,
+    "unicorn/prefer-top-level-await": 0,
+    "unicorn/template-indent": 0,
+    "unicorn/no-process-exit": 0,
   },
-  {
-    rules: {
-      "unicorn/no-null": "off",
-      "unicorn/number-literal-case": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "unicorn/expiring-todo-comments": "off",
-      "@typescript-eslint/ban-types": "off",
-      "unicorn/prefer-export-from": "off",
-      "unicorn/prefer-string-raw": "off",
-      "unicorn/prefer-code-point": "off",
-    },
-  },
-);
+});

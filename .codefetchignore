@@ -1,2 +1,2 @@
-test/
+test/fixtures/codebase-test
 vitest.config.ts

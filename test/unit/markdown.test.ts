@@ -40,7 +40,7 @@ describe("generateMarkdown", () => {
     const tokens = await generateMarkdown(files, {
       outputPath,
       maxTokens: null,
-      verbose: false,
+      verbose: 0,
     });
 
     // Wait a bit for file system operations to complete
@@ -66,7 +66,7 @@ describe("generateMarkdown", () => {
     const tokens = await generateMarkdown(files, {
       outputPath,
       maxTokens: 2,
-      verbose: false,
+      verbose: 0,
     });
 
     // Wait a bit for file system operations to complete
@@ -82,9 +82,56 @@ describe("generateMarkdown", () => {
     const tokens = await generateMarkdown(files, {
       outputPath: null,
       maxTokens: null,
-      verbose: false,
+      verbose: 0,
     });
 
     expect(tokens).toBeGreaterThan(0);
+  });
+
+  it("should generate markdown with token tracking", async () => {
+    const outputPath = path.join(TEST_DIR, "output.md");
+    const files = [
+      path.join(TEST_DIR, "test1.ts"),
+      path.join(TEST_DIR, "test2.js"),
+    ];
+
+    const tokens = await generateMarkdown(files, {
+      outputPath,
+      maxTokens: null,
+      verbose: 0,
+      tokenEncoder: "cl100k",
+    });
+
+    expect(tokens).toBeGreaterThan(0);
+    expect(fs.existsSync(outputPath)).toBe(true);
+
+    const content = fs.readFileSync(outputPath, "utf8");
+    expect(content).toContain("test1.ts");
+    expect(content).toContain("test2.js");
+  });
+
+  it("should handle dry run mode", async () => {
+    const files = [path.join(TEST_DIR, "test1.ts")];
+    let output = "";
+
+    // Mock console.log to capture output
+    const originalLog = console.log;
+    console.log = (str) => {
+      output += str + "\n";
+    };
+
+    try {
+      await generateMarkdown(files, {
+        outputPath: null,
+        maxTokens: null,
+        verbose: 0,
+        dryRun: true,
+      });
+
+      expect(output).toContain("test1.ts");
+      expect(output).toContain("test content 1");
+    } finally {
+      console.log = originalLog;
+    }
   });
 });

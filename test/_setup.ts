@@ -5,7 +5,7 @@ import fs from "node:fs";
 
 export const TEST_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  "__test__",
+  "__test__"
 );
 
 export function createTestDir() {

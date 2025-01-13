@@ -3,4 +3,7 @@ dist/
 *.log
 .DS_Store
 coverage/
-.env 
+.env
+.cursorrules
+.cursorignore
+codefetch

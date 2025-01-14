@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
+export { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
@@ -25,5 +25,3 @@ export function createTestFile(filename: string, content: string = "") {
   fs.writeFileSync(filePath, content);
   return filePath;
 }
-
-export { beforeEach, afterEach, describe, it, expect, vi };

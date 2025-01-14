@@ -158,38 +158,6 @@ Select the appropriate encoder based on your target model:
 npx codefetch --token-encoder o200k
 ```
 
-### Supported Models
-
-Codefetch tracks token counts for these models:
-- gpt-4o
-- claude-3.5-sonnet
-- o1
-
-## Model Information
-
-You can get information about supported AI models using the model command:
-
-```bash
-# Get info about specific model
-npx codefetch model info gpt-4o
-
-# Show all latest models
-npx codefetch model info latest
-
-# Show all preview models
-npx codefetch model info preview
-
-# Show models by provider
-npx codefetch model info gpt4    # GPT-4 models
-npx codefetch model info claude  # Claude models
-npx codefetch model info mistral # Mistral models
-npx codefetch model info gemini  # Google/Gemini models
-npx codefetch model info qwen    # Qwen models
-
-# Show all available models
-npx codefetch model info all
-```
-
 ## Output Directory
 
 By default (unless using --dry-run) codefetch will:

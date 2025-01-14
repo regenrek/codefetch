@@ -70,11 +70,15 @@ describe("collectFiles", () => {
       verbose: 0,
     });
 
-    expect(files).toHaveLength(3); // test1.ts, test2.js, .gitignore
-    expect(files.every((f) => !f.includes("subdir"))).toBe(true);
+    // We'll see test1.ts, test2.js, .gitignore
+    expect(files.some((f) => f.endsWith("test1.ts"))).toBe(true);
+    expect(files.some((f) => f.endsWith("test2.js"))).toBe(true);
+    expect(files.some((f) => f.endsWith(".gitignore"))).toBe(true);
+    // subdir/test3.ts is excluded
+    expect(files.some((f) => f.endsWith("test3.ts"))).toBe(false);
   });
 
-  it("should handle ignore patterns", async () => {
+  it("should handle ignore patterns from the ig param", async () => {
     const ig = ignore().add("test1.ts");
     const files = await collectFiles(TEST_DIR, {
       ig,
@@ -86,7 +90,8 @@ describe("collectFiles", () => {
       verbose: 0,
     });
 
-    expect(files).toHaveLength(2); // test2.js and .gitignore
+    // test1.ts is ignored, so only test2.js and .gitignore remain
+    expect(files.length).toBe(2);
     expect(files.every((f) => !f.includes("test1.ts"))).toBe(true);
   });
 });

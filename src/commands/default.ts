@@ -1,6 +1,6 @@
 import { existsSync, promises as fsp } from "node:fs";
 import type { Argv } from "mri";
-import { resolve, join, dirname } from "pathe";
+import { resolve, join } from "pathe";
 import consola from "consola";
 import ignore from "ignore";
 import {
@@ -12,10 +12,10 @@ import {
   parseArgs,
   loadCodefetchConfig,
   countTokens,
-  resolveCodefetchConfig,
-  loadModelDb,
+  fetchModels,
 } from "..";
 import type { TokenEncoder } from "../types";
+import { processFilesConcurrently } from "../files";
 
 export default async function defaultMain(rawArgs: Argv) {
   const args = parseArgs(process.argv.slice(2));
@@ -96,7 +96,18 @@ export default async function defaultMain(rawArgs: Argv) {
     verbose: config.verbose,
   });
 
-  const markdown = await generateMarkdown(files, {
+  // Process files concurrently with a reasonable concurrency limit
+  const concurrency = Math.min(files.length, 8); // Adjust this number based on your needs
+  const processedFiles = await processFilesConcurrently(
+    files,
+    concurrency,
+    async (file) => {
+      // Your file processing logic here
+      return file;
+    }
+  );
+
+  const markdown = await generateMarkdown(processedFiles, {
     maxTokens: config.maxTokens,
     verbose: config.verbose,
     projectTree: config.projectTree,
@@ -111,28 +122,6 @@ export default async function defaultMain(rawArgs: Argv) {
     if (config.maxTokens && totalTokens > config.maxTokens) {
       consola.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
     }
-  }
-
-  if (config.trackedModels?.length) {
-    const modelDb = await loadModelDb();
-    const modelInfo = config.trackedModels
-      .map((modelName) => {
-        const model = modelDb[modelName] || {};
-        return model.max_input_tokens
-          ? `${modelName}: ${model.max_input_tokens.toLocaleString()} tokens`
-          : `${modelName}: Unknown`;
-      })
-      .join("\n");
-
-    consola.box({
-      title: `Your token count: ${totalTokens.toLocaleString()}`,
-      message: `Max input tokens for LLMs:\n${modelInfo}`,
-      style: {
-        padding: 1,
-        borderColor: "cyan",
-        borderStyle: "round",
-      },
-    });
   }
 
   if (args.dryRun) {
@@ -150,7 +139,17 @@ export default async function defaultMain(rawArgs: Argv) {
     consola.success(`Output written to ${fullPath}`);
   }
 
-  if (totalTokens > 0) {
-    consola.info(`Total tokens: ${totalTokens}`);
+  if (config.trackedModels?.length) {
+    const { modelDb, modelInfo } = await fetchModels(config.trackedModels);
+
+    consola.box({
+      title: `Your token count: ${totalTokens.toLocaleString()}`,
+      message: `Max input tokens for LLMs:\n${modelInfo}`,
+      style: {
+        padding: 1,
+        borderColor: "cyan",
+        borderStyle: "round",
+      },
+    });
   }
 }

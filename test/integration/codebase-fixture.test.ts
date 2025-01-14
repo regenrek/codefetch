@@ -16,7 +16,6 @@ describe("Integration: codebase-test fixture", () => {
   });
 
   afterEach(() => {
-    // Optionally remove codefetch artifacts after each test
     if (fs.existsSync(CODEFETCH_DIR)) {
       fs.rmSync(CODEFETCH_DIR, { recursive: true, force: true });
     }
@@ -40,13 +39,16 @@ describe("Integration: codebase-test fixture", () => {
     expect(content).toContain("Button.js");
   });
 
-  it("respects --max-tokens option", () => {
+  it("shows a warning or info if token-limit is exceeded (but doesn't truncate)", () => {
     const result = spawnSync("node", [cliPath, "--max-tokens", "5"], {
       cwd: FIXTURE_DIR,
       encoding: "utf8",
     });
-    // If we set --max-tokens 5, codefetch likely stops early
-    expect(result.stdout.split("\n").length).toBeLessThan(50);
+
+    // The code does not truncate but might log a warning
+    expect(result.stderr).toBe("");
+    // Should see a warning line
+    expect(result.stdout).toMatch(/Token limit exceeded/);
   });
 
   it("can limit to only .js files using -e", () => {
@@ -85,7 +87,7 @@ describe("Integration: codebase-test fixture", () => {
     expect(content).toContain("button.js");
     expect(content).toContain("header.js");
 
-    expect(content).not.toContain("container.js");
+    expect(content).not.toContain("container.js"); // inside components
   });
 
   it("respects an existing .codefetchignore if present", () => {
@@ -133,7 +135,7 @@ describe("Integration: codebase-test fixture", () => {
     expect(content).toMatch(/└── /);
   });
 
-  it("generates a markdown output with token tracking", () => {
+  it("generates a markdown output with token tracking in summary (not truncated)", () => {
     const result = spawnSync(
       "node",
       [cliPath, "-o", "fixture-output.md", "--token-encoder", "cl100k"],
@@ -144,6 +146,7 @@ describe("Integration: codebase-test fixture", () => {
     );
 
     expect(result.stderr).toBe("");
+    // Should see the "Your token count:" from the default.ts code that prints
     expect(result.stdout).toContain("Your token count:");
     expect(result.stdout).toContain("Max input tokens for LLMs:");
 

@@ -22,7 +22,7 @@ export interface CodefetchConfig {
 }
 
 const defaultOutput = "codebase.md";
-const getDefaultConfig = (): CodefetchConfig => ({
+export const getDefaultConfig = (): CodefetchConfig => ({
   outputPath: "codefetch",
   outputFile: defaultOutput,
   maxTokens: 500_000, // safety

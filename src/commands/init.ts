@@ -1,4 +1,4 @@
-import { existsSync, promises as fsp } from "node:fs";
+import { promises as fsp } from "node:fs";
 import { join } from "pathe";
 import consola from "consola";
 import type { CodefetchConfig } from "../config";

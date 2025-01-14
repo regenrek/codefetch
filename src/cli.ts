@@ -2,9 +2,15 @@
 import consola from "consola";
 import mri from "mri";
 
-const subCommands = {
+// Define proper types for subCommands and their return values
+type CommandModule = {
+  default: (args: any) => Promise<void>;
+};
+
+const subCommands: Record<string, () => Promise<CommandModule>> = {
   _default: () => import("./commands/default"),
   model: () => import("./commands/model"),
+  init: () => import("./commands/init"),
 };
 
 async function main() {
@@ -21,7 +27,12 @@ async function main() {
     process.exit(1);
   }
 
-  await subCommands[subCommand]().then((r) => r.default(mri(args)));
+  await subCommands[subCommand as keyof typeof subCommands]?.()
+    .then((mod) => mod.default(mri(args)))
+    .catch((error) => {
+      console.error("Error executing command:", error);
+      process.exit(1);
+    });
 }
 
 main().catch(consola.error);

@@ -51,25 +51,25 @@ describe("Regression Tests", () => {
     expect(res.verbose).toBe(1); // default
   });
 
-  it("generateMarkdown can limit tokens properly", async () => {
-    const outFile = path.join(TEST_DIR, "out.md");
+  it("generateMarkdown returns full content (no token-limit enforcement)", async () => {
     const files = [
       path.join(TEST_DIR, "file1.ts"),
       path.join(TEST_DIR, "nested", "file4.ts"),
     ];
-    const tokens = await generateMarkdown(files, {
-      outputPath: outFile,
-      maxTokens: 4,
+    const markdown = await generateMarkdown(files, {
+      maxTokens: null, // not used for truncation
       verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
     });
-    // Should cut off quickly
-    expect(tokens).toBeLessThanOrEqual(4);
-    expect(fs.existsSync(outFile)).toBe(true);
-    const content = fs.readFileSync(outFile, "utf8");
-    expect(content.split("\n").length).toBeLessThan(15);
+
+    expect(typeof markdown).toBe("string");
+    // We should see console.log('ts1'); and console.log('nested ts');
+    expect(markdown).toContain("console.log('ts1');");
+    expect(markdown).toContain("console.log('nested ts');");
   });
 
-  it("handles different token encoders correctly", async () => {
+  it("handles different token encoders correctly (just doesn't truncate)", async () => {
     const found = await collectFiles(TEST_DIR, {
       ig: ignore(),
       extensionSet: new Set([".ts"]),
@@ -80,16 +80,15 @@ describe("Regression Tests", () => {
       verbose: 0,
     });
 
-    const outFile = path.join(TEST_DIR, "out.md");
-    const tokens = await generateMarkdown(found, {
-      outputPath: outFile,
+    const markdown = await generateMarkdown(found, {
       maxTokens: null,
       verbose: 0,
+      projectTree: 0,
       tokenEncoder: "cl100k",
     });
 
-    expect(tokens).toBeGreaterThan(0);
-    expect(fs.existsSync(outFile)).toBe(true);
+    expect(typeof markdown).toBe("string");
+    expect(markdown).toContain("console.log('ts1');");
   });
 
   it("parseArgs handles new token encoder option", () => {

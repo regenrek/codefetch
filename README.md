@@ -12,18 +12,14 @@ Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898
 ## Usage
 Basic usage with output file and tree
 ```bash
-npx codefetch -t
-
-# save codebase to
-# codefetch/codebase.md
+npx codefetch
 ```
+
+You codebase will be saved to `codefetch/codebase.md`
 
 Filter by file extensions:
 ```bash
-npx codefetch -e .ts,.js -o typescript-files.md
-
-# Result
-# codefetch/typescript-files.md
+npx codefetch -e .ts,.js -o typescript-files.md --token-encoder cl100k
 ```
 
 Include or exclude specific files and directories:
@@ -79,6 +75,7 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `-v, --verbose [level]` | Show processing information (0=none, 1=basic, 2=debug) |
 | `-t, --project-tree [depth]` | Generate visual project tree (optional depth, default: 2) |
 | `--token-encoder <type>` | Token encoding method (simple, p50k, o200k, cl100k) |
+| `--disable-line-numbers` | Disable line numbers in output |
 | `-d, --dry-run` | Output markdown to stdout instead of file |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
@@ -122,20 +119,6 @@ codefetch supports two ways to ignore files:
 
 The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. 
 
-You can add more patterns to ignore additional files:
-
-```gitignore
-# Default patterns (automatically added)
-test/
-vitest.config.ts
-```
-
-Both files support standard gitignore patterns including:
-- Exact matches (`file.txt`)
-- Directories (`dir/`)
-- Wildcards (`*.log`)
-- Negation (`!important.log`)
-
 ### Default Ignore Patterns
 
 Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis. 
@@ -174,27 +157,6 @@ Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codeb
 
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
 
-### Debugging
-
-The `--verbose` or `-v` option supports different levels of output:
-
-```bash
-# No verbose output (just results)
-npx codefetch -o
-
-# Basic progress information (level 1)
-npx codefetch -v
-# or
-npx codefetch -v 1
-
-# Detailed debug information (level 2)
-npx codefetch -v 2
-```
-
-Verbose levels:
-- Level 0: Only shows essential output (final results)
-- Level 1: Shows basic progress (file counts, processing stages)
-- Level 2: Shows detailed debug information (individual file processing, skipped files, etc.)
 
 ## License
 

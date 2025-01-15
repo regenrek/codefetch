@@ -14,7 +14,7 @@ export interface ModelDb {
 
 export async function getLocalModels(): Promise<ModelDb> {
   return {
-    "deepseek/deepseek-chat": {
+    "deepseek-v3": {
       max_tokens: 4096,
       max_input_tokens: 128_000,
       max_output_tokens: 4096,
@@ -44,13 +44,7 @@ export async function getLocalModels(): Promise<ModelDb> {
       max_output_tokens: 8192,
       litellm_provider: "gemini",
     },
-    "gemini/gemini-2.0-flash-exp": {
-      max_tokens: 8192,
-      max_input_tokens: 1_048_576,
-      max_output_tokens: 8192,
-      litellm_provider: "gemini",
-    },
-    "gemini/gemini-exp-1206": {
+    "gemini-exp-1206": {
       max_tokens: 8192,
       max_input_tokens: 2_097_152,
       max_output_tokens: 8192,
@@ -98,14 +92,20 @@ export async function fetchModels(trackedModels: string[]): Promise<{
 }
 
 function formatModelInfo(trackedModels: string[], modelDb: ModelDb): string {
-  return trackedModels
-    .map((modelName) => {
-      const model = modelDb[modelName] || {};
-      return model.max_input_tokens
-        ? `${modelName}: ${model.max_input_tokens.toLocaleString()} tokens`
-        : `${modelName}: Unknown`;
-    })
-    .join("\n");
+  const rows = trackedModels.map((modelName) => {
+    const model = modelDb[modelName] || {};
+    const tokens = model.max_input_tokens
+      ? model.max_input_tokens.toLocaleString()
+      : "Unknown";
+    return `│ ${modelName.padEnd(30)} │ ${tokens.padEnd(15)} │`;
+  });
+
+  const header = "│ Model Name                      │ Max Tokens     │";
+  const separator = "├────────────────────────────────┼────────────────┤";
+  const topBorder = "┌────────────────────────────────┬────────────────┐";
+  const bottomBorder = "└────────────────────────────────┴────────────────┘";
+
+  return [topBorder, header, separator, ...rows, bottomBorder].join("\n");
 }
 
 async function loadModelDb(): Promise<ModelDb> {

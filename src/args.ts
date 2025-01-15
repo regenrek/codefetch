@@ -31,6 +31,7 @@ Options:
   -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
   -t, --project-tree [depth]  Generate visual project tree (optional depth, default: 2)
   --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
+  --disable-line-numbers       Disable line numbers in output
   -h, --help                  Display this help message
 `);
 }
@@ -45,7 +46,7 @@ export function parseArgs(args: string[]) {
       h: "help",
       d: "dry-run",
     },
-    boolean: ["help", "dry-run"],
+    boolean: ["help", "dry-run", "disable-line-numbers"],
     string: [
       "output",
       "dir",
@@ -113,5 +114,6 @@ export function parseArgs(args: string[]) {
       | TokenEncoder
       | undefined,
     dryRun: Boolean(argv["dry-run"]),
+    disableLineNumbers: Boolean(argv["disable-line-numbers"]),
   };
 }

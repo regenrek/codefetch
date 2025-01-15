@@ -20,7 +20,7 @@
     }
   },
   "bin": {
-    "codefetch": "./dist/index.mjs"
+    "codefetch": "./dist/cli.mjs"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -37,14 +37,22 @@
     "release": "npm test && npm run build && npm publish",
     "test": "npm run lint && npm run test:types && vitest run --coverage",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "prepack": "unbuild"
+    "prepack": "unbuild",
+    "docs": "DEV=true nuxi dev docs",
+    "docs:build": "nuxi build docs",
+    "docs:prepare": "nuxt-component-meta docs"
   },
   "devDependencies": {
+    "@nuxt/eslint-config": "^0.7.5",
+    "@nuxt/module-builder": "^0.8.4",
+    "@nuxt/test-utils": "^3.15.4",
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.18.0",
     "eslint-config-unjs": "^0.4.2",
+    "nuxt": "^3.15.1",
+    "nuxt-component-meta": "^0.9.0",
     "prettier": "^3.4.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
@@ -54,6 +62,14 @@
   "packageManager": "pnpm@9.14.4",
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.18",
+    "@nuxt/devtools-kit": "^1.7.0",
+    "@nuxt/fonts": "^0.10.3",
+    "@nuxt/icon": "^1.10.3",
+    "@nuxt/kit": "^3.15.1",
+    "@nuxt/schema": "^3.15.1",
+    "@nuxt/ui": "3.0.0-alpha.11",
+    "@nuxt/ui-pro": "3.0.0-alpha.11",
+    "@nuxtjs/color-mode": "^3.5.2",
     "c12": "^2.0.1",
     "colorette": "^2.0.20",
     "consola": "^3.3.3",
@@ -62,7 +78,7 @@
     "js-tiktoken": "^1.0.16",
     "mri": "^1.2.0",
     "node-fetch-native": "^1.6.4",
-    "pathe": "^2.0.1",
-    "p-limit": "^6.2.0"
+    "p-limit": "^6.2.0",
+    "pathe": "^2.0.1"
   }
 }

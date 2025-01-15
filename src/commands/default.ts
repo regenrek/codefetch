@@ -15,10 +15,13 @@ import {
   fetchModels,
 } from "..";
 import type { TokenEncoder } from "../types";
-import { processFilesConcurrently } from "../files";
 
 export default async function defaultMain(rawArgs: Argv) {
   const args = parseArgs(process.argv.slice(2));
+  const logger = consola.create({
+    stdout: process.stdout,
+    stderr: process.stderr,
+  });
 
   if (args.help) {
     printHelp();
@@ -31,7 +34,7 @@ export default async function defaultMain(rawArgs: Argv) {
 
   const projectRoot = findProjectRoot(cwd);
   if (projectRoot !== cwd) {
-    const shouldExit = await consola.prompt(
+    const shouldExit = await logger.prompt(
       `Warning: It's recommended to run codefetch from the root directory (${projectRoot}).\nExit and restart from root?`,
       {
         type: "confirm",
@@ -41,13 +44,10 @@ export default async function defaultMain(rawArgs: Argv) {
     if (shouldExit) {
       process.exit(0);
     }
-    consola.warn(
-      "Continuing in current directory. Some files might be missed."
-    );
+    logger.warn("Continuing in current directory. Some files might be missed.");
   }
 
   process.chdir(cwd);
-  consola.wrapConsole();
 
   const config = await loadCodefetchConfig(cwd, {
     outputPath: args.outputPath,
@@ -63,6 +63,7 @@ export default async function defaultMain(rawArgs: Argv) {
     defaultIgnore: true,
     gitignore: true,
     tokenEncoder: args.tokenEncoder as TokenEncoder,
+    disableLineNumbers: args.disableLineNumbers,
   });
 
   const ig = ignore().add(
@@ -96,22 +97,12 @@ export default async function defaultMain(rawArgs: Argv) {
     verbose: config.verbose,
   });
 
-  // Process files concurrently with a reasonable concurrency limit
-  const concurrency = Math.min(files.length, 8); // Adjust this number based on your needs
-  const processedFiles = await processFilesConcurrently(
-    files,
-    concurrency,
-    async (file) => {
-      // Your file processing logic here
-      return file;
-    }
-  );
-
-  const markdown = await generateMarkdown(processedFiles, {
+  const markdown = await generateMarkdown(files, {
     maxTokens: config.maxTokens,
     verbose: config.verbose,
     projectTree: config.projectTree,
     tokenEncoder: config.tokenEncoder,
+    disableLineNumbers: config.disableLineNumbers,
   });
 
   // Count tokens if needed
@@ -120,33 +111,34 @@ export default async function defaultMain(rawArgs: Argv) {
     totalTokens = await countTokens(markdown, config.tokenEncoder);
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
-      consola.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
+      logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
     }
   }
 
   if (args.dryRun) {
-    consola.log(markdown);
+    logger.log(markdown);
   } else {
     if (!existsSync(config.outputPath)) {
       await fsp.mkdir(config.outputPath, { recursive: true });
       if (args.verbose > 0) {
-        consola.info(`Created output directory: ${config.outputPath}`);
+        logger.info(`Created output directory: ${config.outputPath}`);
       }
     }
 
     const fullPath = join(config.outputPath, config.outputFile);
     await fsp.writeFile(fullPath, markdown);
-    consola.success(`Output written to ${fullPath}`);
+    console.log(`Output written to ${fullPath}`);
+    // consola.success(`Output written to ${fullPath}`);
   }
 
   if (config.trackedModels?.length) {
-    const { modelDb, modelInfo } = await fetchModels(config.trackedModels);
+    const { modelInfo } = await fetchModels(config.trackedModels);
 
-    consola.box({
-      title: `Your token count: ${totalTokens.toLocaleString()}`,
-      message: `Max input tokens for LLMs:\n${modelInfo}`,
+    logger.box({
+      title: `Token Count Overview`,
+      message: `Current Codebase: ${totalTokens.toLocaleString()} tokens\n\nModel Token Limits:\n${modelInfo}`,
       style: {
-        padding: 1,
+        padding: 0,
         borderColor: "cyan",
         borderStyle: "round",
       },

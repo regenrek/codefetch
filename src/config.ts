@@ -19,25 +19,28 @@ export interface CodefetchConfig {
   tokenEncoder: TokenEncoder;
   trackedModels?: string[];
   dryRun?: boolean;
+  disableLineNumbers?: boolean;
 }
 
 const defaultOutput = "codebase.md";
 export const getDefaultConfig = (): CodefetchConfig => ({
   outputPath: "codefetch",
   outputFile: defaultOutput,
-  maxTokens: 500_000, // safety
+  maxTokens: 999_000, // safety
   verbose: 1,
   projectTree: 2,
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",
   trackedModels: [
-    "gpt-4o-latest",
+    "chatgpt-4o-latest",
     "claude-3-5-sonnet-20241022",
     "o1",
+    "deepseek-v3",
     "gemini-exp-1206",
   ],
   dryRun: false,
+  disableLineNumbers: false,
 });
 
 export async function loadCodefetchConfig(

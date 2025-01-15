@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import { join, basename } from "pathe";
 
 function generateTree(
   dir: string,
@@ -14,7 +14,7 @@ function generateTree(
   let tree =
     currentLevel === 0
       ? ""
-      : `${prefix}${isLast ? "└── " : "├── "}${path.basename(dir)}\n`;
+      : `${prefix}${isLast ? "└── " : "├── "}${basename(dir)}\n`;
 
   const files = fs.readdirSync(dir);
   const filteredFiles = files.filter(
@@ -22,7 +22,7 @@ function generateTree(
   );
 
   for (const [index, file] of filteredFiles.entries()) {
-    const filePath = path.join(dir, file);
+    const filePath = join(dir, file);
     const isDirectory = fs.statSync(filePath).isDirectory();
     const newPrefix =
       currentLevel === 0 ? "" : prefix + (isLast ? "    " : "│   ");

@@ -95,4 +95,37 @@ describe("Regression Tests", () => {
     const res = parseArgs(["node", "script.js", "--token-encoder", "cl100k"]);
     expect(res.tokenEncoder).toBe("cl100k");
   });
+
+  it("handles disable-line-numbers consistently across different file types", async () => {
+    // Create files with different extensions
+    fs.writeFileSync(
+      path.join(TEST_DIR, "test.ts"),
+      "console.log('ts');\nconst x = 1;"
+    );
+    fs.writeFileSync(
+      path.join(TEST_DIR, "test.js"),
+      "console.log('js');\nlet y = 2;"
+    );
+
+    const files = [
+      path.join(TEST_DIR, "test.ts"),
+      path.join(TEST_DIR, "test.js"),
+    ];
+
+    const markdown = await generateMarkdown(files, {
+      maxTokens: null,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      disableLineNumbers: true,
+    });
+
+    // Should not contain line numbers for any file
+    expect(markdown).not.toMatch(/\d+\|/);
+    // Should contain the actual code
+    expect(markdown).toContain("console.log('ts');");
+    expect(markdown).toContain("console.log('js');");
+    expect(markdown).toContain("const x = 1;");
+    expect(markdown).toContain("let y = 2;");
+  });
 });

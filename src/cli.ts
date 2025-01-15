@@ -9,7 +9,6 @@ type CommandModule = {
 
 const subCommands: Record<string, () => Promise<CommandModule>> = {
   _default: () => import("./commands/default"),
-  model: () => import("./commands/model"),
   init: () => import("./commands/init"),
 };
 

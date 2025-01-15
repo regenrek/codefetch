@@ -1,6 +1,5 @@
 import path from "node:path";
 import fg from "fast-glob";
-import pLimit from "p-limit";
 
 export async function collectFiles(
   baseDir: string,
@@ -88,13 +87,4 @@ export async function collectFiles(
     const relativePath = path.relative(process.cwd(), entry);
     return !ig.ignores(relativePath);
   });
-}
-
-export async function processFilesConcurrently<T>(
-  files: string[],
-  concurrency: number,
-  processor: (file: string) => Promise<T>
-): Promise<T[]> {
-  const limit = pLimit(concurrency);
-  return Promise.all(files.map((file) => limit(() => processor(file))));
 }

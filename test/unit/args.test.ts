@@ -43,4 +43,38 @@ describe("parseArgs", () => {
     expect(result.includeFiles).toContain("src/**/*.ts");
     expect(result.excludeFiles).toContain("test/**/*.ts");
   });
+
+  it("should parse disable-line-numbers flag", () => {
+    const args = ["--disable-line-numbers"];
+    const result = parseArgs(args);
+
+    expect(result.disableLineNumbers).toBe(true);
+  });
+
+  it("should default disable-line-numbers to false when not specified", () => {
+    const args = ["-o", "output.md"];
+    const result = parseArgs(args);
+
+    expect(result.disableLineNumbers).toBe(false);
+  });
+
+  it("should handle multiple options together", () => {
+    const args = [
+      "-o",
+      "output.md",
+      "--disable-line-numbers",
+      "--token-encoder",
+      "cl100k",
+      "-v",
+      "2",
+    ];
+    const result = parseArgs(args);
+
+    expect(result).toMatchObject({
+      output: "output.md",
+      disableLineNumbers: true,
+      tokenEncoder: "cl100k",
+      verbose: 2,
+    });
+  });
 });

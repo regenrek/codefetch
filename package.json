@@ -40,7 +40,9 @@
     "prepack": "unbuild",
     "docs": "DEV=true nuxi dev docs",
     "docs:build": "nuxi build docs",
-    "docs:prepare": "nuxt-component-meta docs"
+    "docs:prepare": "nuxt-component-meta docs",
+    "prerelease": "npm version prerelease --preid=edge",
+    "publish:edge": "npm publish --tag edge"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^0.7.5",

@@ -1,0 +1,7 @@
+dist
+lib
+docs/
+docs/**/*
+.nuxt
+**/.nuxt/**
+test/fixtures/codebase-test/

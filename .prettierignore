@@ -1,2 +1,6 @@
 dist
 lib
+docs/
+docs/**/*
+.nuxt
+**/.nuxt/**

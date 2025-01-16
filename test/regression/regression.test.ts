@@ -128,4 +128,47 @@ describe("Regression Tests", () => {
     expect(markdown).toContain("const x = 1;");
     expect(markdown).toContain("let y = 2;");
   });
+
+  it("parseArgs handles token limiter option", () => {
+    const sequential = parseArgs([
+      "node",
+      "script.js",
+      "--token-limiter",
+      "sequential",
+    ]);
+    expect(sequential.tokenLimiter).toBe("sequential");
+
+    const truncated = parseArgs([
+      "node",
+      "script.js",
+      "--token-limiter",
+      "truncated",
+    ]);
+    expect(truncated.tokenLimiter).toBe("truncated");
+
+    // Default case - no token limiter specified
+    const defaultCase = parseArgs(["node", "script.js"]);
+    expect(defaultCase.tokenLimiter).toBeUndefined();
+  });
+
+  it("parseArgs validates token limiter option", () => {
+    expect(() =>
+      parseArgs(["node", "script.js", "--token-limiter", "invalid"])
+    ).toThrow(
+      'Invalid token limiter. Must be either "sequential" or "truncated"'
+    );
+  });
+
+  it("handles token limiter with max tokens", () => {
+    const args = parseArgs([
+      "node",
+      "script.js",
+      "--max-tokens",
+      "500",
+      "--token-limiter",
+      "sequential",
+    ]);
+    expect(args.maxTokens).toBe(500);
+    expect(args.tokenLimiter).toBe("sequential");
+  });
 });

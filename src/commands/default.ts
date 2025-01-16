@@ -14,7 +14,7 @@ import {
   countTokens,
   fetchModels,
 } from "..";
-import type { TokenEncoder } from "../types";
+import type { TokenEncoder, TokenLimiter } from "../types";
 
 export default async function defaultMain(rawArgs: Argv) {
   const args = parseArgs(process.argv.slice(2));
@@ -35,7 +35,7 @@ export default async function defaultMain(rawArgs: Argv) {
   const projectRoot = findProjectRoot(cwd);
   if (projectRoot !== cwd) {
     const shouldExit = await logger.prompt(
-      `Warning: It's recommended to run codefetch from the root directory (${projectRoot}).\nExit and restart from root?`,
+      `Warning: It's recommended to run codefetch from the root directory (${projectRoot}). Use --include-dirs instead.\nExit and restart from root?`,
       {
         type: "confirm",
       }
@@ -64,6 +64,7 @@ export default async function defaultMain(rawArgs: Argv) {
     gitignore: true,
     tokenEncoder: args.tokenEncoder as TokenEncoder,
     disableLineNumbers: args.disableLineNumbers,
+    tokenLimiter: args.tokenLimiter,
   });
 
   const ig = ignore().add(
@@ -98,11 +99,12 @@ export default async function defaultMain(rawArgs: Argv) {
   });
 
   const markdown = await generateMarkdown(files, {
-    maxTokens: config.maxTokens,
-    verbose: config.verbose,
-    projectTree: config.projectTree,
-    tokenEncoder: config.tokenEncoder,
-    disableLineNumbers: config.disableLineNumbers,
+    maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
+    verbose: Number(config.verbose || 0),
+    projectTree: Number(config.projectTree || 0),
+    tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
+    disableLineNumbers: Boolean(config.disableLineNumbers),
+    tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
   });
 
   // Count tokens if needed
@@ -112,6 +114,7 @@ export default async function defaultMain(rawArgs: Argv) {
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
       logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
+      consola.warn("AAAAAAAA");
     }
   }
 

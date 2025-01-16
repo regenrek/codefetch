@@ -1,27 +1,14 @@
-export { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import fs from "node:fs";
+export { afterEach, describe, it, expect, vi } from "vitest";
+import { consola } from "consola";
+import { beforeAll, beforeEach, vi } from "vitest";
 
-export const TEST_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "__test__"
-);
+beforeAll(() => {
+  // if we enabled this stdout is empty and console.log fail
+  // Not sure how to mock the consola - docs aren't helping here.
+  // would be much easier...
+  //consola.wrapAll();
+});
 
-export function createTestDir() {
-  if (!fs.existsSync(TEST_DIR)) {
-    fs.mkdirSync(TEST_DIR, { recursive: true });
-  }
-}
-
-export function cleanupTestDir() {
-  if (fs.existsSync(TEST_DIR)) {
-    fs.rmSync(TEST_DIR, { recursive: true, force: true });
-  }
-}
-
-export function createTestFile(filename: string, content: string = "") {
-  const filePath = path.join(TEST_DIR, filename);
-  fs.writeFileSync(filePath, content);
-  return filePath;
-}
+beforeEach(() => {
+  consola.mockTypes(() => vi.fn());
+});

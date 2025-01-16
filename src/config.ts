@@ -1,6 +1,7 @@
 import { loadConfig } from "c12";
-import { resolve } from "node:path";
-import type { TokenEncoder } from "./types";
+import { resolve } from "pathe";
+import type { TokenEncoder, TokenLimiter } from "./types";
+import { defu } from "defu";
 
 export interface CodefetchConfig {
   outputPath: string;
@@ -17,6 +18,7 @@ export interface CodefetchConfig {
   help?: boolean;
   projectTree: number;
   tokenEncoder: TokenEncoder;
+  tokenLimiter: TokenLimiter;
   trackedModels?: string[];
   dryRun?: boolean;
   disableLineNumbers?: boolean;
@@ -32,6 +34,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",
+  tokenLimiter: "truncated",
   trackedModels: [
     "chatgpt-4o-latest",
     "claude-3-5-sonnet-20241022",
@@ -49,11 +52,23 @@ export async function loadCodefetchConfig(
 ): Promise<CodefetchConfig> {
   const defaults = getDefaultConfig();
 
+  // Custom merger that replaces trackedModels instead of merging
+  const customMerger = (obj: any, defaults: any) => {
+    // If obj has trackedModels, use it instead of merging with defaults
+    if (obj.trackedModels) {
+      const result = defu(obj, defaults);
+      result.trackedModels = obj.trackedModels;
+      return result;
+    }
+    return defu(obj, defaults);
+  };
+
   const { config } = await loadConfig<CodefetchConfig>({
     name: "codefetch",
     cwd,
     defaults,
     overrides: overrides as CodefetchConfig,
+    merger: customMerger,
   });
 
   return await resolveCodefetchConfig(config, cwd);

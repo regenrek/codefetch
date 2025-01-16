@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseArgs } from "../../src/args";
+import { resolve } from "pathe";
 
 describe("parseArgs", () => {
   it("should parse basic arguments", () => {
@@ -13,10 +14,33 @@ describe("parseArgs", () => {
   });
 
   it("should handle extensions correctly", () => {
-    const args = ["-e", "ts,js"];
-    const result = parseArgs(args);
+    expect(parseArgs(["-e", "ts,js,png"]).extensions).toEqual([
+      ".ts",
+      ".js",
+      ".png",
+    ]);
+    expect(parseArgs(["-e", ".ts,.js,.png,.txt"]).extensions).toEqual([
+      ".ts",
+      ".js",
+      ".png",
+      ".txt",
+    ]);
 
-    expect(result.extensions).toEqual([".ts", ".js"]);
+    // Should throw for invalid formats
+    expect(() => parseArgs(["-e", " ts,js "])).toThrow(
+      "Invalid extension format"
+    );
+    expect(() => parseArgs(["-e", "ts, js"])).toThrow(
+      "Invalid extension format"
+    );
+    expect(() => parseArgs(["-e", ".ts, .js"])).toThrow(
+      "Invalid extension format"
+    );
+
+    expect(parseArgs(["--extension", ".ts,.js"]).extensions).toEqual([
+      ".ts",
+      ".js",
+    ]);
   });
 
   it("should parse token encoder", () => {
@@ -76,5 +100,19 @@ describe("parseArgs", () => {
       tokenEncoder: "cl100k",
       verbose: 2,
     });
+  });
+
+  it("handles directory argument correctly", () => {
+    // Test with provided directory
+    const argsWithDir = parseArgs(["--dir", "./src"]);
+    expect(argsWithDir.dir).toBe(resolve("./src"));
+
+    // Test with relative path
+    const argsWithRelativeDir = parseArgs(["--dir", "../project"]);
+    expect(argsWithRelativeDir.dir).toBe(resolve("../project"));
+
+    // Test default case (undefined when not provided)
+    const argsWithoutDir = parseArgs([]);
+    expect(argsWithoutDir.dir).toBeUndefined();
   });
 });

@@ -1,98 +1,54 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
+import { describe, it, expect } from "vitest";
+import { resolve, join } from "pathe";
 import { generateMarkdown } from "../../src/index";
 import { countTokens } from "../../src/token-counter";
 
-const TEST_DIR = path.join(__dirname, "..", "__test__");
+const FIXTURE_DIR = resolve(__dirname, "../fixtures/codebase-test");
+const UTILS_DIR = join(FIXTURE_DIR, "src/utils");
 
-/**
- * We'll create two small files, but set a small maxToken limit,
- * expecting immediate truncation in the middle of the second file.
- */
 describe("generateMarkdown with chunk-based token limit", () => {
-  beforeEach(async () => {
-    // Clean up
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
-    }
-    fs.mkdirSync(TEST_DIR, { recursive: true });
-
-    // Create a couple of test files
-    fs.writeFileSync(
-      path.join(TEST_DIR, "test1.ts"),
-      "console.log('file1');\n".repeat(20)
-    );
-    fs.writeFileSync(
-      path.join(TEST_DIR, "test2.js"),
-      "console.log('file2');\n".repeat(20)
-    );
-  });
-
-  afterEach(() => {
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
-    }
-  });
-
   it("enforces maxTokens by chunk-based reading", async () => {
-    // Let's pick a small limit, e.g. 60 tokens total
-    // (You must pick something that ensures partway truncation.)
-    const MAX_TOKENS = 60;
-
-    const files = [
-      path.join(TEST_DIR, "test1.ts"),
-      path.join(TEST_DIR, "test2.js"),
-    ];
+    const MAX_TOKENS = 50;
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
 
     const result = await generateMarkdown(files, {
       maxTokens: MAX_TOKENS,
       verbose: 0,
       projectTree: 0,
-      tokenEncoder: "simple", // or cl100k, etc.
+      tokenEncoder: "simple",
+      tokenLimiter: "truncated",
     });
 
-    // The result should not exceed 60 tokens
-    // We can do a quick sanity check by re-counting
-    const usedTokens = countTokens(result, "simple");
+    const usedTokens = await countTokens(result, "simple");
     expect(usedTokens).toBeLessThanOrEqual(MAX_TOKENS);
 
-    // The second file might appear partially or not at all,
-    // depending on the chunk logic. We can check for "[TRUNCATED]"
-    // or partial lines from test2.js:
     if (result.includes("test2.js")) {
-      // We included at least the heading for test2.js. Possibly truncated lines
-      // in the middle of that file. Either is acceptable, as long as we see
-      // truncated indicator or we stop reading lines.
       expect(result).toContain("test2.js");
       expect(result).toContain("[TRUNCATED]");
     } else {
-      // Means we truncated before the second file started
       expect(result).toContain("[TRUNCATED]");
     }
   });
 
   it("generates markdown with line numbers by default", async () => {
-    const testFile = path.join(TEST_DIR, "test.ts");
-    fs.writeFileSync(testFile, "console.log('test');\nconst x = 1;");
+    const files = [join(UTILS_DIR, "test1.ts")];
 
-    const markdown = await generateMarkdown([testFile], {
+    const markdown = await generateMarkdown(files, {
       maxTokens: null,
       verbose: 0,
       projectTree: 0,
       tokenEncoder: "simple",
       disableLineNumbers: false,
     });
-
-    expect(markdown).toMatch(/1\|console\.log\('test'\);/);
-    expect(markdown).toMatch(/2\|const x = 1;/);
+    expect(markdown).toMatch(/1 \| console\.log\("begin-of-file"\);/);
+    expect(markdown).toMatch(/9 \| function handleFileChunks/);
+    expect(markdown).toMatch(/144 \| console\.log\("end-of-file"\);/);
   });
 
   it("generates markdown without line numbers when disabled", async () => {
-    const testFile = path.join(TEST_DIR, "test.ts");
-    fs.writeFileSync(testFile, "console.log('test');\nconst x = 1;");
+    const files = [join(UTILS_DIR, "test1.ts")];
 
-    const markdown = await generateMarkdown([testFile], {
+    const markdown = await generateMarkdown(files, {
       maxTokens: null,
       verbose: 0,
       projectTree: 0,
@@ -102,24 +58,106 @@ describe("generateMarkdown with chunk-based token limit", () => {
 
     expect(markdown).not.toMatch(/1\|/);
     expect(markdown).not.toMatch(/2\|/);
-    expect(markdown).toContain("console.log('test');");
-    expect(markdown).toContain("const x = 1;");
+    expect(markdown).toContain("function handleFileChunks");
   });
 
-  it("handles empty files correctly with line numbers disabled", async () => {
-    const testFile = path.join(TEST_DIR, "empty.ts");
-    fs.writeFileSync(testFile, "");
+  it("handles project tree generation correctly", async () => {
+    const files = [join(UTILS_DIR, "test1.ts")];
 
-    const markdown = await generateMarkdown([testFile], {
+    const markdown = await generateMarkdown(files, {
       maxTokens: null,
+      verbose: 0,
+      projectTree: 2,
+      tokenEncoder: "simple",
+      disableLineNumbers: false,
+    });
+
+    expect(markdown).toContain("Project Structure:");
+    expect(markdown).toMatch(/└── /);
+    expect(markdown).toContain("test1.ts");
+    expect(markdown).toMatch(/144 \| console\.log\("end-of-file"\);/);
+  });
+
+  it("respects token limits with project tree", async () => {
+    const files = [join(UTILS_DIR, "test1.ts")];
+
+    const markdown = await generateMarkdown(files, {
+      maxTokens: 20,
+      verbose: 0,
+      projectTree: 2,
+      tokenEncoder: "simple",
+      disableLineNumbers: false,
+    });
+
+    const tokens = await countTokens(markdown, "simple");
+    expect(tokens).toBeLessThanOrEqual(20);
+  });
+});
+
+describe("generateMarkdown with token limiting strategies", () => {
+  it("should process files sequentially until token limit in sequential mode", async () => {
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: 100,
       verbose: 0,
       projectTree: 0,
       tokenEncoder: "simple",
-      disableLineNumbers: true,
+      tokenLimiter: "sequential",
     });
 
-    expect(markdown).toContain("empty.ts");
-    expect(markdown).toContain("```");
-    expect(markdown).toContain("```\n");
+    expect(result).toContain("test1.ts");
+    const file1Lines =
+      result.match(/console\.log\("begin-of-file"\);/g)?.length || 0;
+    const file2Lines =
+      result.match(/console\.log\("end-of-file"\);/g)?.length || 0;
+
+    expect(file1Lines).toBeGreaterThan(0);
+    expect(file2Lines).toBeLessThanOrEqual(file1Lines);
+  });
+
+  it("should distribute tokens evenly across files in truncated mode", async () => {
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: 100,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      tokenLimiter: "truncated",
+    });
+
+    expect(result).toContain("test1.ts");
+    expect(result).toContain("test2.js");
+
+    const file1Lines =
+      result.match(/console\.log\("begin-of-file"\);/g)?.length || 0;
+    const file2Lines =
+      result.match(/console\.log\("end-of-file"\);/g)?.length || 0;
+
+    const maxDiff = Math.abs(file1Lines - file2Lines);
+    expect(maxDiff).toBeLessThanOrEqual(2);
+  });
+
+  it("should use truncated mode by default when no limiter is specified", async () => {
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: 100,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+    });
+
+    expect(result).toContain("test1.ts");
+    expect(result).toContain("test2.js");
+
+    const file1Lines =
+      result.match(/console\.log\("begin-of-file"\);/g)?.length || 0;
+    const file2Lines =
+      result.match(/console\.log\("end-of-file"\);/g)?.length || 0;
+
+    const maxDiff = Math.abs(file1Lines - file2Lines);
+    expect(maxDiff).toBeLessThanOrEqual(2);
   });
 });

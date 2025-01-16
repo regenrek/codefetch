@@ -2,7 +2,12 @@ import unjs from "eslint-config-unjs";
 
 // https://github.com/unjs/eslint-config
 export default unjs({
-  ignores: [],
+  ignores: [
+    "docs/**",
+    "docs/.nuxt/**",
+    "docs",
+    "test/fixtures/codebase-test/**",
+  ],
   rules: {
     "unicorn/no-null": 0,
     "unicorn/prefer-top-level-await": 0,

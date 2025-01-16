@@ -68,6 +68,7 @@ If no output file is specified (`-o` or `--output`), it will print to stdout.
 | `--dir <path>` | Specify the directory to scan (defaults to current directory) |
 | `--max-tokens <number>` | Limit output tokens (default: 500,000) |
 | `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
+| `--token-limiter <type>` | Token limiting strategy when using --max-tokens (sequential, truncated) |
 | `--include-files <pattern,...>` | Include specific files (supports patterns like *.ts) |
 | `--exclude-files <pattern,...>` | Exclude specific files (supports patterns like *.test.ts) |
 | `--include-dir <dir,...>` | Include specific directories |
@@ -109,6 +110,23 @@ Project Tree:
     │   └── index.test.ts
     └── package.json
 ```
+
+## Token Limiting Strategies
+
+When using `--max-tokens`, you can control how tokens are distributed across files using the `--token-limiter` option:
+
+```bash
+# Sequential mode - process files in order until reaching token limit
+npx codefetch --max-tokens 500 --token-limiter sequential
+
+# Truncated mode (default) - distribute tokens evenly across all files
+npx codefetch --max-tokens 500 --token-limiter truncated
+```
+
+![tokenlimiter](/public/tokenlimiter.png)
+
+- `sequential`: Processes files in order until the total token limit is reached. Useful when you want complete content from the first files.
+- `truncated`: Distributes tokens evenly across all files, showing partial content from each file. This is the default mode and is useful for getting an overview of the entire codebase.
 
 ## Ignoring Files
 

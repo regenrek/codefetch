@@ -1,6 +1,6 @@
 import mri from "mri";
 import { resolve } from "pathe";
-import type { TokenEncoder } from "./types";
+import type { TokenEncoder, TokenLimiter } from "./types";
 
 const VALID_ENCODERS = new Set(["simple", "p50k", "o200k", "cl100k"]);
 
@@ -31,7 +31,8 @@ Options:
   -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
   -t, --project-tree [depth]  Generate visual project tree (optional depth, default: 2)
   --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
-  --disable-line-numbers       Disable line numbers in output
+  --token-limiter <type>      Token limiting strategy (sequential, truncated)
+  --disable-line-numbers      Disable line numbers in output
   -h, --help                  Display this help message
 `);
 }
@@ -58,6 +59,7 @@ export function parseArgs(args: string[]) {
       "max-tokens",
       "output-path",
       "token-encoder",
+      "token-limiter",
     ],
   });
 
@@ -73,9 +75,22 @@ export function parseArgs(args: string[]) {
 
   // Process extensions to ensure they start with a dot
   const extensions = argv.extension
-    ? (Array.isArray(argv.extension) ? argv.extension : [argv.extension]).map(
-        (ext: string) => (ext.startsWith(".") ? ext : `.${ext}`)
-      )
+    ? (() => {
+        const input = String(argv.extension);
+        // Validate format: either "ts,js,png" or ".ts,.js,.png"
+        const isValid =
+          /^(\.[a-z\d]+,)*\.[a-z\d]+$|^([a-z\d]+,)*[a-z\d]+$/i.test(input);
+
+        if (!isValid) {
+          throw new Error(
+            "Invalid extension format. Use: ts,js,png or .ts,.js,.png"
+          );
+        }
+
+        return input
+          .split(",")
+          .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+      })()
     : undefined;
 
   // Helper to split comma-separated values
@@ -98,9 +113,19 @@ export function parseArgs(args: string[]) {
     );
   }
 
+  if (
+    argv["token-limiter"] &&
+    !["sequential", "truncated"].includes(argv["token-limiter"])
+  ) {
+    throw new Error(
+      'Invalid token limiter. Must be either "sequential" or "truncated"'
+    );
+  }
+
   return {
     output: argv.output || undefined,
     outputPath: argv["output-path"] ? resolve(argv["output-path"]) : undefined,
+    dir: argv.dir ? resolve(argv.dir) : undefined,
     extensions,
     includeFiles: splitValues(argv["include-files"]),
     excludeFiles: splitValues(argv["exclude-files"]),
@@ -112,6 +137,9 @@ export function parseArgs(args: string[]) {
     help: Boolean(argv.help),
     tokenEncoder: (argv["token-encoder"] || undefined) as
       | TokenEncoder
+      | undefined,
+    tokenLimiter: (argv["token-limiter"] || undefined) as
+      | TokenLimiter
       | undefined,
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),

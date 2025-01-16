@@ -15,5 +15,9 @@
     "noEmit": true,
     "skipLibCheck": true,
     "lib": ["ESNext"]
-  }
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*"
+  ]
 } 

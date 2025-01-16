@@ -3,6 +3,7 @@ import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 
 const VALID_ENCODERS = new Set(["simple", "p50k", "o200k", "cl100k"]);
+const VALID_PROMPTS = new Set(["dev", "architect", "tester"]);
 
 export function printHelp() {
   console.log(`
@@ -34,6 +35,7 @@ Options:
   --token-limiter <type>      Token limiting strategy (sequential, truncated)
   --disable-line-numbers      Disable line numbers in output
   -h, --help                  Display this help message
+  -p, --prompt <type>         Add a default prompt (dev, architect, tester) or add a custom prompt file with .md/.txt extension
 `);
 }
 
@@ -46,6 +48,7 @@ export function parseArgs(args: string[]) {
       t: "project-tree",
       h: "help",
       d: "dry-run",
+      p: "prompt",
     },
     boolean: ["help", "dry-run", "disable-line-numbers"],
     string: [
@@ -60,6 +63,7 @@ export function parseArgs(args: string[]) {
       "output-path",
       "token-encoder",
       "token-limiter",
+      "prompt",
     ],
   });
 
@@ -122,6 +126,20 @@ export function parseArgs(args: string[]) {
     );
   }
 
+  if (
+    argv.prompt &&
+    argv.prompt !== true &&
+    !argv.prompt.endsWith(".md") &&
+    !argv.prompt.endsWith(".txt") &&
+    !VALID_PROMPTS.has(argv.prompt)
+  ) {
+    throw new Error(
+      `Invalid prompt. Must be one of: ${[...VALID_PROMPTS].join(
+        ", "
+      )} or a custom file with .md/.txt extension`
+    );
+  }
+
   return {
     output: argv.output || undefined,
     outputPath: argv["output-path"] ? resolve(argv["output-path"]) : undefined,
@@ -143,5 +161,6 @@ export function parseArgs(args: string[]) {
       | undefined,
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
+    prompt: argv.prompt === true ? "default" : argv.prompt || undefined,
   };
 }

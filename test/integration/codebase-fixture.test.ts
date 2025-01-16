@@ -9,15 +9,20 @@ const CODEFETCH_DIR = join(FIXTURE_DIR, "codefetch");
 
 describe("Integration: codebase-test fixture", () => {
   beforeEach(() => {
-    // Clean up codefetch directory before each test.
     if (fs.existsSync(CODEFETCH_DIR)) {
       fs.rmSync(CODEFETCH_DIR, { recursive: true, force: true });
+    }
+    if (fs.existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
+      fs.unlinkSync(join(FIXTURE_DIR, "codefetch.config.mjs"));
     }
   });
 
   afterEach(() => {
     if (fs.existsSync(CODEFETCH_DIR)) {
       fs.rmSync(CODEFETCH_DIR, { recursive: true, force: true });
+    }
+    if (fs.existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
+      fs.unlinkSync(join(FIXTURE_DIR, "codefetch.config.mjs"));
     }
   });
 

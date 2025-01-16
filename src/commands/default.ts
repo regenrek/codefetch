@@ -105,6 +105,7 @@ export default async function defaultMain(rawArgs: Argv) {
     tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
     disableLineNumbers: Boolean(config.disableLineNumbers),
     tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+    prompt: config.prompt,
   });
 
   // Count tokens if needed
@@ -114,7 +115,6 @@ export default async function defaultMain(rawArgs: Argv) {
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
       logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
-      consola.warn("AAAAAAAA");
     }
   }
 

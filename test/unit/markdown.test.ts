@@ -92,6 +92,85 @@ describe("generateMarkdown with chunk-based token limit", () => {
     const tokens = await countTokens(markdown, "simple");
     expect(tokens).toBeLessThanOrEqual(20);
   });
+
+  it("handles prompt within token limits", async () => {
+    const MAX_TOKENS = 100;
+    const PROMPT = "This is a test prompt for the codebase analysis.";
+    const files = [join(UTILS_DIR, "test1.ts")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: MAX_TOKENS,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      tokenLimiter: "truncated",
+      prompt: PROMPT,
+    });
+
+    const usedTokens = await countTokens(result, "simple");
+    expect(usedTokens).toBeLessThanOrEqual(MAX_TOKENS);
+    expect(result).toContain(PROMPT);
+    expect(result).toContain("test1.ts");
+  });
+
+  it("skips prompt when it exceeds token limit", async () => {
+    const MAX_TOKENS = 10;
+    const PROMPT =
+      "This is a very long prompt that should exceed the token limit and be skipped.";
+    const files = [join(UTILS_DIR, "test1.ts")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: MAX_TOKENS,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      tokenLimiter: "truncated",
+      prompt: PROMPT,
+    });
+
+    const usedTokens = await countTokens(result, "simple");
+    expect(usedTokens).toBeLessThanOrEqual(MAX_TOKENS);
+    expect(result).not.toContain(PROMPT);
+  });
+
+  it("includes prompt before project tree", async () => {
+    const PROMPT = "Analysis prompt:";
+    const files = [join(UTILS_DIR, "test1.ts")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: null,
+      verbose: 0,
+      projectTree: 2,
+      tokenEncoder: "simple",
+      prompt: PROMPT,
+    });
+
+    const promptIndex = result.indexOf(PROMPT);
+    const treeIndex = result.indexOf("Project Structure:");
+
+    expect(promptIndex).toBeGreaterThanOrEqual(0);
+    expect(treeIndex).toBeGreaterThanOrEqual(0);
+    expect(promptIndex).toBeLessThan(treeIndex);
+  });
+
+  it("respects token limits with prompt and project tree", async () => {
+    const MAX_TOKENS = 50;
+    const PROMPT = "Analysis:";
+    const files = [join(UTILS_DIR, "test1.ts")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: MAX_TOKENS,
+      verbose: 0,
+      projectTree: 2,
+      tokenEncoder: "simple",
+      prompt: PROMPT,
+    });
+
+    const usedTokens = await countTokens(result, "simple");
+    expect(usedTokens).toBeLessThanOrEqual(MAX_TOKENS);
+    expect(result).toContain(PROMPT);
+    expect(result).toContain("Project Structure:");
+  });
 });
 
 describe("generateMarkdown with token limiting strategies", () => {
@@ -159,5 +238,44 @@ describe("generateMarkdown with token limiting strategies", () => {
 
     const maxDiff = Math.abs(file1Lines - file2Lines);
     expect(maxDiff).toBeLessThanOrEqual(2);
+  });
+
+  it("should include prompt in sequential mode token calculation", async () => {
+    const PROMPT = "Sequential analysis:";
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: 100,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      tokenLimiter: "sequential",
+      prompt: PROMPT,
+    });
+
+    expect(result).toContain(PROMPT);
+    expect(result).toContain("test1.ts");
+    const usedTokens = await countTokens(result, "simple");
+    expect(usedTokens).toBeLessThanOrEqual(100);
+  });
+
+  it("should include prompt in truncated mode token distribution", async () => {
+    const PROMPT = "Truncated analysis:";
+    const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
+
+    const result = await generateMarkdown(files, {
+      maxTokens: 100,
+      verbose: 0,
+      projectTree: 0,
+      tokenEncoder: "simple",
+      tokenLimiter: "truncated",
+      prompt: PROMPT,
+    });
+
+    expect(result).toContain(PROMPT);
+    expect(result).toContain("test1.ts");
+    expect(result).toContain("test2.js");
+    const usedTokens = await countTokens(result, "simple");
+    expect(usedTokens).toBeLessThanOrEqual(100);
   });
 });

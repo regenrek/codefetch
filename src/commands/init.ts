@@ -8,17 +8,16 @@ const createConfigFile = async (
   config: Partial<CodefetchConfig>,
   cwd: string
 ) => {
-  const configContent = `import type { CodefetchConfig } from 'codefetch'
-
+  const configContent = `/** @type {import('codefetch').CodefetchConfig} */
 export default {
   ${Object.entries(config)
     .filter(([_, value]) => value !== undefined)
     .map(([key, value]) => `${key}: ${JSON.stringify(value, null, 2)}`)
     .join(",\n  ")}
-} satisfies Partial<CodefetchConfig>
+}
 `;
 
-  await fsp.writeFile(join(cwd, "codefetch.config.ts"), configContent);
+  await fsp.writeFile(join(cwd, "codefetch.config.mjs"), configContent);
 };
 
 const createIgnoreFile = async (cwd: string) => {

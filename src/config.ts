@@ -2,6 +2,8 @@ import { loadConfig } from "c12";
 import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 import { defu } from "defu";
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 
 export interface CodefetchConfig {
   outputPath: string;
@@ -22,6 +24,7 @@ export interface CodefetchConfig {
   trackedModels?: string[];
   dryRun?: boolean;
   disableLineNumbers?: boolean;
+  prompt?: string;
 }
 
 const defaultOutput = "codebase.md";
@@ -44,7 +47,51 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   ],
   dryRun: false,
   disableLineNumbers: false,
+  prompt: undefined,
 });
+
+const VALID_PROMPTS = new Set(["dev", "architect", "tester"]);
+
+async function resolvePrompt(
+  promptName: string | undefined,
+  cwd: string
+): Promise<string | undefined> {
+  if (!promptName) {
+    return undefined;
+  }
+
+  // Check for default prompt when only -p is used
+  if (promptName === "default") {
+    const defaultPath = resolve(cwd, "codefetch/prompts/default.md");
+    if (existsSync(defaultPath)) {
+      return await readFile(defaultPath, "utf8");
+    }
+    return undefined;
+  }
+
+  // Check built-in prompts
+  if (VALID_PROMPTS.has(promptName)) {
+    try {
+      const { default: promptContent } = await import(
+        `../prompts/${promptName}.ts`
+      );
+      return promptContent;
+    } catch {
+      throw new Error(`Built-in prompt "${promptName}" not found`);
+    }
+  }
+
+  // Check for custom prompts in codefetch/prompts
+  if (promptName.endsWith(".md") || promptName.endsWith(".txt")) {
+    const customPath = resolve(cwd, "codefetch/prompts", promptName);
+    if (existsSync(customPath)) {
+      return await readFile(customPath, "utf8");
+    }
+    throw new Error(`Custom prompt file not found: ${promptName}`);
+  }
+
+  return undefined;
+}
 
 export async function loadCodefetchConfig(
   cwd: string,
@@ -54,13 +101,15 @@ export async function loadCodefetchConfig(
 
   // Custom merger that replaces trackedModels instead of merging
   const customMerger = (obj: any, defaults: any) => {
-    // If obj has trackedModels, use it instead of merging with defaults
+    // If obj has trackedModels or prompt, use them instead of merging
+    const result = defu(obj, defaults);
     if (obj.trackedModels) {
-      const result = defu(obj, defaults);
       result.trackedModels = obj.trackedModels;
-      return result;
     }
-    return defu(obj, defaults);
+    if (obj.prompt !== undefined) {
+      result.prompt = obj.prompt;
+    }
+    return result;
   };
 
   const { config } = await loadConfig<CodefetchConfig>({
@@ -102,6 +151,16 @@ export async function resolveCodefetchConfig(
     config.excludeDirs = config.excludeDirs.map((pattern) =>
       resolve(cwd, pattern)
     );
+  }
+
+  if (config.prompt) {
+    const promptContent = await resolvePrompt(config.prompt, cwd);
+    if (promptContent) {
+      config.prompt = promptContent;
+    } else if (config.prompt === "default") {
+      // If default prompt was requested but not found, silently continue
+      config.prompt = undefined;
+    }
   }
 
   return config;

@@ -41,26 +41,7 @@ Dry run (only output to console)
 npx codefetch --d
 ```
 
-## Integrate codefetch into your project
-
-Initialize your project with codefetch:
-
-```bash
-npx codefetch init
-```
-
-This will:
-1. Create a `.codefetchignore` file for excluding files
-2. Generate a `codefetch.config.ts` with your preferences
-3. Set up the project structure
-
-## Or install globally:
-```bash
-npm install -g codefetch
-codefetch -o output.md
-```
-
-If no output file is specified (`-o` or `--output`), it will print to stdout.
+If no output file is specified (`-o` or `--output`), it will print to `codefetch/codebase.md`
 
 ## Options
 
@@ -112,6 +93,52 @@ Project Tree:
     │   └── index.test.ts
     └── package.json
 ```
+
+### Using Prompts
+
+You can add predefined or custom prompts to your output:
+
+```bash
+# Use default prompt (looks for codefetch/prompts/default.md)
+npx codefetch -p
+npx codefetch --prompt
+
+# Use built-in prompts
+npx codefetch --prompt dev
+npx codefetch -p architect
+npx codefetch --prompt tester
+
+# Use custom prompts
+npx codefetch --prompt custom-prompt.md
+npx codefetch -p my-architect.txt
+```
+
+#### Custom Prompts
+
+Create custom prompts in `codefetch/prompts/` directory:
+
+1. Create a markdown file (e.g., `codefetch/prompts/my-prompt.md`)
+2. Use it with `--prompt my-prompt.md`
+
+You can also set a default prompt in your `codefetch.config.ts`:
+
+```ts
+export default defineCodefetchConfig({
+  // Use built-in prompt
+  prompt: "dev",
+
+  // Or use custom prompt file
+  prompt: "custom-prompt.md",
+})
+```
+
+The prompt resolution order is:
+1. CLI argument (`-p` or `--prompt`)
+2. Config file prompt setting
+3. No prompt if neither is specified
+
+When using just `-p` or `--prompt` without a value, codefetch will look for `codefetch/prompts/default.md`.
+
 
 ## Token Limiting Strategies
 
@@ -178,6 +205,54 @@ Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codeb
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
 
 
+## Integrate codefetch into your project
+
+Initialize your project with codefetch:
+
+```bash
+npx codefetch init
+```
+
+This will:
+1. Create a `.codefetchignore` file for excluding files
+2. Generate a `codefetch.config.mjs` with your preferences
+3. Set up the project structure
+
+## Or install globally:
+```bash
+npm install -g codefetch
+codefetch -o output.md
+```
+
+## Configuration
+
+Create a `codefetch.config.mjs` file:
+
+```js
+/** @type {import('codefetch').CodefetchConfig} */
+export default {
+  outputPath: "codefetch",
+  outputFile: "codebase.md",
+  maxTokens: 999_000,
+  verbose: 1,
+  projectTree: 2,
+  defaultIgnore: true,
+  gitignore: true,
+  tokenEncoder: "simple",
+  trackedModels: [
+    "chatgpt-4o-latest",
+    "claude-3-5-sonnet-20241022",
+    "o1",
+    "deepseek-v3",
+    "gemini-exp-1206",
+  ],
+  includeDirs: ["src", "test"],
+  excludeDirs: ["test/fixtures"],
+  dryRun: false,
+  disableLineNumbers: false,
+}
+```
+
 ## License
 
 MIT 
@@ -195,3 +270,4 @@ This project was inspired by
 
 * [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
 * [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
+

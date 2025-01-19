@@ -1,15 +1,9 @@
 import mri from "mri";
 import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
+import { RESERVED_PROMPTS } from "./constants";
 
 const VALID_ENCODERS = new Set(["simple", "p50k", "o200k", "cl100k"]);
-const RESERVED_PROMPTS = new Set([
-  "default",
-  "fix",
-  "improve",
-  "testgen",
-  "codegen",
-]);
 
 export function printHelp() {
   console.log(`

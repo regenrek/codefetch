@@ -4,6 +4,7 @@ import type { TokenEncoder, TokenLimiter } from "./types";
 import { defu } from "defu";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { RESERVED_PROMPTS } from "./constants";
 
 export interface CodefetchConfig {
   outputPath: string;
@@ -54,7 +55,17 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   templateVars: {},
 });
 
-const VALID_PROMPTS = new Set(["dev", "architect", "tester"]);
+// Update the PromptModule type to match the actual structure
+type PromptModule = {
+  default: string;
+};
+
+const builtInPrompts: Record<string, () => Promise<PromptModule>> = {
+  codegen: () => import("./prompts/codegen"),
+  fix: () => import("./prompts/fix"),
+  improve: () => import("./prompts/improve"),
+  testgen: () => import("./prompts/testgen"),
+};
 
 async function resolvePrompt(
   promptName: string | undefined,
@@ -74,12 +85,10 @@ async function resolvePrompt(
   }
 
   // Check built-in prompts
-  if (VALID_PROMPTS.has(promptName)) {
+  if (RESERVED_PROMPTS.has(promptName)) {
     try {
-      const { default: promptContent } = await import(
-        `../prompts/${promptName}.ts`
-      );
-      return promptContent;
+      const mod = await builtInPrompts[promptName]?.();
+      return mod?.default; // Now just return the string
     } catch {
       throw new Error(`Built-in prompt "${promptName}" not found`);
     }

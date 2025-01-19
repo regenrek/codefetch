@@ -2,7 +2,7 @@
 
 ![Codefetch Cover](/public/cover.jpeg)
 
-[![npm (tag)](https://img.shields.io/npm/v/codefetch/edge)](https://www.npmjs.com/package/codefetch)
+[![npm (tag)](https://img.shields.io/npm/v/codefetch)](https://www.npmjs.com/package/codefetch) [![npm (tag)](https://img.shields.io/npm/v/codefetch/edge)](https://www.npmjs.com/package/codefetch)
 
 >Turn code into Markdown for LLMs with one simple terminal command
 
@@ -15,9 +15,18 @@ Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898
 Basic usage with output file and tree
 ```bash
 npx codefetch
+# You codebase will be saved to `codefetch/codebase.md`
 ```
 
-You codebase will be saved to `codefetch/codebase.md`
+Include a default prompt:
+```bash
+npx codefetch -p improve
+```
+
+Include a tree with depth
+```bash
+npx codefetch -t 3
+```
 
 Filter by file extensions:
 ```bash
@@ -104,9 +113,10 @@ npx codefetch -p
 npx codefetch --prompt
 
 # Use built-in prompts
-npx codefetch --prompt dev
-npx codefetch -p architect
-npx codefetch --prompt tester
+npx codefetch -p fix # fixes codebase
+npx codefetch -p improve # improves codebase
+npx codefetch -p codegen # generates code
+npx codefetch -p testgen # generates tests
 
 # Use custom prompts
 npx codefetch --prompt custom-prompt.md
@@ -120,16 +130,16 @@ Create custom prompts in `codefetch/prompts/` directory:
 1. Create a markdown file (e.g., `codefetch/prompts/my-prompt.md`)
 2. Use it with `--prompt my-prompt.md`
 
-You can also set a default prompt in your `codefetch.config.ts`:
+You can also set a default prompt in your `codefetch.config.mjs`:
 
-```ts
-export default defineCodefetchConfig({
-  // Use built-in prompt
-  prompt: "dev",
+```js
+export default {
+  prompt: "dev", // Use built-in prompt
+}
 
-  // Or use custom prompt file
-  prompt: "custom-prompt.md",
-})
+export default {
+  prompt: "custom-prompt.md", // Use custom prompt file
+}
 ```
 
 The prompt resolution order is:
@@ -138,7 +148,6 @@ The prompt resolution order is:
 3. No prompt if neither is specified
 
 When using just `-p` or `--prompt` without a value, codefetch will look for `codefetch/prompts/default.md`.
-
 
 ## Token Limiting Strategies
 
@@ -205,6 +214,12 @@ Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codeb
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
 
 
+## Or install globally:
+```bash
+npm install -g codefetch
+codefetch -o output.md
+```
+
 ## Integrate codefetch into your project
 
 Initialize your project with codefetch:
@@ -218,27 +233,38 @@ This will:
 2. Generate a `codefetch.config.mjs` with your preferences
 3. Set up the project structure
 
-## Or install globally:
-```bash
-npm install -g codefetch
-codefetch -o output.md
-```
 
-## Configuration
+### `codefetch.config.mjs` Config File
 
-Create a `codefetch.config.mjs` file:
+Create a `codefetch.config.mjs` file in your project root:
 
 ```js
-/** @type {import('codefetch').CodefetchConfig} */
 export default {
-  outputPath: "codefetch",
-  outputFile: "codebase.md",
-  maxTokens: 999_000,
-  verbose: 1,
-  projectTree: 2,
-  defaultIgnore: true,
-  gitignore: true,
-  tokenEncoder: "simple",
+  // Output settings
+  outputPath: "codefetch", // Directory for output files
+  outputFile: "codebase.md", // Output filename
+  maxTokens: 999_000, // Token limit
+  disableLineNumbers: false, // Toggle line numbers in output
+  
+  // Processing options
+  verbose: 1, // Logging level (0=none, 1=basic, 2=debug)
+  projectTree: 2, // Project tree depth
+  defaultIgnore: true, // Use default ignore patterns
+  gitignore: true, // Respect .gitignore
+  dryRun: false, // Output to console instead of file
+  
+  // Token handling
+  tokenEncoder: "simple", // Token counting method (simple, p50k, o200k, cl100k)
+  tokenLimiter: "truncated", // Token limiting strategy
+  
+  // File filtering
+  extensions: [".ts", ".js"], // File extensions to include
+  includeFiles: ["src/**/*.ts"], // Files to include (glob patterns)
+  excludeFiles: ["**/*.test.ts"], // Files to exclude
+  includeDirs: ["src", "lib"], // Directories to include
+  excludeDirs: ["test", "dist"], // Directories to exclude
+  
+  // AI/LLM settings
   trackedModels: [
     "chatgpt-4o-latest",
     "claude-3-5-sonnet-20241022",
@@ -246,17 +272,19 @@ export default {
     "deepseek-v3",
     "gemini-exp-1206",
   ],
-  includeDirs: ["src", "test"],
-  excludeDirs: ["test/fixtures"],
-  dryRun: false,
-  disableLineNumbers: false,
+  
+  // Prompt handling
+  prompt: "dev", // Built-in prompt or custom prompt file
+  defaultChat: "https://chat.com", // Default chat URL
+  templateVars: {}, // Variables for template substitution
 }
 ```
+
+All configuration options are optional and will fall back to defaults if not specified. You can override any config option using CLI arguments.
 
 ## License
 
 MIT 
-
 
 ## Links
 

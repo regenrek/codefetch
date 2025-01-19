@@ -115,7 +115,6 @@ export async function generateMarkdown(
     tokenEncoder: TokenEncoder;
     disableLineNumbers?: boolean;
     tokenLimiter?: TokenLimiter;
-    prompt?: string;
   }
 ): Promise<string> {
   const {
@@ -125,7 +124,6 @@ export async function generateMarkdown(
     tokenEncoder,
     disableLineNumbers,
     tokenLimiter = "truncated",
-    prompt,
   } = options;
 
   const markdownContent: string[] = [];
@@ -135,19 +133,6 @@ export async function generateMarkdown(
   };
 
   logVerbose(`Initial token limit: ${tokenCounter.remaining}`, 3, verbose);
-
-  // Handle prompt if provided
-  if (prompt) {
-    const promptTokens = await countTokens(prompt, tokenEncoder);
-    if (maxTokens && promptTokens > tokenCounter.remaining) {
-      logVerbose(`Prompt exceeds token limit, skipping`, 3, verbose);
-      return "";
-    }
-    markdownContent.push(prompt, "");
-    tokenCounter.remaining -= promptTokens;
-    tokenCounter.total += promptTokens;
-    logVerbose(`Tokens used for prompt: ${promptTokens}`, 3, verbose);
-  }
 
   // Handle project tree
   if (projectTree > 0) {

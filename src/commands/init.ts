@@ -8,12 +8,16 @@ const createConfigFile = async (
   config: Partial<CodefetchConfig>,
   cwd: string
 ) => {
+  const configEntries = Object.entries(getDefaultConfig())
+    .map(([key, defaultValue]) => {
+      const value = config[key as keyof CodefetchConfig] ?? defaultValue;
+      return `  ${key}: ${JSON.stringify(value, null, 2)}`;
+    })
+    .join(",\n");
+
   const configContent = `/** @type {import('codefetch').CodefetchConfig} */
 export default {
-  ${Object.entries(config)
-    .filter(([_, value]) => value !== undefined)
-    .map(([key, value]) => `${key}: ${JSON.stringify(value, null, 2)}`)
-    .join(",\n  ")}
+${configEntries}
 }
 `;
 
@@ -23,6 +27,12 @@ export default {
 const createIgnoreFile = async (cwd: string) => {
   const content = "test/\nvitest.config.ts\n";
   await fsp.writeFile(join(cwd, ".codefetchignore"), content);
+};
+
+const createDirectoryStructure = async (cwd: string) => {
+  await fsp.mkdir(join(cwd, "codefetch"), { recursive: true });
+  await fsp.mkdir(join(cwd, "codefetch/prompts"), { recursive: true });
+  await fsp.writeFile(join(cwd, "codefetch/prompts/default.md"), "");
 };
 
 export default async function initCommand() {
@@ -37,52 +47,60 @@ export default async function initCommand() {
     const config = getDefaultConfig();
     await createConfigFile(config, cwd);
     await createIgnoreFile(cwd);
+    await createDirectoryStructure(cwd);
   } else {
     const extensions = await consola.prompt(
-      "Enter file extensions to filter (comma-separated, press enter for none):",
+      "Enter file extensions to filter (comma-separated, press enter for none, e.g. .ts,.js):",
       { type: "text" }
     );
 
     const tokenEncoder = await consola.prompt("Choose token encoder:", {
       type: "select",
-      options: ["simple", "p50k", "o200k", "cl100k"],
+      options: [
+        { label: "simple (recommended)", value: "simple" },
+        "p50k",
+        "o200k",
+        "cl100k",
+      ],
     });
 
-    const defaultModels = [
-      "gpt-4-0125-preview",
-      "gpt-4o-2024-11-20",
-      "claude-3-sonnet-20240229",
-      "o1",
-      "mistral-large-latest",
-    ];
+    // const defaultModels = [
+    //   "gpt-4-0125-preview",
+    //   "gpt-4o-2024-11-20",
+    //   "claude-3-sonnet-20240229",
+    //   "o1",
+    //   "mistral-large-latest",
+    // ];
 
-    const trackedModels = await consola.prompt(
-      `Choose models to track (comma-separated)\nDefault: ${defaultModels.join(", ")}:`,
-      { type: "text", initial: defaultModels.join(",") }
-    );
+    // const trackedModels = await consola.prompt(
+    //   `Choose models to track (comma-separated)\nDefault: ${defaultModels.join(", ")}:`,
+    //   { type: "text", initial: defaultModels.join(",") }
+    // );
 
     const config: Partial<CodefetchConfig> = {
       extensions: extensions
         ? extensions.split(",").map((e) => e.trim())
         : undefined,
       tokenEncoder: tokenEncoder as any,
-      trackedModels: trackedModels
-        ? trackedModels.split(",").map((m) => m.trim())
-        : defaultModels,
+      // trackedModels: trackedModels
+      //   ? trackedModels.split(",").map((m) => m.trim())
+      //   : defaultModels,
     };
 
     await createConfigFile(config, cwd);
     await createIgnoreFile(cwd);
+    await createDirectoryStructure(cwd);
   }
 
   consola.success("✨ Initialization complete!");
   consola.info(
     "📝 A .codefetchignore file was created (add your files that you want to ignore)"
   );
-  consola.info("⚙️  A codefetch.config.ts is created (customize as you like)");
+  consola.info("⚙️  A codefetch.config.mjs is created (customize as you like)");
   consola.info(
     "\nYour codebase files will be placed into the codefetch folder"
   );
+  consola.info("\nCustomize your prompts in codefetch/prompts/default.md");
   consola.info("\nNow you can run:");
   consola.info("npx codefetch");
   consola.info("or");

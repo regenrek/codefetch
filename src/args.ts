@@ -3,23 +3,20 @@ import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 
 const VALID_ENCODERS = new Set(["simple", "p50k", "o200k", "cl100k"]);
-const VALID_PROMPTS = new Set(["dev", "architect", "tester"]);
+const RESERVED_PROMPTS = new Set([
+  "default",
+  "fix",
+  "improve",
+  "testgen",
+  "codegen",
+]);
 
 export function printHelp() {
   console.log(`
 Usage: codefetch [command] [options]
 
 Commands:
-  model info <model>         Get info about specific model (gpt-4-0125-preview)
-  model info latest         Show all latest models
-  model info preview        Show all preview models
-  model info gpt4          Show GPT-4 models
-  model info claude        Show Claude models
-  model info mistral       Show Mistral models
-  model info gemini        Show Google/Gemini models
-  model info qwen          Show Qwen models
-  model info all           Show all available models
-
+  init                        Initialize a new codefetch project
 Options:
   -o, --output <file>         Specify output filename (defaults to codebase.md)
   --dir <path>                Specify the directory to scan (defaults to current directory)
@@ -37,6 +34,37 @@ Options:
   -h, --help                  Display this help message
   -p, --prompt <type>         Add a default prompt (dev, architect, tester) or add a custom prompt file with .md/.txt extension
 `);
+}
+
+function parseTemplateVars(argv: mri.Argv): Record<string, string> {
+  const vars: Record<string, string> = {};
+
+  // Only process vars if we have a prompt
+  if (!argv.prompt) {
+    return vars;
+  }
+
+  // Handle direct message after prompt as MESSAGE var
+  // removed - this is problematic for @default.ts rawArgs handling
+  // and also not a good standard for prompts
+  // if (Array.isArray(argv._) && argv._.length > 0) {
+  //   vars.MESSAGE = argv._[0] as string;
+  // }
+
+  // Handle --var flag(s)
+  if (argv.var) {
+    const varArgs = Array.isArray(argv.var) ? argv.var : [argv.var];
+
+    for (const varArg of varArgs) {
+      const [key, ...valueParts] = varArg.split("=");
+      const value = valueParts.join("="); // Handle values that might contain =
+      if (key && value) {
+        vars[key.toUpperCase()] = value;
+      }
+    }
+  }
+
+  return vars;
 }
 
 export function parseArgs(args: string[]) {
@@ -64,6 +92,7 @@ export function parseArgs(args: string[]) {
       "token-encoder",
       "token-limiter",
       "prompt",
+      "var",
     ],
   });
 
@@ -126,19 +155,27 @@ export function parseArgs(args: string[]) {
     );
   }
 
-  if (
-    argv.prompt &&
-    argv.prompt !== true &&
-    !argv.prompt.endsWith(".md") &&
-    !argv.prompt.endsWith(".txt") &&
-    !VALID_PROMPTS.has(argv.prompt)
-  ) {
-    throw new Error(
-      `Invalid prompt. Must be one of: ${[...VALID_PROMPTS].join(
-        ", "
-      )} or a custom file with .md/.txt extension`
-    );
-  }
+  // Handle prompt and template vars
+  const promptConfig = argv.prompt
+    ? (() => {
+        const promptValue = argv.prompt === true ? "default" : argv.prompt;
+        if (
+          !RESERVED_PROMPTS.has(promptValue) &&
+          !promptValue.endsWith(".md") &&
+          !promptValue.endsWith(".txt")
+        ) {
+          throw new Error(
+            `Invalid prompt. Must be one of: ${[...RESERVED_PROMPTS].join(
+              ", "
+            )} or a file with .md/.txt extension`
+          );
+        }
+        return {
+          prompt: promptValue,
+          templateVars: parseTemplateVars(argv),
+        };
+      })()
+    : { prompt: undefined, templateVars: {} };
 
   return {
     output: argv.output || undefined,
@@ -161,6 +198,6 @@ export function parseArgs(args: string[]) {
       | undefined,
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
-    prompt: argv.prompt === true ? "default" : argv.prompt || undefined,
+    ...promptConfig,
   };
 }

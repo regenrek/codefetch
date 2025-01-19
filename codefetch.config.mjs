@@ -1,5 +1,4 @@
-import type { CodefetchConfig } from "codefetch";
-
+/** @type {import('codefetch').CodefetchConfig} */
 export default {
   outputPath: "codefetch",
   outputFile: "codebase.md",
@@ -9,6 +8,7 @@ export default {
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",
+  tokenLimiter: "truncated",
   trackedModels: [
     "chatgpt-4o-latest",
     "claude-3-5-sonnet-20241022",
@@ -16,8 +16,9 @@ export default {
     "deepseek-v3",
     "gemini-exp-1206",
   ],
-  includeDirs: ["src", "test"],
-  excludeDirs: ["test/fixtures"],
   dryRun: false,
   disableLineNumbers: false,
-} satisfies Partial<CodefetchConfig>;
+  prompt: undefined,
+  defaultChat: "https://chat.com",
+  templateVars: {},
+};

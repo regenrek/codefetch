@@ -25,6 +25,8 @@ export interface CodefetchConfig {
   dryRun?: boolean;
   disableLineNumbers?: boolean;
   prompt?: string;
+  defaultChat?: string;
+  templateVars?: Record<string, string>;
 }
 
 const defaultOutput = "codebase.md";
@@ -48,6 +50,8 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   dryRun: false,
   disableLineNumbers: false,
   prompt: undefined,
+  defaultChat: "https://chat.com",
+  templateVars: {},
 });
 
 const VALID_PROMPTS = new Set(["dev", "architect", "tester"]);
@@ -186,4 +190,11 @@ export function mergeWithCliArgs(
     includeDirs: mergeArrays(config.includeDirs, cliArgs.includeDirs),
     excludeDirs: mergeArrays(config.excludeDirs, cliArgs.excludeDirs),
   };
+}
+
+export async function getConfig(
+  overrides?: Partial<CodefetchConfig>
+): Promise<CodefetchConfig> {
+  const cwd = process.cwd();
+  return await loadCodefetchConfig(cwd, overrides);
 }

@@ -13,6 +13,7 @@ import {
   loadCodefetchConfig,
   countTokens,
   fetchModels,
+  replaceTemplateVars,
 } from "..";
 import type { TokenEncoder, TokenLimiter } from "../types";
 
@@ -31,6 +32,8 @@ export default async function defaultMain(rawArgs: Argv) {
   // 1: Running from root directory
   // 2: Running from components directory - npx codefetch /home/user/max/project
   const cwd = resolve(rawArgs._[0] /* bw compat */ || rawArgs.dir || "");
+
+  console.log(rawArgs);
 
   const projectRoot = findProjectRoot(cwd);
   if (projectRoot !== cwd) {
@@ -65,6 +68,8 @@ export default async function defaultMain(rawArgs: Argv) {
     tokenEncoder: args.tokenEncoder as TokenEncoder,
     disableLineNumbers: args.disableLineNumbers,
     tokenLimiter: args.tokenLimiter,
+    prompt: args.prompt,
+    templateVars: args.templateVars,
   });
 
   const ig = ignore().add(
@@ -105,13 +110,19 @@ export default async function defaultMain(rawArgs: Argv) {
     tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
     disableLineNumbers: Boolean(config.disableLineNumbers),
     tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-    prompt: config.prompt,
   });
+
+  // Process templates if needed
+  const finalMarkdown = await replaceTemplateVars(
+    markdown,
+    config.prompt,
+    config.templateVars
+  );
 
   // Count tokens if needed
   let totalTokens = 0;
   if (config.verbose >= 3 || config.maxTokens) {
-    totalTokens = await countTokens(markdown, config.tokenEncoder);
+    totalTokens = await countTokens(finalMarkdown, config.tokenEncoder);
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
       logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
@@ -119,7 +130,7 @@ export default async function defaultMain(rawArgs: Argv) {
   }
 
   if (args.dryRun) {
-    logger.log(markdown);
+    logger.log(finalMarkdown);
   } else {
     if (!existsSync(config.outputPath)) {
       await fsp.mkdir(config.outputPath, { recursive: true });
@@ -129,7 +140,7 @@ export default async function defaultMain(rawArgs: Argv) {
     }
 
     const fullPath = join(config.outputPath, config.outputFile);
-    await fsp.writeFile(fullPath, markdown);
+    await fsp.writeFile(fullPath, finalMarkdown);
     console.log(`Output written to ${fullPath}`);
     // consola.success(`Output written to ${fullPath}`);
   }

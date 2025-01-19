@@ -6,3 +6,5 @@ export * from "./args";
 export * from "./config";
 export * from "./token-counter";
 export * from "./model-db";
+export * from "./template-parser";
+export type { CodefetchConfig } from "./config";

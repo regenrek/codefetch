@@ -33,8 +33,6 @@ export default async function defaultMain(rawArgs: Argv) {
   // 2: Running from components directory - npx codefetch /home/user/max/project
   const cwd = resolve(rawArgs._[0] /* bw compat */ || rawArgs.dir || "");
 
-  console.log(rawArgs);
-
   const projectRoot = findProjectRoot(cwd);
   if (projectRoot !== cwd) {
     const shouldExit = await logger.prompt(

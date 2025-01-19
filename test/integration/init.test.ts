@@ -41,8 +41,6 @@ describe("Integration: init command", () => {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    console.log(result);
-
     expect(result.stderr).toBe("");
     expect(existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))).toBe(true);
     expect(existsSync(join(FIXTURE_DIR, ".codefetchignore"))).toBe(true);

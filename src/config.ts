@@ -2,9 +2,6 @@ import { loadConfig } from "c12";
 import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 import { defu } from "defu";
-import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { RESERVED_PROMPTS } from "./constants";
 
 export interface CodefetchConfig {
   outputPath: string;
@@ -54,57 +51,6 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   defaultChat: "https://chat.com",
   templateVars: {},
 });
-
-// Update the PromptModule type to match the actual structure
-type PromptModule = {
-  default: string;
-};
-
-const builtInPrompts: Record<string, () => Promise<PromptModule>> = {
-  codegen: () => import("./prompts/codegen"),
-  fix: () => import("./prompts/fix"),
-  improve: () => import("./prompts/improve"),
-  testgen: () => import("./prompts/testgen"),
-};
-
-async function resolvePrompt(
-  promptName: string | undefined,
-  cwd: string
-): Promise<string | undefined> {
-  if (!promptName) {
-    return undefined;
-  }
-
-  // Check for default prompt when only -p is used
-  if (promptName === "default") {
-    const defaultPath = resolve(cwd, "codefetch/prompts/default.md");
-    if (existsSync(defaultPath)) {
-      return await readFile(defaultPath, "utf8");
-    }
-    return undefined;
-  }
-
-  // Check built-in prompts
-  if (RESERVED_PROMPTS.has(promptName)) {
-    try {
-      const mod = await builtInPrompts[promptName]?.();
-      return mod?.default; // Now just return the string
-    } catch {
-      throw new Error(`Built-in prompt "${promptName}" not found`);
-    }
-  }
-
-  // Check for custom prompts in codefetch/prompts
-  if (promptName.endsWith(".md") || promptName.endsWith(".txt")) {
-    const customPath = resolve(cwd, "codefetch/prompts", promptName);
-    if (existsSync(customPath)) {
-      return await readFile(customPath, "utf8");
-    }
-    throw new Error(`Custom prompt file not found: ${promptName}`);
-  }
-
-  return undefined;
-}
 
 export async function loadCodefetchConfig(
   cwd: string,
@@ -166,15 +112,16 @@ export async function resolveCodefetchConfig(
     );
   }
 
-  if (config.prompt) {
-    const promptContent = await resolvePrompt(config.prompt, cwd);
-    if (promptContent) {
-      config.prompt = promptContent;
-    } else if (config.prompt === "default") {
-      // If default prompt was requested but not found, silently continue
-      config.prompt = undefined;
-    }
-  }
+  // if (config.prompt) {
+
+  //   const promptContent = await resolvePrompt(config.prompt, cwd);
+  //   if (promptContent) {
+  //     config.prompt = promptContent;
+  //   } else if (config.prompt === "default") {
+  //     // If default prompt was requested but not found, silently continue
+  //     config.prompt = undefined;
+  //   }
+  // }
 
   return config;
 }

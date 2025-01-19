@@ -26,39 +26,8 @@ Options:
   --token-limiter <type>      Token limiting strategy (sequential, truncated)
   --disable-line-numbers      Disable line numbers in output
   -h, --help                  Display this help message
-  -p, --prompt <type>         Add a default prompt (dev, architect, tester) or add a custom prompt file with .md/.txt extension
+  -p, --prompt <type>         Add a default prompt (fix, improve, codegen, testgen) or add a custom prompt file with .md/.txt extension
 `);
-}
-
-function parseTemplateVars(argv: mri.Argv): Record<string, string> {
-  const vars: Record<string, string> = {};
-
-  // Only process vars if we have a prompt
-  if (!argv.prompt) {
-    return vars;
-  }
-
-  // Handle direct message after prompt as MESSAGE var
-  // removed - this is problematic for @default.ts rawArgs handling
-  // and also not a good standard for prompts
-  // if (Array.isArray(argv._) && argv._.length > 0) {
-  //   vars.MESSAGE = argv._[0] as string;
-  // }
-
-  // Handle --var flag(s)
-  if (argv.var) {
-    const varArgs = Array.isArray(argv.var) ? argv.var : [argv.var];
-
-    for (const varArg of varArgs) {
-      const [key, ...valueParts] = varArg.split("=");
-      const value = valueParts.join("="); // Handle values that might contain =
-      if (key && value) {
-        vars[key.toUpperCase()] = value;
-      }
-    }
-  }
-
-  return vars;
 }
 
 export function parseArgs(args: string[]) {
@@ -194,4 +163,35 @@ export function parseArgs(args: string[]) {
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
     ...promptConfig,
   };
+}
+
+function parseTemplateVars(argv: mri.Argv): Record<string, string> {
+  const vars: Record<string, string> = {};
+
+  // Only process vars if we have a prompt
+  if (!argv.prompt) {
+    return vars;
+  }
+
+  // Handle direct message after prompt as MESSAGE var
+  // removed - this is problematic for @default.ts rawArgs handling
+  // and also not a good standard for prompts
+  // if (Array.isArray(argv._) && argv._.length > 0) {
+  //   vars.MESSAGE = argv._[0] as string;
+  // }
+
+  // Handle --var flag(s)
+  if (argv.var) {
+    const varArgs = Array.isArray(argv.var) ? argv.var : [argv.var];
+
+    for (const varArg of varArgs) {
+      const [key, ...valueParts] = varArg.split("=");
+      const value = valueParts.join("="); // Handle values that might contain =
+      if (key && value) {
+        vars[key.toUpperCase()] = value;
+      }
+    }
+  }
+
+  return vars;
 }

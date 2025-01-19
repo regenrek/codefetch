@@ -110,12 +110,15 @@ export default async function defaultMain(rawArgs: Argv) {
     tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
   });
 
-  // Process templates if needed
-  const finalMarkdown = await replaceTemplateVars(
-    markdown,
-    config.prompt,
-    config.templateVars
-  );
+  const finalMarkdown = config.prompt
+    ? await replaceTemplateVars(
+        cwd,
+        markdown,
+        config.outputPath,
+        config.prompt,
+        config.templateVars
+      )
+    : markdown;
 
   // Count tokens if needed
   let totalTokens = 0;

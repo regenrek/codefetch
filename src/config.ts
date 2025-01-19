@@ -112,17 +112,6 @@ export async function resolveCodefetchConfig(
     );
   }
 
-  // if (config.prompt) {
-
-  //   const promptContent = await resolvePrompt(config.prompt, cwd);
-  //   if (promptContent) {
-  //     config.prompt = promptContent;
-  //   } else if (config.prompt === "default") {
-  //     // If default prompt was requested but not found, silently continue
-  //     config.prompt = undefined;
-  //   }
-  // }
-
   return config;
 }
 

@@ -37,8 +37,6 @@ export async function replaceTemplateVars(
 ): Promise<string> {
   const promptTemplate = await resolvePrompt(outputPath, promptFile, cwd);
 
-  console.log("PROMPT TEMPLATE", promptTemplate);
-
   return promptTemplate
     ? processPromptTemplate(promptTemplate, codebase, templateVars)
     : codebase;

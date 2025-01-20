@@ -2,7 +2,7 @@
 
 ![Codefetch Cover](/public/cover.jpeg)
 
-[![npm (tag)](https://img.shields.io/npm/v/codefetch)](https://www.npmjs.com/package/codefetch) [![npm (tag)](https://img.shields.io/npm/v/codefetch/edge)](https://www.npmjs.com/package/codefetch)
+[![npm (tag)](https://img.shields.io/npm/v/codefetch)](https://www.npmjs.com/package/codefetch)
 
 >Turn code into Markdown for LLMs with one simple terminal command
 

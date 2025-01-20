@@ -1,2 +1,3 @@
 test/
 vitest.config.ts
+modeldb.json

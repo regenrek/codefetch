@@ -7,11 +7,6 @@ Current Issue:
 {{MESSAGE}}
 </issue>
 
-My current codebase:
-<current_codebase>
-{{CURRENT_CODEBASE}}
-</current_codebase>
-
 Rules:
 - Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
 - Your output should be a series of specific, actionable changes.
@@ -33,4 +28,9 @@ Use the following format for your output:
 \`\`\`
 
 Begin fixing the codebase provide your solutions.
+
+My current codebase:
+<current_codebase>
+{{CURRENT_CODEBASE}}
+</current_codebase>
 `;

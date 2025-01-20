@@ -4,7 +4,7 @@ export default {
   outputFile: "codebase.md",
   maxTokens: 999_000,
   verbose: 1,
-  projectTree: 2,
+  projectTree: 5,
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",
@@ -18,7 +18,7 @@ export default {
   ],
   dryRun: false,
   disableLineNumbers: false,
-  prompt: undefined,
+  defaultPromptFile: undefined,
   defaultChat: "https://chat.com",
   templateVars: {},
 };

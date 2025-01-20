@@ -2,23 +2,13 @@ import { promises as fsp } from "node:fs";
 import { join } from "pathe";
 import consola from "consola";
 import type { CodefetchConfig } from "../config";
-import { getDefaultConfig } from "../config";
 
 const createConfigFile = async (
   config: Partial<CodefetchConfig>,
   cwd: string
 ) => {
-  const configEntries = Object.entries(getDefaultConfig())
-    .map(([key, defaultValue]) => {
-      const value = config[key as keyof CodefetchConfig] ?? defaultValue;
-      return `  ${key}: ${JSON.stringify(value, null, 2)}`;
-    })
-    .join(",\n");
-
   const configContent = `/** @type {import('codefetch').CodefetchConfig} */
-export default {
-${configEntries}
-}
+export default ${JSON.stringify(config, null, 2)};
 `;
 
   await fsp.writeFile(join(cwd, "codefetch.config.mjs"), configContent);
@@ -32,7 +22,9 @@ const createIgnoreFile = async (cwd: string) => {
 const createDirectoryStructure = async (cwd: string) => {
   await fsp.mkdir(join(cwd, "codefetch"), { recursive: true });
   await fsp.mkdir(join(cwd, "codefetch/prompts"), { recursive: true });
-  await fsp.writeFile(join(cwd, "codefetch/prompts/default.md"), "");
+
+  const { default: fixPrompt } = await import("../prompts/fix");
+  await fsp.writeFile(join(cwd, "codefetch/prompts/default.md"), fixPrompt);
 };
 
 export default async function initCommand() {
@@ -44,7 +36,11 @@ export default async function initCommand() {
   });
 
   if (setupType === "default") {
-    const config = getDefaultConfig();
+    const config: Partial<CodefetchConfig> = {
+      projectTree: 5,
+      tokenLimiter: "truncated" as const,
+      defaultPromptFile: "default.md",
+    };
     await createConfigFile(config, cwd);
     await createIgnoreFile(cwd);
     await createDirectoryStructure(cwd);

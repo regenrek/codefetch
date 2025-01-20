@@ -1,34 +1,7 @@
 import mri from "mri";
 import { resolve } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
-import { RESERVED_PROMPTS } from "./constants";
-
-const VALID_ENCODERS = new Set(["simple", "p50k", "o200k", "cl100k"]);
-
-export function printHelp() {
-  console.log(`
-Usage: codefetch [command] [options]
-
-Commands:
-  init                        Initialize a new codefetch project
-Options:
-  -o, --output <file>         Specify output filename (defaults to codebase.md)
-  --dir <path>                Specify the directory to scan (defaults to current directory)
-  --max-tokens <number>       Limit output tokens (default: 500,000)
-  -e, --extension <ext,...>   Filter by file extensions (e.g., .ts,.js)
-  --include-files <p,...>     Include specific files (supports patterns like *.ts)
-  --exclude-files <p,...>     Exclude specific files (supports patterns like *.test.ts)
-  --include-dir <dir,...>     Include specific directories
-  --exclude-dir <dir,...>     Exclude specific directories
-  -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
-  -t, --project-tree [depth]  Generate visual project tree (optional depth, default: 2)
-  --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
-  --token-limiter <type>      Token limiting strategy (sequential, truncated)
-  --disable-line-numbers      Disable line numbers in output
-  -h, --help                  Display this help message
-  -p, --prompt <type>         Add a default prompt (fix, improve, codegen, testgen) or add a custom prompt file with .md/.txt extension
-`);
-}
+import { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants";
 
 export function parseArgs(args: string[]) {
   const argv = mri(args, {
@@ -37,11 +10,10 @@ export function parseArgs(args: string[]) {
       e: "extension",
       v: "verbose",
       t: "project-tree",
-      h: "help",
       d: "dry-run",
       p: "prompt",
     },
-    boolean: ["help", "dry-run", "disable-line-numbers"],
+    boolean: ["dry-run", "disable-line-numbers"],
     string: [
       "output",
       "dir",
@@ -109,78 +81,28 @@ export function parseArgs(args: string[]) {
     );
   }
 
-  if (
-    argv["token-limiter"] &&
-    !["sequential", "truncated"].includes(argv["token-limiter"])
-  ) {
+  if (argv["token-limiter"] && !VALID_LIMITERS.has(argv["token-limiter"])) {
     throw new Error(
-      'Invalid token limiter. Must be either "sequential" or "truncated"'
+      `Invalid token limiter. Must be one of: ${[...VALID_LIMITERS].join(", ")}`
     );
   }
 
-  // Handle prompt and template vars
-  const promptConfig = argv.prompt
-    ? (() => {
-        const promptValue = argv.prompt === true ? "default" : argv.prompt;
-        if (
-          !RESERVED_PROMPTS.has(promptValue) &&
-          !promptValue.endsWith(".md") &&
-          !promptValue.endsWith(".txt")
-        ) {
-          throw new Error(
-            `Invalid prompt. Must be one of: ${[...RESERVED_PROMPTS].join(
-              ", "
-            )} or a file with .md/.txt extension`
-          );
-        }
-        return {
-          prompt: promptValue,
-          templateVars: parseTemplateVars(argv),
-        };
-      })()
-    : { prompt: undefined, templateVars: {} };
+  // handle --prompt & -p (if only -p then use default)
+  // set argv.prompt to undefined if true then its get overwritten by config default prpmpt
+  const defaultPromptFile = argv.prompt === "" ? undefined : argv.prompt;
+  if (defaultPromptFile !== undefined) {
+    const isValidPrompt =
+      VALID_PROMPTS.has(argv.prompt) || /\.(md|txt)$/.test(argv.prompt);
 
-  return {
-    output: argv.output || undefined,
-    outputPath: argv["output-path"] ? resolve(argv["output-path"]) : undefined,
-    dir: argv.dir ? resolve(argv.dir) : undefined,
-    extensions,
-    includeFiles: splitValues(argv["include-files"]),
-    excludeFiles: splitValues(argv["exclude-files"]),
-    includeDirs: normalizeDirs(argv["include-dir"]),
-    excludeDirs: normalizeDirs(argv["exclude-dir"]),
-    verbose: argv.verbose === undefined ? 1 : Number(argv.verbose),
-    projectTree: treeDepth,
-    maxTokens: argv["max-tokens"] ? Number(argv["max-tokens"]) : undefined,
-    help: Boolean(argv.help),
-    tokenEncoder: (argv["token-encoder"] || undefined) as
-      | TokenEncoder
-      | undefined,
-    tokenLimiter: (argv["token-limiter"] || undefined) as
-      | TokenLimiter
-      | undefined,
-    dryRun: Boolean(argv["dry-run"]),
-    disableLineNumbers: Boolean(argv["disable-line-numbers"]),
-    ...promptConfig,
-  };
-}
-
-function parseTemplateVars(argv: mri.Argv): Record<string, string> {
-  const vars: Record<string, string> = {};
-
-  // Only process vars if we have a prompt
-  if (!argv.prompt) {
-    return vars;
+    if (!isValidPrompt) {
+      throw new Error(
+        `Invalid prompt. Must be one of: ${[...VALID_PROMPTS].join(", ")} or a file with .md/.txt extension`
+      );
+    }
   }
 
-  // Handle direct message after prompt as MESSAGE var
-  // removed - this is problematic for @default.ts rawArgs handling
-  // and also not a good standard for prompts
-  // if (Array.isArray(argv._) && argv._.length > 0) {
-  //   vars.MESSAGE = argv._[0] as string;
-  // }
-
-  // Handle --var flag(s)
+  // --var message="hi world" --var custom="John Doe"
+  const templateVars: Record<string, string> = {};
   if (argv.var) {
     const varArgs = Array.isArray(argv.var) ? argv.var : [argv.var];
 
@@ -188,10 +110,40 @@ function parseTemplateVars(argv: mri.Argv): Record<string, string> {
       const [key, ...valueParts] = varArg.split("=");
       const value = valueParts.join("="); // Handle values that might contain =
       if (key && value) {
-        vars[key.toUpperCase()] = value;
+        templateVars[key.toUpperCase()] = value;
       }
     }
   }
 
-  return vars;
+  return {
+    ...(argv.output && { outputFile: argv.output }),
+    ...(argv["output-path"] && { outputPath: resolve(argv["output-path"]) }),
+    ...(extensions && { extensions }),
+    ...(argv["include-files"] && {
+      includeFiles: splitValues(argv["include-files"]),
+    }),
+    ...(argv["exclude-files"] && {
+      excludeFiles: splitValues(argv["exclude-files"]),
+    }),
+    ...(argv["include-dir"] && {
+      includeDirs: normalizeDirs(argv["include-dir"]),
+    }),
+    ...(argv["exclude-dir"] && {
+      excludeDirs: normalizeDirs(argv["exclude-dir"]),
+    }),
+    ...(argv["max-tokens"] && { maxTokens: Number(argv["max-tokens"]) }),
+    ...(argv["token-encoder"] && {
+      tokenEncoder: argv["token-encoder"] as TokenEncoder,
+    }),
+    ...(argv["token-limiter"] && {
+      tokenLimiter: argv["token-limiter"] as TokenLimiter,
+    }),
+    ...(defaultPromptFile && { defaultPromptFile }),
+    ...(Object.keys(templateVars).length > 0 && { templateVars }),
+    verbose: argv.verbose === undefined ? 1 : Number(argv.verbose),
+    projectTree: treeDepth,
+
+    dryRun: Boolean(argv["dry-run"]),
+    disableLineNumbers: Boolean(argv["disable-line-numbers"]),
+  };
 }

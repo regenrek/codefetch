@@ -13,27 +13,27 @@ import {
   loadCodefetchConfig,
   countTokens,
   fetchModels,
-  replaceTemplateVars,
+  VALID_PROMPTS,
 } from "..";
 import type { TokenEncoder, TokenLimiter } from "../types";
 
 export default async function defaultMain(rawArgs: Argv) {
+  if (rawArgs.help || rawArgs.h) {
+    printHelp();
+    return;
+  }
+
   const args = parseArgs(process.argv.slice(2));
   const logger = consola.create({
     stdout: process.stdout,
     stderr: process.stderr,
   });
 
-  if (args.help) {
-    printHelp();
-    return;
-  }
-
   // 1: Running from root directory
   // 2: Running from components directory - npx codefetch /home/user/max/project
   const cwd = resolve(rawArgs._[0] /* bw compat */ || rawArgs.dir || "");
-
   const projectRoot = findProjectRoot(cwd);
+
   if (projectRoot !== cwd) {
     const shouldExit = await logger.prompt(
       `Warning: It's recommended to run codefetch from the root directory (${projectRoot}). Use --include-dirs instead.\nExit and restart from root?`,
@@ -50,25 +50,7 @@ export default async function defaultMain(rawArgs: Argv) {
 
   process.chdir(cwd);
 
-  const config = await loadCodefetchConfig(cwd, {
-    outputPath: args.outputPath,
-    outputFile: args.output,
-    maxTokens: args.maxTokens,
-    verbose: args.verbose,
-    projectTree: args.projectTree,
-    extensions: args.extensions,
-    includeFiles: args.includeFiles,
-    excludeFiles: args.excludeFiles,
-    includeDirs: args.includeDirs,
-    excludeDirs: args.excludeDirs,
-    defaultIgnore: true,
-    gitignore: true,
-    tokenEncoder: args.tokenEncoder as TokenEncoder,
-    disableLineNumbers: args.disableLineNumbers,
-    tokenLimiter: args.tokenLimiter,
-    prompt: args.prompt,
-    templateVars: args.templateVars,
-  });
+  const config = await loadCodefetchConfig(cwd, args);
 
   const ig = ignore().add(
     DEFAULT_IGNORE_PATTERNS.split("\n").filter(
@@ -108,22 +90,16 @@ export default async function defaultMain(rawArgs: Argv) {
     tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
     disableLineNumbers: Boolean(config.disableLineNumbers),
     tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+    promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
+      ? config.defaultPromptFile
+      : resolve(config.outputPath, "prompts", config.defaultPromptFile),
+    templateVars: config.templateVars,
   });
-
-  const finalMarkdown = config.prompt
-    ? await replaceTemplateVars(
-        cwd,
-        markdown,
-        config.outputPath,
-        config.prompt,
-        config.templateVars
-      )
-    : markdown;
 
   // Count tokens if needed
   let totalTokens = 0;
   if (config.verbose >= 3 || config.maxTokens) {
-    totalTokens = await countTokens(finalMarkdown, config.tokenEncoder);
+    totalTokens = await countTokens(markdown, config.tokenEncoder);
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
       logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
@@ -131,7 +107,7 @@ export default async function defaultMain(rawArgs: Argv) {
   }
 
   if (args.dryRun) {
-    logger.log(finalMarkdown);
+    logger.log(markdown);
   } else {
     if (!existsSync(config.outputPath)) {
       await fsp.mkdir(config.outputPath, { recursive: true });
@@ -141,9 +117,8 @@ export default async function defaultMain(rawArgs: Argv) {
     }
 
     const fullPath = join(config.outputPath, config.outputFile);
-    await fsp.writeFile(fullPath, finalMarkdown);
+    await fsp.writeFile(fullPath, markdown);
     console.log(`Output written to ${fullPath}`);
-    // consola.success(`Output written to ${fullPath}`);
   }
 
   if (config.trackedModels?.length) {

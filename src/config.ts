@@ -4,25 +4,24 @@ import type { TokenEncoder, TokenLimiter } from "./types";
 import { defu } from "defu";
 
 export interface CodefetchConfig {
+  outputFile: string;
   outputPath: string;
   maxTokens: number;
-  verbose: number;
-  outputFile: string;
-  extensions?: string[];
   includeFiles?: string[];
   excludeFiles?: string[];
   includeDirs?: string[];
   excludeDirs?: string[];
+  verbose: number;
+  extensions?: string[];
   defaultIgnore: boolean;
   gitignore: boolean;
-  help?: boolean;
   projectTree: number;
   tokenEncoder: TokenEncoder;
   tokenLimiter: TokenLimiter;
   trackedModels?: string[];
   dryRun?: boolean;
   disableLineNumbers?: boolean;
-  prompt?: string;
+  defaultPromptFile: string;
   defaultChat?: string;
   templateVars?: Record<string, string>;
 }
@@ -47,7 +46,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   ],
   dryRun: false,
   disableLineNumbers: false,
-  prompt: undefined,
+  defaultPromptFile: "default.md",
   defaultChat: "https://chat.com",
   templateVars: {},
 });

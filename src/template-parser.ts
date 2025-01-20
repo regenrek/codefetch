@@ -1,7 +1,12 @@
 import { resolve } from "pathe";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { RESERVED_PROMPTS } from "./constants";
+import { VALID_PROMPTS } from "./constants";
+
+// Update the PromptModule type to match the actual structure
+type PromptModule = {
+  default: string;
+};
 
 const builtInPrompts: Record<string, () => Promise<PromptModule>> = {
   fix: () => import("./prompts/fix"),
@@ -10,58 +15,33 @@ const builtInPrompts: Record<string, () => Promise<PromptModule>> = {
   testgen: () => import("./prompts/testgen"),
 };
 
-async function processPromptTemplate(
+export async function processPromptTemplate(
   template: string,
   codebase: string,
   vars: Record<string, string>
 ): Promise<string> {
   let result = template;
 
-  // Always process CURRENT_CODEBASE first
-  result = result.replace(/{{CURRENT_CODEBASE}}/g, codebase);
-
   // Process all other variables
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`{{${key}}}`, "g"), value);
   }
 
+  // Always process CURRENT_CODEBASE first
+  result = result.replace(/{{CURRENT_CODEBASE}}/g, codebase);
+
+  console.log("result", result);
+
   return result;
 }
 
-export async function replaceTemplateVars(
-  cwd: string,
-  codebase: string,
-  outputPath: string,
-  promptFile: string,
-  templateVars: Record<string, string> = {}
-): Promise<string> {
-  const promptTemplate = await resolvePrompt(outputPath, promptFile, cwd);
-
-  return promptTemplate
-    ? processPromptTemplate(promptTemplate, codebase, templateVars)
-    : codebase;
-}
-
-// Update the PromptModule type to match the actual structure
-type PromptModule = {
-  default: string;
-};
-
-async function resolvePrompt(
-  outputPath: string,
-  promptFile: string,
-  cwd: string
+export async function resolvePrompt(
+  promptFile: string
 ): Promise<string | undefined> {
-  // Check for default prompt when only -p is used
-  if (promptFile === "default") {
-    const defaultPath = resolve(outputPath, "prompts/default.md");
-    if (existsSync(defaultPath)) {
-      return await readFile(defaultPath, "utf8");
-    }
-  }
+  console.log("promptFile", promptFile);
 
   // Check built-in prompts
-  if (RESERVED_PROMPTS.has(promptFile)) {
+  if (VALID_PROMPTS.has(promptFile)) {
     try {
       const mod = await builtInPrompts[promptFile]?.();
       return mod?.default; // Now just return the string
@@ -71,15 +51,11 @@ async function resolvePrompt(
     }
   }
 
-  // Check for custom prompts in codefetch/prompts
   if (promptFile.endsWith(".md") || promptFile.endsWith(".txt")) {
-    const customPath = resolve(cwd, "codefetch/prompts", promptFile);
-    if (existsSync(customPath)) {
-      return await readFile(customPath, "utf8");
+    const defaultPath = resolve(promptFile);
+    if (!existsSync(defaultPath)) {
+      return "";
     }
-    console.error(`Custom prompt file not found: ${promptFile}`);
-    return "";
+    return await readFile(defaultPath, "utf8");
   }
-
-  return "";
 }

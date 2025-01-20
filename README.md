@@ -134,11 +134,11 @@ You can also set a default prompt in your `codefetch.config.mjs`:
 
 ```js
 export default {
-  prompt: "dev", // Use built-in prompt
+  defaultPromptFile: "dev", // Use built-in prompt
 }
 
 export default {
-  prompt: "custom-prompt.md", // Use custom prompt file
+  defaultPromptFile: "custom-prompt.md", // Use custom prompt file
 }
 ```
 

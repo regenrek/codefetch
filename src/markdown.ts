@@ -1,9 +1,11 @@
 import { createReadStream } from "node:fs";
-import { relative } from "pathe";
+import { relative, join } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 import { generateProjectTree } from "./tree";
 import { countTokens } from "./token-counter";
 import consola from "consola";
+import { readFile } from "node:fs/promises";
+import { processPromptTemplate, resolvePrompt } from "./template-parser";
 
 const CHUNK_SIZE = 64 * 1024; // 64KB optimal chunk size
 
@@ -115,6 +117,8 @@ export async function generateMarkdown(
     tokenEncoder: TokenEncoder;
     disableLineNumbers?: boolean;
     tokenLimiter?: TokenLimiter;
+    promptFile?: string;
+    templateVars?: Record<string, string>;
   }
 ): Promise<string> {
   const {
@@ -124,13 +128,39 @@ export async function generateMarkdown(
     tokenEncoder,
     disableLineNumbers,
     tokenLimiter = "truncated",
+    promptFile,
+    templateVars,
   } = options;
 
+  let promptTemplate = "";
   const markdownContent: string[] = [];
   const tokenCounter = {
     remaining: maxTokens ?? Number.MAX_SAFE_INTEGER,
     total: 0,
   };
+
+  // Get the prompt template (not replacement yet)
+  if (promptFile) {
+    logVerbose("Writing prompt template...", 2, verbose);
+    const resolvedPrompt = await resolvePrompt(promptFile);
+
+    if (resolvedPrompt) {
+      promptTemplate = resolvedPrompt;
+      const promptTokens = await countTokens(promptTemplate, tokenEncoder);
+
+      if (maxTokens && promptTokens > tokenCounter.remaining) {
+        logVerbose(`Prompt exceeds token limit, skipping`, 3, verbose);
+        return "";
+      }
+      const templateTokens = await countTokens(promptTemplate, tokenEncoder);
+      tokenCounter.remaining -= templateTokens;
+      tokenCounter.total += templateTokens;
+
+      logVerbose(`Token used for prompt: ${templateTokens}`, 3, verbose);
+    } else {
+      logVerbose(`No prompt template found, skipping`, 1, verbose);
+    }
+  }
 
   logVerbose(`Initial token limit: ${tokenCounter.remaining}`, 3, verbose);
 
@@ -216,5 +246,10 @@ export async function generateMarkdown(
   }
 
   logVerbose(`Final token count: ${tokenCounter.total}`, 2, verbose);
-  return markdownContent.join("\n");
+
+  // Before final return, if we have a template with {{files}}, replace it
+  const content = markdownContent.join("\n");
+  return !promptFile || promptTemplate === ""
+    ? content
+    : processPromptTemplate(promptTemplate, content, templateVars ?? {});
 }

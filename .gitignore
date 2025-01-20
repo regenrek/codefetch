@@ -8,3 +8,4 @@ coverage/
 .cursorignore
 codefetch
 docs
+.hide

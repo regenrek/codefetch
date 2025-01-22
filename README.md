@@ -282,15 +282,20 @@ export default {
 
 All configuration options are optional and will fall back to defaults if not specified. You can override any config option using CLI arguments.
 
-## License
-
-MIT 
-
 ## Links
 
 - X/Twitter: [@kregenrek](https://x.com/kregenrek)
 - Bluesky: [@kevinkern.dev](https://bsky.app/profile/kevinkern.dev)
-- Ultimate Cursor AI Course: [Instructa.ai](https://www.instructa.ai/en/cursor-ai)
+
+## Courses
+- Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
+- Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
+
+## See my other projects:
+
+* [codefetch](https://github.com/regenrek/codefetch) - Turn code into Markdown for LLMs with one simple terminal command
+* [aidex](https://github.com/regenrek/aidex) A CLI tool that provides detailed information about AI language models, helping developers choose the right model for their needs.
+* [codetie](https://github.com/codetie-ai/codetie) - XCode CLI
 
 ## Credits
 
@@ -298,4 +303,4 @@ This project was inspired by
 
 * [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
 * [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
-
+[unjs](https://github.com/unjs) - for bringing us the best javascript tooling system

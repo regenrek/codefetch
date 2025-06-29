@@ -14,41 +14,29 @@ export interface ModelDb {
 
 export async function getLocalModels(): Promise<ModelDb> {
   return {
-    "deepseek-v3": {
-      max_tokens: 4096,
-      max_input_tokens: 128_000,
-      max_output_tokens: 4096,
-      litellm_provider: "deepseek",
-    },
-    "chatgpt-4o-latest": {
-      max_tokens: 4096,
-      max_input_tokens: 128_000,
-      max_output_tokens: 4096,
-      litellm_provider: "openai",
-    },
-    o1: {
+    o3: {
       max_tokens: 100_000,
       max_input_tokens: 200_000,
       max_output_tokens: 100_000,
       litellm_provider: "openai",
     },
-    "claude-3-5-sonnet-20241022": {
-      max_tokens: 8192,
+    "gemini-2.5-pro": {
+      max_tokens: 65_535,
+      max_input_tokens: 1_048_576,
+      max_output_tokens: 65_535,
+      litellm_provider: "gemini",
+    },
+    "claude-sonnet-4": {
+      max_tokens: 64_000,
       max_input_tokens: 200_000,
-      max_output_tokens: 8192,
+      max_output_tokens: 64_000,
       litellm_provider: "anthropic",
     },
-    "gemini-2.0-flash-exp": {
-      max_tokens: 8192,
-      max_input_tokens: 1_048_576,
-      max_output_tokens: 8192,
-      litellm_provider: "gemini",
-    },
-    "gemini-exp-1206": {
-      max_tokens: 8192,
-      max_input_tokens: 2_097_152,
-      max_output_tokens: 8192,
-      litellm_provider: "gemini",
+    "claude-opus-4": {
+      max_tokens: 32_000,
+      max_input_tokens: 200_000,
+      max_output_tokens: 32_000,
+      litellm_provider: "anthropic",
     },
   };
 }

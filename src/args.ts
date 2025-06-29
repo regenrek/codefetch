@@ -12,8 +12,9 @@ export function parseArgs(args: string[]) {
       t: "project-tree",
       d: "dry-run",
       p: "prompt",
+      c: "token-count-only",
     },
-    boolean: ["dry-run", "disable-line-numbers"],
+    boolean: ["dry-run", "disable-line-numbers", "token-count-only"],
     string: [
       "output",
       "dir",
@@ -115,8 +116,15 @@ export function parseArgs(args: string[]) {
     }
   }
 
+  // Strip "codefetch/" prefix from output file if present to avoid double-nesting
+  let outputFile = argv.output;
+  if (outputFile) {
+    // Remove leading "codefetch/" or "./codefetch/" to prevent double-nesting
+    outputFile = outputFile.replace(/^(\.\/)?codefetch\//, "");
+  }
+
   return {
-    ...(argv.output && { outputFile: argv.output }),
+    ...(outputFile && { outputFile }),
     ...(argv["output-path"] && { outputPath: resolve(argv["output-path"]) }),
     ...(extensions && { extensions }),
     ...(argv["include-files"] && {
@@ -145,5 +153,6 @@ export function parseArgs(args: string[]) {
 
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
+    tokenCountOnly: Boolean(argv["token-count-only"]),
   };
 }

@@ -1,6 +1,12 @@
 import path from "pathe";
 import fg from "fast-glob";
 
+// Helper function to escape special glob characters in paths
+function escapeGlobPath(str: string): string {
+  // Escape special glob characters: * ? [ ] { } ( ) ! @ + |
+  return str.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
+}
+
 export async function collectFiles(
   baseDir: string,
   options: {
@@ -34,14 +40,14 @@ export async function collectFiles(
 
   // Handle include directories
   if (includeDirs?.length) {
-    patterns.push(...includeDirs.map((dir) => `${dir}/**/*`));
+    patterns.push(...includeDirs.map((dir) => `${escapeGlobPath(dir)}/**/*`));
   } else {
     patterns.push("**/*");
   }
 
   // Handle exclude directories
   const ignore = [
-    ...(excludeDirs?.map((dir) => `${dir}/**`) || []),
+    ...(excludeDirs?.map((dir) => `${escapeGlobPath(dir)}/**`) || []),
     ...(excludeFiles || []),
   ];
 
@@ -52,7 +58,7 @@ export async function collectFiles(
     if (includeDirs?.length) {
       for (const dir of includeDirs) {
         for (const ext of exts) {
-          patterns.push(`${dir}/**/*${ext}`);
+          patterns.push(`${escapeGlobPath(dir)}/**/*${ext}`);
         }
       }
     } else {

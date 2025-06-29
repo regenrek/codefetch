@@ -94,4 +94,36 @@ describe("collectFiles", () => {
     expect(files.length).toBe(2);
     expect(files.every((f) => !f.includes("test1.ts"))).toBe(true);
   });
+
+  it("should handle directories with special glob characters", async () => {
+    // Create directories with special characters
+    const specialDirs = [
+      "routes(marketing)",
+      "test[brackets]",
+      "test{braces}",
+      "test*star",
+      "test?question",
+    ];
+
+    for (const dir of specialDirs) {
+      const dirPath = path.join(TEST_DIR, dir);
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(path.join(dirPath, "file.ts"), "test content");
+    }
+
+    // Test including a directory with parentheses
+    const files = await collectFiles(TEST_DIR, {
+      ig: ignore(),
+      extensionSet: null,
+      excludeFiles: null,
+      includeFiles: null,
+      excludeDirs: null,
+      includeDirs: [path.join(TEST_DIR, "routes(marketing)")],
+      verbose: 0,
+    });
+
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain("routes(marketing)");
+    expect(files[0]).toContain("file.ts");
+  });
 });

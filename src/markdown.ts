@@ -1,10 +1,9 @@
 import { createReadStream } from "node:fs";
-import { relative, join } from "pathe";
+import { relative } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 import { generateProjectTree } from "./tree";
 import { countTokens } from "./token-counter";
 import consola from "consola";
-import { readFile } from "node:fs/promises";
 import { processPromptTemplate, resolvePrompt } from "./template-parser";
 
 const CHUNK_SIZE = 64 * 1024; // 64KB optimal chunk size

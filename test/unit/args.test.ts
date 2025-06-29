@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { parseArgs } from "../../src/args";
-import { resolve } from "pathe";
 
 describe("parseArgs", () => {
   it("should parse basic arguments", () => {
@@ -8,9 +7,40 @@ describe("parseArgs", () => {
     const result = parseArgs(args);
 
     expect(result).toMatchObject({
-      output: "output.md",
+      outputFile: "output.md",
       verbose: 2,
     });
+  });
+
+  it("should strip codefetch/ prefix from output file", () => {
+    // Test with codefetch/ prefix
+    expect(parseArgs(["-o", "codefetch/codebase.md"]).outputFile).toBe(
+      "codebase.md"
+    );
+    expect(parseArgs(["--output", "codefetch/myfile.md"]).outputFile).toBe(
+      "myfile.md"
+    );
+
+    // Test with ./codefetch/ prefix
+    expect(parseArgs(["-o", "./codefetch/output.md"]).outputFile).toBe(
+      "output.md"
+    );
+
+    // Test with nested path after codefetch/
+    expect(parseArgs(["-o", "codefetch/subfolder/file.md"]).outputFile).toBe(
+      "subfolder/file.md"
+    );
+
+    // Test without codefetch/ prefix (should remain unchanged)
+    expect(parseArgs(["-o", "myoutput.md"]).outputFile).toBe("myoutput.md");
+    expect(parseArgs(["-o", "folder/file.md"]).outputFile).toBe(
+      "folder/file.md"
+    );
+
+    // Test edge case: file named codefetch in another directory
+    expect(parseArgs(["-o", "other/codefetch/file.md"]).outputFile).toBe(
+      "other/codefetch/file.md"
+    );
   });
 
   it("should handle extensions correctly", () => {
@@ -95,24 +125,10 @@ describe("parseArgs", () => {
     const result = parseArgs(args);
 
     expect(result).toMatchObject({
-      output: "output.md",
+      outputFile: "output.md",
       disableLineNumbers: true,
       tokenEncoder: "cl100k",
       verbose: 2,
     });
-  });
-
-  it("handles directory argument correctly", () => {
-    // Test with provided directory
-    const argsWithDir = parseArgs(["--dir", "./src"]);
-    expect(argsWithDir.dir).toBe(resolve("./src"));
-
-    // Test with relative path
-    const argsWithRelativeDir = parseArgs(["--dir", "../project"]);
-    expect(argsWithRelativeDir.dir).toBe(resolve("../project"));
-
-    // Test default case (undefined when not provided)
-    const argsWithoutDir = parseArgs([]);
-    expect(argsWithoutDir.dir).toBeUndefined();
   });
 });

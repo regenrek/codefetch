@@ -98,12 +98,18 @@ export default async function defaultMain(rawArgs: Argv) {
 
   // Count tokens if needed
   let totalTokens = 0;
-  if (config.verbose >= 3 || config.maxTokens) {
+  if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
     totalTokens = await countTokens(markdown, config.tokenEncoder);
 
     if (config.maxTokens && totalTokens > config.maxTokens) {
       logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
     }
+  }
+
+  // If token-count-only mode, just output the count and exit
+  if (config.tokenCountOnly) {
+    console.log(totalTokens);
+    return;
   }
 
   if (args.dryRun) {

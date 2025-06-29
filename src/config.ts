@@ -21,6 +21,7 @@ export interface CodefetchConfig {
   trackedModels?: string[];
   dryRun?: boolean;
   disableLineNumbers?: boolean;
+  tokenCountOnly?: boolean;
   defaultPromptFile: string;
   defaultChat?: string;
   templateVars?: Record<string, string>;
@@ -37,15 +38,10 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   gitignore: true,
   tokenEncoder: "simple",
   tokenLimiter: "truncated",
-  trackedModels: [
-    "chatgpt-4o-latest",
-    "claude-3-5-sonnet-20241022",
-    "o1",
-    "deepseek-v3",
-    "gemini-exp-1206",
-  ],
+  trackedModels: ["o3", "gemini-2.5-pro", "claude-sonnet-4", "claude-opus-4"],
   dryRun: false,
   disableLineNumbers: false,
+  tokenCountOnly: false,
   defaultPromptFile: "default.md",
   defaultChat: "https://chat.com",
   templateVars: {},

@@ -50,13 +50,25 @@ Dry run (only output to console)
 npx codefetch --d
 ```
 
+Count tokens only (without generating markdown file)
+```bash
+# Count tokens with default encoder
+npx codefetch -c
+
+# Count tokens with specific encoder
+npx codefetch -c --token-encoder cl100k
+
+# Count tokens for specific file types
+npx codefetch -c -e .ts,.js --token-encoder o200k
+```
+
 If no output file is specified (`-o` or `--output`), it will print to `codefetch/codebase.md`
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `-o, --output <file>` | Specify output filename (defaults to codebase.md) |
+| `-o, --output <file>` | Specify output filename (defaults to codebase.md). Note: If you include "codefetch/" in the path, it will be automatically stripped to avoid double-nesting |
 | `--dir <path>` | Specify the directory to scan (defaults to current directory) |
 | `--max-tokens <number>` | Limit output tokens (default: 500,000) |
 | `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
@@ -70,6 +82,7 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--token-encoder <type>` | Token encoding method (simple, p50k, o200k, cl100k) |
 | `--disable-line-numbers` | Disable line numbers in output |
 | `-d, --dry-run` | Output markdown to stdout instead of file |
+| `-c, --token-count-only` | Output only the token count without generating markdown file |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
 - `*` matches any number of characters
@@ -266,11 +279,10 @@ export default {
   
   // AI/LLM settings
   trackedModels: [
-    "chatgpt-4o-latest",
-    "claude-3-5-sonnet-20241022",
-    "o1",
-    "deepseek-v3",
-    "gemini-exp-1206",
+    "o3",
+    "gemini-2.5-pro",
+    "claude-sonnet-4",
+    "claude-opus-4",
   ],
   
   // Prompt handling

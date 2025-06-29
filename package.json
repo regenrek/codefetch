@@ -34,7 +34,6 @@
     "lint": "eslint --cache . && prettier -c src test",
     "start": "tsx src/cli.ts",
     "lint:fix": "eslint --cache . --fix && prettier -c src test -w",
-    "release": "npm test && npm run build && npm publish",
     "test": "npm run lint && npm run test:types && vitest run --coverage",
     "test:types": "tsc --noEmit --skipLibCheck",
     "prepack": "unbuild",
@@ -42,7 +41,8 @@
     "docs:build": "nuxi build docs",
     "docs:prepare": "nuxt-component-meta docs",
     "prerelease": "npm version prerelease --preid=edge",
-    "publish:edge": "npm publish --tag edge"
+    "publish:edge": "npm publish --tag edge",
+    "release": "tsx scripts/release.ts"
   },
   "devDependencies": {
     "@types/minimist": "^1.2.5",

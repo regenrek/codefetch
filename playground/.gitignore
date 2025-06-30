@@ -1,0 +1,5 @@
+# Ignore all files in output directories
+output/
+
+# Keep the .gitkeep files to maintain folder structure
+!output/**/.gitkeep

@@ -1,0 +1,16 @@
+{
+  "name": "codefetch-playground",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Playground for testing @codefetch/sdk",
+  "scripts": {
+    "test": "node test-sdk.js",
+    "analyze-github": "node analyze-github-repo.js",
+    "generate-docs": "node generate-docs.js",
+    "analyze-code": "node code-analyzer.js",
+    "list-outputs": "node list-outputs.js"
+  },
+  "dependencies": {
+    "ignore": "^7.0.5"
+  }
+}

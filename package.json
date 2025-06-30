@@ -1,49 +1,19 @@
 {
-  "name": "codefetch",
+  "name": "codefetch-monorepo",
   "version": "1.5.1",
-  "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
+  "private": true,
+  "description": "Codefetch monorepo",
   "repository": "regenrek/codefetch",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    }
-  },
-  "bin": {
-    "codefetch": "./dist/cli.mjs"
-  },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "unbuild",
-    "dev": "vitest",
-    "lint": "eslint --cache . && prettier -c src test",
-    "start": "tsx src/cli.ts",
-    "lint:fix": "eslint --cache . --fix && prettier -c src test -w",
-    "test": "npm run lint && npm run test:types && vitest run --coverage",
-    "test:types": "tsc --noEmit --skipLibCheck",
-    "prepack": "unbuild",
-    "docs": "DEV=true nuxi dev docs",
-    "docs:build": "nuxi build docs",
-    "docs:prepare": "nuxt-component-meta docs",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "cli": "pnpm --filter codefetch run cli",
+    "lint": "pnpm -r lint",
     "release": "tsx scripts/release.ts"
   },
   "devDependencies": {
-    "@types/minimist": "^1.2.5",
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.18.0",
@@ -54,15 +24,5 @@
     "unbuild": "3.2.0",
     "vitest": "^2.1.8"
   },
-  "packageManager": "pnpm@9.14.4",
-  "dependencies": {
-    "c12": "^2.0.1",
-    "consola": "^3.3.3",
-    "defu": "^6.1.4",
-    "fast-glob": "^3.3.3",
-    "ignore": "^7.0.0",
-    "js-tiktoken": "^1.0.16",
-    "mri": "^1.2.0",
-    "pathe": "^2.0.1"
-  }
+  "packageManager": "pnpm@9.14.4"
 }

@@ -1,0 +1,37 @@
+{
+  "name": "@codefetch/mcp",
+  "version": "1.5.1",
+  "description": "Model Context Protocol server for codefetch",
+  "repository": "regenrek/codefetch",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@codefetch/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.13.2"
+  }
+}

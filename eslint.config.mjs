@@ -6,7 +6,9 @@ export default unjs({
     "docs/**",
     "docs/.nuxt/**",
     "docs",
-    "test/fixtures/codebase-test/**",
+    "**/test/fixtures/**",
+    "**/dist/**",
+    "packages/*/dist/**",
   ],
   rules: {
     "unicorn/no-null": 0,

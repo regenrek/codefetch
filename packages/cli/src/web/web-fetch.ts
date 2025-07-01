@@ -16,6 +16,7 @@ import { parseURL, validateURL } from "./url-handler.js";
 import { WebCache } from "./cache.js";
 import { WebCrawler } from "./crawler.js";
 import { generateUrlProjectStructure, crawlResultsToMarkdown } from "./url-tree.js";
+import { fetchGitHubViaApi } from "./github-api.js";
 import { loadCodefetchConfig } from "../config.js";
 import type { WebFetchConfig } from "./types.js";
 
@@ -37,6 +38,8 @@ export async function handleWebFetch(
     noCache: args.noCache,
     ignoreRobots: args.ignoreRobots,
     ignoreCors: args.ignoreCors,
+    noApi: args.noApi,
+    githubToken: args.githubToken,
   };
 
   // Validate URL
@@ -212,6 +215,32 @@ async function fetchGitRepository(
   const repoPath = join(tempDir, "repo");
 
   try {
+    // Try GitHub API first if it's a GitHub URL
+    if (parsedUrl.gitProvider === "github" && !config.noApi) {
+      logger.info("Attempting to fetch via GitHub API...");
+      
+      const apiSuccess = await fetchGitHubViaApi(
+        parsedUrl,
+        repoPath,
+        logger,
+        {
+          branch: config.branch || parsedUrl.gitRef,
+          token: args.githubToken || process.env.GITHUB_TOKEN,
+          extensions: args.extensions,
+          excludeDirs: args.excludeDirs,
+          maxFiles: 1000,
+        }
+      );
+
+      if (apiSuccess) {
+        logger.success("Repository fetched successfully via API");
+        return repoPath;
+      }
+      
+      logger.info("Falling back to git clone...");
+    }
+
+    // Fall back to git clone
     logger.info("Cloning repository...");
 
     // Build clone command
@@ -255,7 +284,7 @@ async function fetchGitRepository(
     // Clean up on error
     await rm(tempDir, { recursive: true, force: true });
     throw new Error(
-      `Failed to clone repository: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to fetch repository: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

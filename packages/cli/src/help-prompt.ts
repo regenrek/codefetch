@@ -31,15 +31,23 @@ Web Fetching Options:
   --branch <name>             Git branch/tag/commit to fetch (for git repositories)
   --ignore-robots             Ignore robots.txt when crawling websites
   --ignore-cors               Ignore CORS restrictions (CLI-only feature)
+  --no-api                    Disable GitHub API and use git clone instead
+  --github-token <token>      GitHub API token for private repos (or set GITHUB_TOKEN env var)
 
 Examples:
   # Analyze a local project
   codefetch --output analysis.md
 
-  # Fetch and analyze a GitHub repository
+  # Fetch and analyze a GitHub repository (uses API by default)
   codefetch --url https://github.com/user/repo --branch main
 
-  # Analyze a website (coming in Phase 2)
+  # Fetch private GitHub repo with token
+  codefetch --url https://github.com/org/private-repo --github-token ghp_xxxxx
+
+  # Force git clone instead of API
+  codefetch --url https://github.com/user/repo --no-api
+
+  # Analyze a website
   codefetch --url https://docs.example.com --max-depth 3
 `);
 }

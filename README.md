@@ -12,12 +12,13 @@ Codefetch is a powerful tool that converts codebases and websites into structure
 
 - 📁 **Local Codebase Processing** - Convert entire codebases into AI-friendly Markdown
 - 🌐 **Website Fetching** - Crawl and convert websites into structured documentation  
-- 🔗 **Git Repository Support** - Clone and analyze remote repositories
+- 🔗 **Git Repository Support** - Fast GitHub API fetching with git clone fallback
 - 🎯 **Smart Filtering** - Respect .gitignore patterns and custom exclusions
 - 📊 **Token Counting** - Track tokens for GPT-4, Claude, and other models
 - 🚀 **CLI & SDK** - Use via command line or integrate programmatically
 - 💾 **Intelligent Caching** - Speed up repeated fetches with smart caching
 - 🌲 **Project Structure Visualization** - Generate tree views of your codebase
+- ⚡ **GitHub API Integration** - Fetch repos without git using the GitHub API
 
 Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 
@@ -30,7 +31,7 @@ npx codefetch
 # Fetch a website
 npx codefetch --url example.com
 
-# Clone and analyze a GitHub repo
+# Analyze a GitHub repo (uses API - no git needed!)
 npx codefetch --url github.com/facebook/react
 ```
 

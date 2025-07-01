@@ -73,8 +73,17 @@ Fetch and convert websites or Git repositories:
 # Fetch a website
 codefetch --url macherjek.at --max-pages 50 --max-depth 3
 
-# Clone and analyze a GitHub repository
+# Analyze a GitHub repository (uses API by default - faster!)
 codefetch --url https://github.com/facebook/react --branch main
+
+# Fetch private GitHub repo with token
+codefetch --url https://github.com/org/private-repo --github-token ghp_xxxxx
+# Or set GITHUB_TOKEN environment variable
+export GITHUB_TOKEN=ghp_xxxxx
+codefetch --url https://github.com/org/private-repo
+
+# Force git clone instead of API
+codefetch --url https://github.com/user/repo --no-api
 
 # Fetch without cache
 codefetch --url example.com --no-cache
@@ -132,6 +141,8 @@ Create a `.codefetchrc` file for project-specific settings:
 - `--branch` - Git branch to fetch (for repositories)
 - `--ignore-robots` - Ignore robots.txt restrictions
 - `--ignore-cors` - Ignore CORS restrictions
+- `--no-api` - Disable GitHub API and use git clone instead
+- `--github-token` - GitHub API token for private repos
 
 ### Display Options
 
@@ -165,9 +176,14 @@ codefetch --url docs.example.com \
 ### Analyze a GitHub Repository
 
 ```bash
+# Uses GitHub API by default (faster, no git required)
 codefetch --url https://github.com/expressjs/express \
   --branch master \
   -e js --exclude-dir test,examples
+
+# For private repositories
+codefetch --url https://github.com/myorg/private-repo \
+  --github-token ghp_your_token_here
 ```
 
 ### Use with AI Prompts

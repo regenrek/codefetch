@@ -7,6 +7,8 @@ export interface WebFetchConfig {
   noCache?: boolean;
   ignoreRobots?: boolean;
   ignoreCors?: boolean;
+  noApi?: boolean;
+  githubToken?: string;
 }
 
 export interface CrawlOptions {

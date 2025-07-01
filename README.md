@@ -311,7 +311,7 @@ npm install @codefetch/sdk
 
 [Read the full SDK documentation →](./packages/sdk/README.md)
 
-### [@codefetch/mcp-server](./mcp/README.md)
+### [@codefetch/mcp-server](./packages/mcp/README.md)
 Model Context Protocol server for AI assistants like Claude.
 
 ```bash
@@ -324,7 +324,7 @@ npx @codefetch/mcp-server
 - Token counting tools
 - Configurable via environment variables
 
-[Read the full MCP documentation →](./mcp/README.md)
+[Read the full MCP documentation →](./packages/mcp/README.md)
 
 ## Integrate into Your Project
 

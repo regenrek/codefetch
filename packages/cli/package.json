@@ -43,12 +43,16 @@
     "c12": "^2.0.1",
     "consola": "^3.3.3",
     "ignore": "^7.0.0",
+    "jsdom": "^25.0.1",
     "mri": "^1.2.0",
-    "pathe": "^2.0.1"
+    "pathe": "^2.0.1",
+    "turndown": "^7.2.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.10.5",
+    "@types/turndown": "^5.0.5",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.18.0",
     "eslint-config-unjs": "^0.4.2",

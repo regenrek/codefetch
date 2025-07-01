@@ -178,7 +178,7 @@ export function parseArgs(args: string[]) {
     ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
     ...(argv["max-pages"] && { maxPages: Number(argv["max-pages"]) }),
     ...(argv.branch && { branch: String(argv.branch) }),
-    noCache: Boolean(argv["no-cache"]),
+    noCache: argv.cache === false,  // mri converts --no-cache to cache: false
     ignoreRobots: Boolean(argv["ignore-robots"]),
     ignoreCors: Boolean(argv["ignore-cors"]),
   };

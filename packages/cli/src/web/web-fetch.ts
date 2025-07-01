@@ -14,6 +14,8 @@ import {
 import ignore from "ignore";
 import { parseURL, validateURL } from "./url-handler.js";
 import { WebCache } from "./cache.js";
+import { WebCrawler } from "./crawler.js";
+import { generateUrlProjectStructure, crawlResultsToMarkdown } from "./url-tree.js";
 import { loadCodefetchConfig } from "../config.js";
 import type { WebFetchConfig } from "./types.js";
 
@@ -21,6 +23,11 @@ export async function handleWebFetch(
   args: any,
   logger: ConsolaInstance
 ): Promise<void> {
+  // Set a safety timeout for the entire operation
+  const safetyTimeout = setTimeout(() => {
+    logger.error("Operation timed out after 10 minutes");
+    process.exit(1);
+  }, 10 * 60 * 1000); // 10 minutes
   const webConfig: WebFetchConfig = {
     url: args.url,
     cacheTTL: args.cacheTTL,
@@ -63,6 +70,8 @@ export async function handleWebFetch(
       logger.info("Using cached content");
       contentPath = cached.content;
     }
+  } else {
+    logger.debug("Cache disabled by --no-cache flag");
   }
 
   // Fetch content if not cached
@@ -76,59 +85,71 @@ export async function handleWebFetch(
       );
       await cache.set(parsedUrl, contentPath);
     } else {
-      // For Phase 2: Website crawling
-      logger.error(
-        "Website crawling not yet implemented. Only git repositories are supported in Phase 1."
-      );
-      process.exit(1);
+      // Website crawling
+      contentPath = await fetchWebsite(parsedUrl, webConfig, logger, args);
+      await cache.set(parsedUrl, contentPath);
     }
   }
 
   // Now use the existing codefetch pipeline
   logger.info("Analyzing fetched content...");
-  
-  // Change to the fetched content directory for proper relative path handling
-  const originalCwd = process.cwd();
-  process.chdir(contentPath);
 
   // Load config (use defaults for web fetching)
   const config = await loadCodefetchConfig(".", args);
+  
+  let markdown: string;
+  const originalCwd = process.cwd();
+  
+  if (parsedUrl.type === "website") {
+    // For websites, we already have the markdown in the temp directory
+    const websiteContentPath = join(contentPath, "website-content.md");
+    markdown = await import("node:fs").then((fs) =>
+      fs.promises.readFile(websiteContentPath, "utf8")
+    );
+  } else {
+    // For git repositories, use the existing pipeline
+    // Change to the fetched content directory for proper relative path handling
+    process.chdir(contentPath);
 
-  // Set up ignore patterns
-  const ig = ignore().add(
-    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-      (line: string) => line && !line.startsWith("#")
-    )
-  );
+    // Set up ignore patterns
+    const ig = ignore().add(
+      DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+        (line: string) => line && !line.startsWith("#")
+      )
+    );
 
-  // Collect files from the fetched content
-  const files = await collectFiles(".", {
-    ig,
-    extensionSet: config.extensions ? new Set(config.extensions) : null,
-    excludeFiles: config.excludeFiles || null,
-    includeFiles: config.includeFiles || null,
-    excludeDirs: config.excludeDirs || null,
-    includeDirs: config.includeDirs || null,
-    verbose: config.verbose,
-  });
+    // Collect files from the fetched content
+    const files = await collectFiles(".", {
+      ig,
+      extensionSet: config.extensions ? new Set(config.extensions) : null,
+      excludeFiles: config.excludeFiles || null,
+      includeFiles: config.includeFiles || null,
+      excludeDirs: config.excludeDirs || null,
+      includeDirs: config.includeDirs || null,
+      verbose: config.verbose,
+    });
 
-  // Generate markdown
-  const markdown = await generateMarkdown(files, {
-    maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
-    verbose: Number(config.verbose || 0),
-    projectTree: Number(config.projectTree || 0),
-    tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-    disableLineNumbers: Boolean(config.disableLineNumbers),
-    tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-    templateVars: {
-      ...config.templateVars,
-      SOURCE_URL: parsedUrl.url,
-      FETCHED_FROM:
-        parsedUrl.type === "git-repository"
-          ? `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
-          : parsedUrl.domain,
-    },
-  });
+    // Generate markdown
+    markdown = await generateMarkdown(files, {
+      maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
+      verbose: Number(config.verbose || 0),
+      projectTree: Number(config.projectTree || 0),
+      tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
+      disableLineNumbers: Boolean(config.disableLineNumbers),
+      tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+      templateVars: {
+        ...config.templateVars,
+        SOURCE_URL: parsedUrl.url,
+        FETCHED_FROM:
+          parsedUrl.type === "git-repository"
+            ? `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+            : parsedUrl.domain,
+      },
+    });
+    
+    // Restore original working directory
+    process.chdir(originalCwd);
+  }
 
   // Count tokens
   const totalTokens = await countTokens(
@@ -163,9 +184,21 @@ export async function handleWebFetch(
       `Cache stats: ${stats.entryCount} entries, ${stats.sizeMB.toFixed(2)}MB`
     );
   }
-  
-  // Restore original working directory
-  process.chdir(originalCwd);
+
+  // Clean up temporary directory for websites
+  if (parsedUrl.type === "website" && contentPath) {
+    try {
+      await rm(contentPath, { recursive: true, force: true });
+      logger.debug("Cleaned up temporary directory");
+    } catch (cleanupError) {
+      logger.debug("Failed to clean up temp directory:", cleanupError);
+    }
+  }
+
+  // Clear the safety timeout
+  clearTimeout(safetyTimeout);
+
+  // Website path doesn't need restoration since we didn't change directory
 }
 
 async function fetchGitRepository(
@@ -223,6 +256,62 @@ async function fetchGitRepository(
     await rm(tempDir, { recursive: true, force: true });
     throw new Error(
       `Failed to clone repository: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function fetchWebsite(
+  parsedUrl: any,
+  config: WebFetchConfig,
+  logger: ConsolaInstance,
+  args: any
+): Promise<string> {
+  // Create temporary directory for the merged output
+  const tempDir = await mkdtemp(join(tmpdir(), "codefetch-web-"));
+
+  try {
+    logger.info("Starting website crawl...");
+
+    // Create crawler
+    const crawler = new WebCrawler(
+      parsedUrl,
+      {
+        maxDepth: config.maxDepth || 2,
+        maxPages: config.maxPages || 50,
+        ignoreRobots: config.ignoreRobots,
+        ignoreCors: config.ignoreCors,
+        delay: 50, // 50ms delay between requests (reduced from 100ms)
+      },
+      logger
+    );
+
+    // Crawl website and get results
+    const crawlResults = await crawler.crawl();
+
+    logger.success("Website crawled successfully");
+    
+    // Generate project structure
+    const projectStructure = generateUrlProjectStructure(crawlResults);
+    
+    // Generate content sections
+    const contentSections = crawlResultsToMarkdown(crawlResults);
+    
+    // Combine into single markdown file
+    const fullMarkdown = projectStructure + contentSections;
+    
+    // Save to a file in temp directory
+    const outputPath = join(tempDir, "website-content.md");
+    await import("node:fs").then((fs) =>
+      fs.promises.writeFile(outputPath, fullMarkdown)
+    );
+    
+    // Return the temp directory so the rest of the pipeline can process it
+    return tempDir;
+  } catch (error) {
+    // Clean up on error
+    await rm(tempDir, { recursive: true, force: true });
+    throw new Error(
+      `Failed to crawl website: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

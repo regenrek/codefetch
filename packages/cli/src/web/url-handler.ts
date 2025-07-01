@@ -45,11 +45,24 @@ export interface URLValidationResult {
 }
 
 /**
+ * Normalize URL by adding protocol if missing
+ */
+function normalizeURLString(urlString: string): string {
+  // If no protocol is specified, assume https://
+  if (!/^[a-zA-Z]+:\/\//.test(urlString)) {
+    return `https://${urlString}`;
+  }
+  return urlString;
+}
+
+/**
  * Validates a URL for security and format
  */
 export function validateURL(urlString: string): URLValidationResult {
   try {
-    const url = new URL(urlString);
+    // Normalize URL first
+    const normalizedUrlString = normalizeURLString(urlString);
+    const url = new URL(normalizedUrlString);
 
     // Check protocol
     if (!["http:", "https:"].includes(url.protocol)) {
@@ -123,17 +136,20 @@ export function detectGitProvider(
  * Parses and normalizes a URL
  */
 export function parseURL(urlString: string): ParsedURL | null {
+  // Normalize URL first
+  const normalizedUrlString = normalizeURLString(urlString);
+
   const validation = validateURL(urlString);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
 
-  const url = new URL(urlString);
-  const gitProvider = detectGitProvider(urlString);
+  const url = new URL(normalizedUrlString);
+  const gitProvider = detectGitProvider(normalizedUrlString);
 
   if (gitProvider) {
     // Parse git repository URL
-    const match = urlString.match(GIT_PROVIDERS[gitProvider]);
+    const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
     if (!match) {
       throw new Error("Failed to parse git repository URL");
     }
@@ -163,7 +179,7 @@ export function parseURL(urlString: string): ParsedURL | null {
 
     return {
       type: "git-repository",
-      url: urlString,
+      url: normalizedUrlString,
       normalizedUrl,
       domain: url.hostname,
       path: url.pathname,
@@ -177,7 +193,7 @@ export function parseURL(urlString: string): ParsedURL | null {
   // Regular website
   return {
     type: "website",
-    url: urlString,
+    url: normalizedUrlString,
     normalizedUrl: `${url.protocol}//${url.host}${url.pathname}`,
     domain: url.hostname,
     path: url.pathname,

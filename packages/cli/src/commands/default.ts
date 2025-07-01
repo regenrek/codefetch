@@ -31,8 +31,14 @@ export default async function defaultMain(rawArgs: Argv) {
 
   // Handle URL-based fetching
   if (args.url) {
-    await handleWebFetch(args, logger);
-    return;
+    try {
+      await handleWebFetch(args, logger);
+    } catch (error) {
+      logger.error("Web fetch failed:", error);
+      process.exit(1);
+    }
+    // Ensure clean exit after web fetching
+    process.exit(0);
   }
 
   // 1: Running from root directory

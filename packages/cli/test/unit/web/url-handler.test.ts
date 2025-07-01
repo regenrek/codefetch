@@ -16,6 +16,12 @@ describe("URL Validation", () => {
     });
   });
 
+  it("should handle URLs without protocol", () => {
+    expect(validateURL("example.com")).toEqual({ valid: true });
+    expect(validateURL("docs.example.com/path")).toEqual({ valid: true });
+    expect(validateURL("github.com/user/repo")).toEqual({ valid: true });
+  });
+
   it("should reject invalid protocols", () => {
     expect(validateURL("file:///etc/passwd")).toEqual({
       valid: false,
@@ -73,10 +79,10 @@ describe("URL Validation", () => {
   });
 
   it("should handle malformed URLs", () => {
-    expect(validateURL("not-a-url")).toEqual({
-      valid: false,
-      error: expect.stringContaining("Invalid URL format"),
-    });
+    // "not-a-url" is now valid since we add https:// automatically
+    expect(validateURL("not-a-url")).toEqual({ valid: true });
+
+    // Empty string should still fail
     expect(validateURL("")).toEqual({
       valid: false,
       error: expect.stringContaining("Invalid URL format"),
@@ -129,6 +135,28 @@ describe("URL Parsing", () => {
     });
   });
 
+  it("should parse URLs without protocol", () => {
+    const parsed = parseURL("example.com");
+    expect(parsed).toEqual({
+      type: "website",
+      url: "https://example.com",
+      normalizedUrl: "https://example.com/",
+      domain: "example.com",
+      path: "/",
+    });
+  });
+
+  it("should parse URLs with path but no protocol", () => {
+    const parsed = parseURL("docs.example.com/api/guide");
+    expect(parsed).toEqual({
+      type: "website",
+      url: "https://docs.example.com/api/guide",
+      normalizedUrl: "https://docs.example.com/api/guide",
+      domain: "docs.example.com",
+      path: "/api/guide",
+    });
+  });
+
   it("should parse GitHub repository URLs", () => {
     const parsed = parseURL("https://github.com/facebook/react");
     expect(parsed).toEqual({
@@ -157,6 +185,21 @@ describe("URL Parsing", () => {
       "https://github.com/user/repo/releases/tag/v1.0.0"
     );
     expect(tagParsed?.gitRef).toBe("v1.0.0");
+  });
+
+  it("should parse git repo URLs without protocol", () => {
+    const parsed = parseURL("github.com/facebook/react");
+    expect(parsed).toEqual({
+      type: "git-repository",
+      url: "https://github.com/facebook/react",
+      normalizedUrl: "https://github.com/facebook/react",
+      domain: "github.com",
+      path: "/facebook/react",
+      gitProvider: "github",
+      gitOwner: "facebook",
+      gitRepo: "react",
+      gitRef: undefined,
+    });
   });
 
   it("should normalize repository names", () => {

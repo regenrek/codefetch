@@ -14,7 +14,14 @@ export function parseArgs(args: string[]) {
       p: "prompt",
       c: "token-count-only",
     },
-    boolean: ["dry-run", "disable-line-numbers", "token-count-only"],
+    boolean: [
+      "dry-run",
+      "disable-line-numbers",
+      "token-count-only",
+      "no-cache",
+      "ignore-robots",
+      "ignore-cors",
+    ],
     string: [
       "output",
       "dir",
@@ -29,6 +36,11 @@ export function parseArgs(args: string[]) {
       "token-limiter",
       "prompt",
       "var",
+      "url",
+      "cache-ttl",
+      "max-depth",
+      "max-pages",
+      "branch",
     ],
   });
 
@@ -159,5 +171,15 @@ export function parseArgs(args: string[]) {
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
     tokenCountOnly: Boolean(argv["token-count-only"]),
+
+    // Web-related flags
+    ...(argv.url && { url: String(argv.url) }),
+    ...(argv["cache-ttl"] && { cacheTTL: Number(argv["cache-ttl"]) }),
+    ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
+    ...(argv["max-pages"] && { maxPages: Number(argv["max-pages"]) }),
+    ...(argv.branch && { branch: String(argv.branch) }),
+    noCache: Boolean(argv["no-cache"]),
+    ignoreRobots: Boolean(argv["ignore-robots"]),
+    ignoreCors: Boolean(argv["ignore-cors"]),
   };
 }

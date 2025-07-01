@@ -15,6 +15,7 @@ import {
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
 import type { TokenEncoder, TokenLimiter } from "@codefetch/sdk";
+import { handleWebFetch } from "../web/web-fetch.js";
 
 export default async function defaultMain(rawArgs: Argv) {
   if (rawArgs.help || rawArgs.h) {
@@ -27,6 +28,12 @@ export default async function defaultMain(rawArgs: Argv) {
     stdout: process.stdout,
     stderr: process.stderr,
   });
+
+  // Handle URL-based fetching
+  if (args.url) {
+    await handleWebFetch(args, logger);
+    return;
+  }
 
   // 1: Running from root directory
   // 2: Running from components directory - npx codefetch /home/user/max/project

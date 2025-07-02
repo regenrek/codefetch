@@ -11,10 +11,12 @@ import {
   countTokens,
   fetchModels,
   VALID_PROMPTS,
+  collectFilesAsTree,
+  FetchResultImpl,
 } from "@codefetch/sdk";
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
-import type { TokenEncoder, TokenLimiter } from "@codefetch/sdk";
+import type { TokenEncoder, TokenLimiter, OutputFormat } from "@codefetch/sdk";
 import { handleWebFetch } from "../web/web-fetch.js";
 
 export default async function defaultMain(rawArgs: Argv) {
@@ -75,6 +77,10 @@ export default async function defaultMain(rawArgs: Argv) {
   process.chdir(cwd);
 
   const config = await loadCodefetchConfig(cwd, args);
+  if (args.verbose >= 2) {
+    logger.debug(`Format from args: ${args.format}`);
+    logger.debug(`Format in config: ${config.format}`);
+  }
 
   const ig = ignore().add(
     DEFAULT_IGNORE_PATTERNS.split("\n").filter(
@@ -107,26 +113,59 @@ export default async function defaultMain(rawArgs: Argv) {
     verbose: config.verbose,
   });
 
-  const markdown = await generateMarkdown(files, {
-    maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
-    verbose: Number(config.verbose || 0),
-    projectTree: Number(config.projectTree || 0),
-    tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-    disableLineNumbers: Boolean(config.disableLineNumbers),
-    tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-    promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
-      ? config.defaultPromptFile
-      : resolve(config.outputPath, "prompts", config.defaultPromptFile),
-    templateVars: config.templateVars,
-  });
-
-  // Count tokens if needed
+  let output: string | FetchResultImpl;
   let totalTokens = 0;
-  if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
-    totalTokens = await countTokens(markdown, config.tokenEncoder);
+  
+  logger.info(`Using format: ${config.format || 'markdown'}`);
+  
+  if (config.format === 'json') {
+    // Generate JSON format
+    logger.info('Generating JSON format...');
+    const { root, totalSize, totalTokens: tokens } = await collectFilesAsTree(
+      process.cwd(),
+      files,
+      {
+        tokenEncoder: config.tokenEncoder,
+        tokenLimit: config.maxTokens
+      }
+    );
+    
+    totalTokens = tokens;
+    
+    const metadata = {
+      totalFiles: files.length,
+      totalSize,
+      totalTokens,
+      fetchedAt: new Date(),
+      source: process.cwd()
+    };
+    
+    output = new FetchResultImpl(root, metadata);
+  } else {
+    // Generate markdown format (default)
+    logger.info('Generating markdown format...');
+    const markdown = await generateMarkdown(files, {
+      maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
+      verbose: Number(config.verbose || 0),
+      projectTree: Number(config.projectTree || 0),
+      tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
+      disableLineNumbers: Boolean(config.disableLineNumbers),
+      tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+      promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
+        ? config.defaultPromptFile
+        : resolve(config.outputPath, "prompts", config.defaultPromptFile),
+      templateVars: config.templateVars,
+    });
+    
+    output = markdown;
+    
+    // Count tokens if needed
+    if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
+      totalTokens = await countTokens(markdown, config.tokenEncoder);
 
-    if (config.maxTokens && totalTokens > config.maxTokens) {
-      logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
+      if (config.maxTokens && totalTokens > config.maxTokens) {
+        logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
+      }
     }
   }
 
@@ -137,7 +176,12 @@ export default async function defaultMain(rawArgs: Argv) {
   }
 
   if (args.dryRun) {
-    logger.log(markdown);
+    if (typeof output === 'string') {
+      logger.log(output);
+    } else {
+      // For JSON format in dry-run, output the JSON
+      console.log(JSON.stringify(output, null, 2));
+    }
   } else {
     if (!existsSync(config.outputPath)) {
       await fsp.mkdir(config.outputPath, { recursive: true });
@@ -147,8 +191,17 @@ export default async function defaultMain(rawArgs: Argv) {
     }
 
     const fullPath = join(config.outputPath, config.outputFile);
-    await fsp.writeFile(fullPath, markdown);
-    console.log(`Output written to ${fullPath}`);
+    
+    if (typeof output === 'string') {
+      // Write markdown
+      await fsp.writeFile(fullPath, output);
+      console.log(`Output written to ${fullPath}`);
+    } else {
+      // Write JSON
+      const jsonPath = fullPath.endsWith('.json') ? fullPath : fullPath.replace(/\.md$/, '.json');
+      await fsp.writeFile(jsonPath, JSON.stringify(output, null, 2));
+      console.log(`Output written to ${jsonPath}`);
+    }
   }
 
   if (config.trackedModels?.length) {

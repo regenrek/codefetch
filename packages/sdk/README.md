@@ -23,6 +23,41 @@ The SDK provides programmatic access to all Codefetch functionality, allowing yo
 
 ## Basic Usage
 
+### Using the fetch() API (Recommended)
+
+```typescript
+import { fetch } from '@codefetch/sdk';
+
+// Fetch as markdown (default)
+const markdown = await fetch({
+  source: '/path/to/project',
+  extensions: ['.ts', '.tsx', '.js', '.jsx'],
+  maxTokens: 100000
+});
+
+// Fetch as JSON for structured access
+const result = await fetch({
+  source: '/path/to/project',
+  format: 'json',
+  extensions: ['.ts', '.tsx']
+});
+
+// Access files in JSON format
+if (result instanceof FetchResultImpl) {
+  // Get a specific file
+  const file = result.getFileByPath('src/index.ts');
+  console.log(file.content);
+  
+  // Get all files as array
+  const allFiles = result.getAllFiles();
+  
+  // Convert to markdown
+  const markdown = result.toMarkdown();
+}
+```
+
+### Using Low-Level APIs
+
 ```typescript
 import { 
   collectFiles, 

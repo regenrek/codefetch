@@ -63,6 +63,12 @@ codefetch -o my-codebase.md
 
 # Dry run (output to console)
 codefetch --dry-run
+
+# Output as JSON for structured data
+codefetch --format json
+
+# Output JSON to specific file
+codefetch --format json -o codebase.json
 ```
 
 ### Web Fetching
@@ -148,6 +154,7 @@ Create a `.codefetchrc` file for project-specific settings:
 
 - `-t, --project-tree` - Show project tree (0=off, 1+=depth)
 - `--tracked-models` - Show token counts for specific models
+- `--format` - Output format (markdown, json) (default: markdown)
 
 ### Advanced Options
 
@@ -203,6 +210,16 @@ codefetch -p improve --max-tokens 30000
 
 ```bash
 codefetch --tracked-models gpt-4,claude-3-opus,gpt-3.5-turbo
+```
+
+### JSON Output Format
+
+```bash
+# Generate JSON output for programmatic access
+codefetch --format json -o codebase.json
+
+# Use with jq to query specific files
+codefetch --format json | jq '.root.children[] | select(.name == "src")'
 ```
 
 ## Ignore Patterns

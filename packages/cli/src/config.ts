@@ -4,6 +4,7 @@ import {
   getDefaultConfig,
   resolveCodefetchConfig,
   createCustomConfigMerger,
+  mergeWithCliArgs,
 } from "@codefetch/sdk";
 
 export {
@@ -24,11 +25,13 @@ export async function loadCodefetchConfig(
     name: "codefetch",
     cwd,
     defaults,
-    overrides: overrides as CodefetchConfig,
     merger: customMerger,
   });
 
-  return await resolveCodefetchConfig(config, cwd);
+  // Merge CLI args after loading config
+  const mergedConfig = overrides ? mergeWithCliArgs(config, overrides) : config;
+
+  return await resolveCodefetchConfig(mergedConfig, cwd);
 }
 
 export async function getConfig(

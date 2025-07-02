@@ -19,6 +19,7 @@ Options:
   --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
   --token-limiter <type>      Token limiting strategy (sequential, truncated)
   --disable-line-numbers      Disable line numbers in output
+  --format <type>             Output format (markdown, json) (default: markdown)
   -h, --help                  Display this help message
   -p, --prompt <type>         Add a default prompt (fix, improve, codegen, testgen) or add a custom prompt file with .md/.txt extension
 

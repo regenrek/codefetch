@@ -1,5 +1,5 @@
 import { resolve } from "pathe";
-import type { TokenEncoder, TokenLimiter } from "./types";
+import type { TokenEncoder, TokenLimiter, OutputFormat } from "./types";
 import { defu } from "defu";
 
 export interface CodefetchConfig {
@@ -24,6 +24,7 @@ export interface CodefetchConfig {
   defaultPromptFile: string;
   defaultChat?: string;
   templateVars?: Record<string, string>;
+  format?: OutputFormat;
 }
 
 const defaultOutput = "codebase.md";
@@ -45,6 +46,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   defaultPromptFile: "default.md",
   defaultChat: "https://chat.com",
   templateVars: {},
+  format: "markdown",
 });
 
 export async function resolveCodefetchConfig(
@@ -109,10 +111,10 @@ export function createCustomConfigMerger() {
   return (obj: any, defaults: any) => {
     // If obj has trackedModels or prompt, use them instead of merging
     const result = defu(obj, defaults);
-    if (obj.trackedModels) {
+    if (obj && obj.trackedModels) {
       result.trackedModels = obj.trackedModels;
     }
-    if (obj.prompt !== undefined) {
+    if (obj && obj.prompt !== undefined) {
       result.prompt = obj.prompt;
     }
     return result;

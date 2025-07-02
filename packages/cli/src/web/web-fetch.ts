@@ -10,6 +10,8 @@ import {
   DEFAULT_IGNORE_PATTERNS,
   type TokenEncoder,
   type TokenLimiter,
+  collectFilesAsTree,
+  FetchResultImpl,
 } from "@codefetch/sdk";
 import ignore from "ignore";
 import { parseURL, validateURL } from "./url-handler.js";
@@ -100,15 +102,50 @@ export async function handleWebFetch(
   // Load config (use defaults for web fetching)
   const config = await loadCodefetchConfig(".", args);
   
-  let markdown: string;
+  let output: string | FetchResultImpl;
+  let totalTokens = 0;
   const originalCwd = process.cwd();
   
   if (parsedUrl.type === "website") {
     // For websites, we already have the markdown in the temp directory
     const websiteContentPath = join(contentPath, "website-content.md");
-    markdown = await import("node:fs").then((fs) =>
+    const markdown = await import("node:fs").then((fs) =>
       fs.promises.readFile(websiteContentPath, "utf8")
     );
+    
+    if (config.format === 'json') {
+      // Convert markdown to JSON format for websites
+      // Create a simple file node structure
+      const root: any = {
+        name: parsedUrl.domain,
+        path: '',
+        type: 'directory',
+        children: [{
+          name: 'website-content.md',
+          path: 'website-content.md',
+          type: 'file',
+          content: markdown,
+          language: 'markdown',
+          size: Buffer.byteLength(markdown, 'utf8'),
+          tokens: await countTokens(markdown, config.tokenEncoder || "cl100k")
+        }]
+      };
+      
+      totalTokens = root.children[0].tokens;
+      
+      const metadata = {
+        totalFiles: 1,
+        totalSize: root.children[0].size,
+        totalTokens,
+        fetchedAt: new Date(),
+        source: parsedUrl.url
+      };
+      
+      output = new FetchResultImpl(root, metadata);
+    } else {
+      output = markdown;
+      totalTokens = await countTokens(markdown, config.tokenEncoder || "cl100k");
+    }
   } else {
     // For git repositories, use the existing pipeline
     // Change to the fetched content directory for proper relative path handling
@@ -132,34 +169,60 @@ export async function handleWebFetch(
       verbose: config.verbose,
     });
 
-    // Generate markdown
-    markdown = await generateMarkdown(files, {
-      maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
-      verbose: Number(config.verbose || 0),
-      projectTree: Number(config.projectTree || 0),
-      tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-      disableLineNumbers: Boolean(config.disableLineNumbers),
-      tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-      templateVars: {
-        ...config.templateVars,
-        SOURCE_URL: parsedUrl.url,
-        FETCHED_FROM:
-          parsedUrl.type === "git-repository"
-            ? `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
-            : parsedUrl.domain,
-      },
-    });
+    if (config.format === 'json') {
+      // Generate JSON format
+      const { root, totalSize, totalTokens: tokens } = await collectFilesAsTree(
+        ".",
+        files,
+        {
+          tokenEncoder: config.tokenEncoder,
+          tokenLimit: config.maxTokens
+        }
+      );
+      
+      totalTokens = tokens;
+      
+      const metadata = {
+        totalFiles: files.length,
+        totalSize,
+        totalTokens,
+        fetchedAt: new Date(),
+        source: parsedUrl.url,
+        gitProvider: parsedUrl.gitProvider,
+        gitOwner: parsedUrl.gitOwner,
+        gitRepo: parsedUrl.gitRepo,
+        gitRef: parsedUrl.gitRef || config.branch || 'main'
+      };
+      
+      output = new FetchResultImpl(root, metadata);
+    } else {
+      // Generate markdown
+      const markdown = await generateMarkdown(files, {
+        maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
+        verbose: Number(config.verbose || 0),
+        projectTree: Number(config.projectTree || 0),
+        tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
+        disableLineNumbers: Boolean(config.disableLineNumbers),
+        tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+        templateVars: {
+          ...config.templateVars,
+          SOURCE_URL: parsedUrl.url,
+          FETCHED_FROM:
+            parsedUrl.type === "git-repository"
+              ? `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+              : parsedUrl.domain,
+        },
+      });
+      
+      output = markdown;
+      totalTokens = await countTokens(markdown, config.tokenEncoder || "cl100k");
+    }
     
     // Restore original working directory
     process.chdir(originalCwd);
   }
 
-  // Count tokens
-  const totalTokens = await countTokens(
-    markdown,
-    config.tokenEncoder || "cl100k"
-  );
-
+  // Token count is already calculated above
   if (config.tokenCountOnly) {
     console.log(totalTokens);
     return;
@@ -167,16 +230,32 @@ export async function handleWebFetch(
 
   // Output results
   if (args.dryRun) {
-    logger.log(markdown);
+    if (typeof output === 'string') {
+      logger.log(output);
+    } else {
+      // For JSON format in dry-run, output the JSON
+      console.log(JSON.stringify(output, null, 2));
+    }
   } else {
-    const outputFileName =
-      args.outputFile || `${parsedUrl.domain.replace(/\./g, "-")}-analysis.md`;
-    // Resolve output path based on original working directory
-    const outputPath = join(originalCwd, outputFileName);
-    await import("node:fs").then((fs) =>
-      fs.promises.writeFile(outputPath, markdown)
-    );
-    logger.success(`Output written to ${outputPath}`);
+    if (typeof output === 'string') {
+      // Write markdown
+      const outputFileName =
+        args.outputFile || `${parsedUrl.domain.replace(/\./g, "-")}-analysis.md`;
+      const outputPath = join(originalCwd, outputFileName);
+      await import("node:fs").then((fs) =>
+        fs.promises.writeFile(outputPath, output)
+      );
+      logger.success(`Output written to ${outputPath}`);
+    } else {
+      // Write JSON
+      const outputFileName =
+        args.outputFile || `${parsedUrl.domain.replace(/\./g, "-")}-analysis.json`;
+      const outputPath = join(originalCwd, outputFileName);
+      await import("node:fs").then((fs) =>
+        fs.promises.writeFile(outputPath, JSON.stringify(output, null, 2))
+      );
+      logger.success(`Output written to ${outputPath}`);
+    }
     logger.info(`Total tokens: ${totalTokens.toLocaleString()}`);
   }
 

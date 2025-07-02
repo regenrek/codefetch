@@ -43,6 +43,7 @@ export function parseArgs(args: string[]) {
       "max-pages",
       "branch",
       "github-token",
+      "format",
     ],
   });
 
@@ -173,6 +174,7 @@ export function parseArgs(args: string[]) {
     dryRun: Boolean(argv["dry-run"]),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
     tokenCountOnly: Boolean(argv["token-count-only"]),
+    ...(argv.format && { format: argv.format as "markdown" | "json" }),
 
     // Web-related flags
     ...(argv.url && { url: String(argv.url) }),

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { WebCrawler } from "../../../src/web/crawler.js";
-import { parseURL } from "../../../src/web/url-handler.js";
+import { WebCrawler, parseURL } from "@codefetch/sdk";
 import { createConsola } from "consola";
 
 // Mock fetch globally

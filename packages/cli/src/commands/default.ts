@@ -17,7 +17,6 @@ import {
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
 import type { TokenEncoder, TokenLimiter } from "@codefetch/sdk";
-import { handleWebFetch } from "../web/web-fetch.js";
 
 export default async function defaultMain(rawArgs: Argv) {
   if (rawArgs.help || rawArgs.h) {
@@ -31,140 +30,171 @@ export default async function defaultMain(rawArgs: Argv) {
     stderr: process.stderr,
   });
 
-  // Handle URL-based fetching
+  // Determine source - either from URL argument or directory
+  let source: string;
+  let isUrl = false;
+
   if (args.url) {
-    try {
-      await handleWebFetch(args, logger);
-    } catch (error) {
-      logger.error("Web fetch failed:", error);
-      process.exit(1);
-    }
-    // Ensure clean exit after web fetching
-    process.exit(0);
-  }
+    source = args.url;
+    isUrl = true;
+  } else {
+    // 1: Running from root directory
+    // 2: Running from components directory - npx codefetch /home/user/max/project
+    // When using prompt mode with a prompt argument (e.g., -p fix "message"),
+    // the message becomes rawArgs._[0], not a directory
+    const isPromptMode = rawArgs.p || rawArgs.prompt;
+    const promptArg = rawArgs.p || rawArgs.prompt;
+    const hasPromptMessage =
+      isPromptMode &&
+      typeof promptArg === "string" &&
+      VALID_PROMPTS.has(promptArg) &&
+      rawArgs._.length > 0;
 
-  // 1: Running from root directory
-  // 2: Running from components directory - npx codefetch /home/user/max/project
-  // When using prompt mode with a prompt argument (e.g., -p fix "message"),
-  // the message becomes rawArgs._[0], not a directory
-  const isPromptMode = rawArgs.p || rawArgs.prompt;
-  const promptArg = rawArgs.p || rawArgs.prompt;
-  const hasPromptMessage =
-    isPromptMode &&
-    typeof promptArg === "string" &&
-    VALID_PROMPTS.has(promptArg) &&
-    rawArgs._.length > 0;
-
-  const cwd = resolve(
-    hasPromptMessage ? "" : rawArgs._[0] /* bw compat */ || rawArgs.dir || ""
-  );
-  const projectRoot = findProjectRoot(cwd);
-
-  if (projectRoot !== cwd && !process.env.CI && !rawArgs["skip-root-check"]) {
-    const shouldExit = await logger.prompt(
-      `Warning: It's recommended to run codefetch from the root directory (${projectRoot}). Use --include-dirs instead.\nExit and restart from root?`,
-      {
-        type: "confirm",
-      }
+    source = resolve(
+      hasPromptMessage ? "" : rawArgs._[0] /* bw compat */ || rawArgs.dir || ""
     );
-
-    if (shouldExit) {
-      process.exit(0);
-    }
-    logger.warn("Continuing in current directory. Some files might be missed.");
   }
 
-  process.chdir(cwd);
+  // For local paths, check if we're in the project root
+  if (!isUrl) {
+    const projectRoot = findProjectRoot(source);
+    if (
+      projectRoot !== source &&
+      !process.env.CI &&
+      !rawArgs["skip-root-check"]
+    ) {
+      const shouldExit = await logger.prompt(
+        `Warning: It's recommended to run codefetch from the root directory (${projectRoot}). Use --include-dirs instead.\nExit and restart from root?`,
+        {
+          type: "confirm",
+        }
+      );
 
-  const config = await loadCodefetchConfig(cwd, args);
+      if (shouldExit) {
+        process.exit(0);
+      }
+      logger.warn(
+        "Continuing in current directory. Some files might be missed."
+      );
+    }
+    process.chdir(source);
+  }
+
+  const config = await loadCodefetchConfig(
+    isUrl ? process.cwd() : source,
+    args
+  );
   if (args.verbose >= 2) {
     logger.debug(`Format from args: ${args.format}`);
     logger.debug(`Format in config: ${config.format}`);
   }
 
-  const ig = ignore().add(
-    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-      (line: string) => line && !line.startsWith("#")
-    )
-  );
-
-  const defaultIgnorePath = join(cwd, ".gitignore");
-  if (existsSync(defaultIgnorePath)) {
-    const gitignoreContent = await fsp.readFile(defaultIgnorePath, "utf8");
-    ig.add(gitignoreContent);
-  }
-
-  const codefetchIgnorePath = join(cwd, ".codefetchignore");
-  if (existsSync(codefetchIgnorePath)) {
-    const codefetchIgnoreContent = await fsp.readFile(
-      codefetchIgnorePath,
-      "utf8"
-    );
-    ig.add(codefetchIgnoreContent);
-  }
-
-  const files = await collectFiles(process.cwd(), {
-    ig,
-    extensionSet: config.extensions ? new Set(config.extensions) : null,
-    excludeFiles: config.excludeFiles || null,
-    includeFiles: config.includeFiles || null,
-    excludeDirs: config.excludeDirs || null,
-    includeDirs: config.includeDirs || null,
-    verbose: config.verbose,
-  });
-
-  let output: string | FetchResultImpl;
+  let output: string | FetchResultImpl | any;
   let totalTokens = 0;
 
-  logger.info(`Using format: ${config.format || "markdown"}`);
-
-  if (config.format === "json") {
-    // Generate JSON format
-    logger.info("Generating JSON format...");
-    const {
-      root,
-      totalSize,
-      totalTokens: tokens,
-    } = await collectFilesAsTree(process.cwd(), files, {
-      tokenEncoder: config.tokenEncoder,
-      tokenLimit: config.maxTokens,
+  // Handle URLs using SDK's fetch
+  if (isUrl) {
+    logger.info(`Using format: ${config.format || "markdown"}`);
+    const { fetch } = await import("@codefetch/sdk");
+    output = await fetch({
+      source,
+      format: config.format,
+      ...config,
     });
 
-    totalTokens = tokens;
-
-    const metadata = {
-      totalFiles: files.length,
-      totalSize,
-      totalTokens,
-      fetchedAt: new Date(),
-      source: process.cwd(),
-    };
-
-    output = new FetchResultImpl(root, metadata);
-  } else {
-    // Generate markdown format (default)
-    logger.info("Generating markdown format...");
-    const markdown = await generateMarkdown(files, {
-      maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
-      verbose: Number(config.verbose || 0),
-      projectTree: Number(config.projectTree || 0),
-      tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-      disableLineNumbers: Boolean(config.disableLineNumbers),
-      tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-      promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
-        ? config.defaultPromptFile
-        : resolve(config.outputPath, "prompts", config.defaultPromptFile),
-      templateVars: config.templateVars,
-    });
-
-    output = markdown;
-
-    // Count tokens if needed
+    // Calculate tokens if needed
     if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
-      totalTokens = await countTokens(markdown, config.tokenEncoder);
+      if (typeof output === "string") {
+        totalTokens = await countTokens(output, config.tokenEncoder);
+      } else if (output && typeof output === "object" && "metadata" in output) {
+        totalTokens = output.metadata.totalTokens || 0;
+      }
+    }
+  } else {
+    // Handle local paths with full prompt support
+    const ig = ignore().add(
+      DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+        (line: string) => line && !line.startsWith("#")
+      )
+    );
 
-      if (config.maxTokens && totalTokens > config.maxTokens) {
-        logger.warn(`Token limit exceeded: ${totalTokens}/${config.maxTokens}`);
+    const defaultIgnorePath = join(source, ".gitignore");
+    if (existsSync(defaultIgnorePath)) {
+      const gitignoreContent = await fsp.readFile(defaultIgnorePath, "utf8");
+      ig.add(gitignoreContent);
+    }
+
+    const codefetchIgnorePath = join(source, ".codefetchignore");
+    if (existsSync(codefetchIgnorePath)) {
+      const codefetchIgnoreContent = await fsp.readFile(
+        codefetchIgnorePath,
+        "utf8"
+      );
+      ig.add(codefetchIgnoreContent);
+    }
+
+    const files = await collectFiles(process.cwd(), {
+      ig,
+      extensionSet: config.extensions ? new Set(config.extensions) : null,
+      excludeFiles: config.excludeFiles || null,
+      includeFiles: config.includeFiles || null,
+      excludeDirs: config.excludeDirs || null,
+      includeDirs: config.includeDirs || null,
+      verbose: config.verbose,
+    });
+
+    logger.info(`Using format: ${config.format || "markdown"}`);
+
+    if (config.format === "json") {
+      // Generate JSON format
+      logger.info("Generating JSON format...");
+      const {
+        root,
+        totalSize,
+        totalTokens: tokens,
+      } = await collectFilesAsTree(process.cwd(), files, {
+        tokenEncoder: config.tokenEncoder,
+        tokenLimit: config.maxTokens,
+      });
+
+      totalTokens = tokens;
+
+      const metadata = {
+        totalFiles: files.length,
+        totalSize,
+        totalTokens,
+        fetchedAt: new Date(),
+        source: process.cwd(),
+      };
+
+      output = new FetchResultImpl(root, metadata);
+    } else {
+      // Generate markdown format (default)
+      logger.info("Generating markdown format...");
+      const markdown = await generateMarkdown(files, {
+        maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
+        verbose: Number(config.verbose || 0),
+        projectTree: Number(config.projectTree || 0),
+        tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
+        disableLineNumbers: Boolean(config.disableLineNumbers),
+        tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+        promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
+          ? config.defaultPromptFile
+          : resolve(config.outputPath, "prompts", config.defaultPromptFile),
+        templateVars: config.templateVars,
+      });
+
+      output = markdown;
+
+      // Count tokens if needed
+      if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
+        totalTokens = await countTokens(markdown, config.tokenEncoder);
+
+        if (config.maxTokens && totalTokens > config.maxTokens) {
+          logger.warn(
+            `Token limit exceeded: ${totalTokens}/${config.maxTokens}`
+          );
+        }
       }
     }
   }

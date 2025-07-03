@@ -16,7 +16,7 @@ export interface CrawlerOptions {
   delay?: number; // Delay between requests in ms
 }
 
-export interface CrawlResult {
+export interface CrawlerResult {
   url: string;
   title: string;
   content: string;
@@ -29,7 +29,7 @@ export class WebCrawler {
   private visited = new Set<string>();
   private visitedPaths = new Set<string>(); // Track unique paths for max-pages limit
   private toVisit: Array<{ url: string; depth: number }> = [];
-  private results: CrawlResult[] = [];
+  private results: CrawlerResult[] = [];
   private robotsCache = new Map<string, RobotsRule[]>();
   private sitemapUrls = new Set<string>();
 
@@ -44,7 +44,7 @@ export class WebCrawler {
   /**
    * Start crawling from the base URL
    */
-  async crawl(): Promise<CrawlResult[]> {
+  async crawl(): Promise<CrawlerResult[]> {
     this.logger.info(`Starting crawl of ${this.baseUrl.url}`);
 
     // Check robots.txt first

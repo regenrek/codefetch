@@ -71,11 +71,11 @@ describe("collectFiles", () => {
     });
 
     // We'll see test1.ts, test2.js, .gitignore
-    expect(files.some((f) => f.endsWith("test1.ts"))).toBe(true);
-    expect(files.some((f) => f.endsWith("test2.js"))).toBe(true);
-    expect(files.some((f) => f.endsWith(".gitignore"))).toBe(true);
+    expect(files.some((f: string) => f.endsWith("test1.ts"))).toBe(true);
+    expect(files.some((f: string) => f.endsWith("test2.js"))).toBe(true);
+    expect(files.some((f: string) => f.endsWith(".gitignore"))).toBe(true);
     // subdir/test3.ts is excluded
-    expect(files.some((f) => f.endsWith("test3.ts"))).toBe(false);
+    expect(files.some((f: string) => f.endsWith("test3.ts"))).toBe(false);
   });
 
   it("should handle ignore patterns from the ig param", async () => {
@@ -92,7 +92,7 @@ describe("collectFiles", () => {
 
     // test1.ts is ignored, so only test2.js and .gitignore remain
     expect(files.length).toBe(2);
-    expect(files.every((f) => !f.includes("test1.ts"))).toBe(true);
+    expect(files.every((f: string) => !f.includes("test1.ts"))).toBe(true);
   });
 
   it("should handle directories with special glob characters", async () => {

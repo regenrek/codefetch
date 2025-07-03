@@ -41,9 +41,6 @@ importers:
       '@codefetch/sdk':
         specifier: workspace:*
         version: link:../sdk
-      adm-zip:
-        specifier: ^0.5.16
-        version: 0.5.16
       c12:
         specifier: ^2.0.1
         version: 2.0.1(magicast@0.3.5)
@@ -53,34 +50,16 @@ importers:
       ignore:
         specifier: ^7.0.0
         version: 7.0.0
-      jsdom:
-        specifier: ^25.0.1
-        version: 25.0.1
       mri:
         specifier: ^1.2.0
         version: 1.2.0
       pathe:
         specifier: ^2.0.1
         version: 2.0.1
-      turndown:
-        specifier: ^7.2.0
-        version: 7.2.0
     devDependencies:
-      '@types/adm-zip':
-        specifier: ^0.5.7
-        version: 0.5.7
-      '@types/jsdom':
-        specifier: ^21.1.7
-        version: 21.1.7
-      '@types/minimist':
-        specifier: ^1.2.5
-        version: 1.2.5
       '@types/node':
         specifier: ^22.10.5
         version: 22.10.5
-      '@types/turndown':
-        specifier: ^5.0.5
-        version: 5.0.5
       '@vitest/coverage-v8':
         specifier: ^2.1.8
         version: 2.1.8(vitest@2.1.8(@types/node@22.10.5)(jsdom@25.0.1)(lightningcss@1.29.1)(terser@5.37.0))
@@ -117,6 +96,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      adm-zip:
+        specifier: ^0.5.16
+        version: 0.5.16
       c12:
         specifier: ^2.0.1
         version: 2.0.1(magicast@0.3.5)
@@ -135,9 +117,25 @@ importers:
       js-tiktoken:
         specifier: ^1.0.16
         version: 1.0.16
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
       pathe:
         specifier: ^2.0.1
         version: 2.0.1
+      turndown:
+        specifier: ^7.2.0
+        version: 7.2.0
+    devDependencies:
+      '@types/adm-zip':
+        specifier: ^0.5.7
+        version: 0.5.7
+      '@types/jsdom':
+        specifier: ^21.1.7
+        version: 21.1.7
+      '@types/turndown':
+        specifier: ^5.0.5
+        version: 5.0.5
 
 packages:
 
@@ -951,9 +949,6 @@ packages:
 
   '@types/mdast@3.0.15':
     resolution: {integrity: sha512-LnwD+mUEfxWMa1QpDraczIn6k0Ee3SMicuYSSzS6ZYl2gKS09EClnJYGd8Du6rfc5r/GZEk5o1mRb8TaTj03sQ==}
-
-  '@types/minimist@1.2.5':
-    resolution: {integrity: sha512-hov8bUuiLiyFPGyFPE1lwWhmzYbirOXQNNo40+y3zow8aFVTeyn3VWL0VFFfdNddA8S4Vf0Tc062rzyNr7Paag==}
 
   '@types/node@22.10.5':
     resolution: {integrity: sha512-F8Q+SeGimwOo86fiovQh8qiXfFEh2/ocYv7tU5pJ3EXMSSxk1Joj5wefpFK2fHTf/N6HKGSxIDBT9f3gCxXPkQ==}
@@ -3689,8 +3684,6 @@ snapshots:
   '@types/mdast@3.0.15':
     dependencies:
       '@types/unist': 2.0.11
-
-  '@types/minimist@1.2.5': {}
 
   '@types/node@22.10.5':
     dependencies:

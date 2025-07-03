@@ -46,7 +46,6 @@ async function loadModelDb(): Promise<ModelDb> {
   if (!response?.ok) return {};
 
   const rawData = await response.json().catch(() => ({}));
-  // @ts-expect-error intentionally ignore ModelDb type check for remote data
   return rawData;
 }
 
@@ -88,7 +87,10 @@ export async function fetchModels(trackedModels: string[]): Promise<{
   return { modelDb, modelInfo };
 }
 
-export function formatModelInfo(trackedModels: string[], modelDb: ModelDb): string {
+export function formatModelInfo(
+  trackedModels: string[],
+  modelDb: ModelDb
+): string {
   const rows = trackedModels.map((modelName) => {
     const model = modelDb[modelName] || {};
     const tokens = model.max_input_tokens

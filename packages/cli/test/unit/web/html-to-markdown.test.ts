@@ -3,7 +3,7 @@ import {
   htmlToMarkdown,
   extractMainContent,
   cleanMarkdown,
-} from "../../../src/web/html-to-markdown.js";
+} from "@codefetch/sdk";
 
 describe("htmlToMarkdown", () => {
   it("should convert basic HTML to markdown", () => {

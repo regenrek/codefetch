@@ -1,16 +1,16 @@
 import { URL } from "node:url";
-import type { CrawlResult } from "./crawler.js";
+import type { CrawlerResult } from "./crawler.js";
 
 export interface UrlTreeNode {
   path: string;
   children: Map<string, UrlTreeNode>;
-  result?: CrawlResult;
+  result?: CrawlerResult;
 }
 
 /**
  * Convert a list of crawl results to a URL hierarchy tree
  */
-export function buildUrlTree(results: CrawlResult[]): UrlTreeNode {
+export function buildUrlTree(results: CrawlerResult[]): UrlTreeNode {
   const root: UrlTreeNode = {
     path: "/",
     children: new Map(),
@@ -97,7 +97,7 @@ export function urlTreeToString(
 /**
  * Generate a full project structure for URLs
  */
-export function generateUrlProjectStructure(results: CrawlResult[]): string {
+export function generateUrlProjectStructure(results: CrawlerResult[]): string {
   const tree = buildUrlTree(results);
 
   let structure = "Project Structure:\n";
@@ -119,7 +119,7 @@ export function generateUrlProjectStructure(results: CrawlResult[]): string {
 /**
  * Convert crawl results to markdown sections
  */
-export function crawlResultsToMarkdown(results: CrawlResult[]): string {
+export function crawlResultsToMarkdown(results: CrawlerResult[]): string {
   // Sort results by URL path for consistent output
   const sortedResults = [...results]
     .filter((r) => !r.error)

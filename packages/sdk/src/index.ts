@@ -19,3 +19,6 @@ export * from "./prompts/codegen";
 export * from "./prompts/fix";
 export * from "./prompts/improve";
 export * from "./prompts/testgen";
+
+// Web module
+export * from "./web/index";

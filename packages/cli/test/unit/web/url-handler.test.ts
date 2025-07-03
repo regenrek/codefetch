@@ -5,7 +5,7 @@ import {
   parseURL,
   extractCacheKey,
   urlToFilePath,
-} from "../../../src/web/url-handler.js";
+} from "@codefetch/sdk";
 
 describe("URL Validation", () => {
   it("should accept valid HTTP/HTTPS URLs", () => {

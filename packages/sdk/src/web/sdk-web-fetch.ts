@@ -1,8 +1,8 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
-import type { ConsolaInstance } from "consola";
 import {
   collectFiles,
   generateMarkdown,
@@ -12,7 +12,7 @@ import {
   type TokenLimiter,
   collectFilesAsTree,
   FetchResultImpl,
-} from "@codefetch/sdk";
+} from "../index.js";
 import ignore from "ignore";
 import { parseURL, validateURL } from "./url-handler.js";
 import { WebCache } from "./cache.js";
@@ -22,46 +22,31 @@ import {
   crawlResultsToMarkdown,
 } from "./url-tree.js";
 import { fetchGitHubViaApi } from "./github-api.js";
-import { loadCodefetchConfig } from "../config.js";
 import type { WebFetchConfig } from "./types.js";
+import type { FetchOptions } from "../fetch.js";
 
-export async function handleWebFetch(
-  args: any,
-  logger: ConsolaInstance
-): Promise<void> {
-  // Set a safety timeout for the entire operation
-  const safetyTimeout = setTimeout(
-    () => {
-      logger.error("Operation timed out after 10 minutes");
-      process.exit(1);
-    },
-    10 * 60 * 1000
-  ); // 10 minutes
-  const webConfig: WebFetchConfig = {
-    url: args.url,
-    cacheTTL: args.cacheTTL,
-    maxDepth: args.maxDepth,
-    maxPages: args.maxPages,
-    branch: args.branch,
-    noCache: args.noCache,
-    ignoreRobots: args.ignoreRobots,
-    ignoreCors: args.ignoreCors,
-    noApi: args.noApi,
-    githubToken: args.githubToken,
+export async function fetchFromWeb(
+  url: string,
+  options: FetchOptions = {}
+): Promise<string | FetchResultImpl> {
+  const logger = {
+    info: (msg: string) => options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
+    debug: (msg: string) => options.verbose && options.verbose >= 2 && console.error(`[DEBUG] ${msg}`),
+    error: (msg: string) => console.error(`[ERROR] ${msg}`),
+    success: (msg: string) => console.error(`[SUCCESS] ${msg}`),
+    warn: (msg: string) => console.error(`[WARN] ${msg}`),
   };
 
   // Validate URL
-  const validation = validateURL(webConfig.url);
+  const validation = validateURL(url);
   if (!validation.valid) {
-    logger.error(`Invalid URL: ${validation.error}`);
-    process.exit(1);
+    throw new Error(`Invalid URL: ${validation.error}`);
   }
 
   // Parse URL
-  const parsedUrl = parseURL(webConfig.url);
+  const parsedUrl = parseURL(url);
   if (!parsedUrl) {
-    logger.error("Failed to parse URL");
-    process.exit(1);
+    throw new Error("Failed to parse URL");
   }
 
   logger.info(`Fetching from: ${parsedUrl.url}`);
@@ -69,14 +54,14 @@ export async function handleWebFetch(
 
   // Initialize cache
   const cache = new WebCache({
-    ttlHours: webConfig.cacheTTL || 1,
+    ttlHours: (options as any).cacheTTL || 1,
   });
   await cache.init();
 
   // Check cache unless --no-cache is specified
   let contentPath: string | null = null;
-  if (webConfig.noCache) {
-    logger.debug("Cache disabled by --no-cache flag");
+  if ((options as any).noCache) {
+    logger.debug("Cache disabled");
   } else {
     const cached = await cache.get(parsedUrl);
     if (cached) {
@@ -88,25 +73,17 @@ export async function handleWebFetch(
   // Fetch content if not cached
   if (!contentPath) {
     if (parsedUrl.type === "git-repository") {
-      contentPath = await fetchGitRepository(
-        parsedUrl,
-        webConfig,
-        logger,
-        args
-      );
+      contentPath = await fetchGitRepository(parsedUrl, options, logger);
       await cache.set(parsedUrl, contentPath);
     } else {
       // Website crawling
-      contentPath = await fetchWebsite(parsedUrl, webConfig, logger, args);
+      contentPath = await fetchWebsite(parsedUrl, options, logger);
       await cache.set(parsedUrl, contentPath);
     }
   }
 
   // Now use the existing codefetch pipeline
   logger.info("Analyzing fetched content...");
-
-  // Load config (use defaults for web fetching)
-  const config = await loadCodefetchConfig(".", args);
 
   let output: string | FetchResultImpl;
   let totalTokens = 0;
@@ -115,13 +92,10 @@ export async function handleWebFetch(
   if (parsedUrl.type === "website") {
     // For websites, we already have the markdown in the temp directory
     const websiteContentPath = join(contentPath, "website-content.md");
-    const markdown = await import("node:fs").then((fs) =>
-      fs.promises.readFile(websiteContentPath, "utf8")
-    );
+    const markdown = await readFile(websiteContentPath, "utf8");
 
-    if (config.format === "json") {
+    if (options.format === "json") {
       // Convert markdown to JSON format for websites
-      // Create a simple file node structure
       const root: any = {
         name: parsedUrl.domain,
         path: "",
@@ -136,7 +110,7 @@ export async function handleWebFetch(
             size: Buffer.byteLength(markdown, "utf8"),
             tokens: await countTokens(
               markdown,
-              config.tokenEncoder || "cl100k"
+              options.tokenEncoder || "cl100k"
             ),
           },
         ],
@@ -155,10 +129,6 @@ export async function handleWebFetch(
       output = new FetchResultImpl(root, metadata);
     } else {
       output = markdown;
-      totalTokens = await countTokens(
-        markdown,
-        config.tokenEncoder || "cl100k"
-      );
     }
   } else {
     // For git repositories, use the existing pipeline
@@ -175,23 +145,23 @@ export async function handleWebFetch(
     // Collect files from the fetched content
     const files = await collectFiles(".", {
       ig,
-      extensionSet: config.extensions ? new Set(config.extensions) : null,
-      excludeFiles: config.excludeFiles || null,
-      includeFiles: config.includeFiles || null,
-      excludeDirs: config.excludeDirs || null,
-      includeDirs: config.includeDirs || null,
-      verbose: config.verbose,
+      extensionSet: options.extensions ? new Set(options.extensions) : null,
+      excludeFiles: options.excludeFiles || null,
+      includeFiles: options.includeFiles || null,
+      excludeDirs: options.excludeDirs || null,
+      includeDirs: options.includeDirs || null,
+      verbose: options.verbose || 0,
     });
 
-    if (config.format === "json") {
+    if (options.format === "json") {
       // Generate JSON format
       const {
         root,
         totalSize,
         totalTokens: tokens,
       } = await collectFilesAsTree(".", files, {
-        tokenEncoder: config.tokenEncoder,
-        tokenLimit: config.maxTokens,
+        tokenEncoder: options.tokenEncoder,
+        tokenLimit: options.maxTokens,
       });
 
       totalTokens = tokens;
@@ -205,21 +175,21 @@ export async function handleWebFetch(
         gitProvider: parsedUrl.gitProvider,
         gitOwner: parsedUrl.gitOwner,
         gitRepo: parsedUrl.gitRepo,
-        gitRef: parsedUrl.gitRef || webConfig.branch || "main",
+        gitRef: parsedUrl.gitRef || (options as any).branch || "main",
       };
 
       output = new FetchResultImpl(root, metadata);
     } else {
       // Generate markdown
       const markdown = await generateMarkdown(files, {
-        maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
-        verbose: Number(config.verbose || 0),
-        projectTree: Number(config.projectTree || 0),
-        tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-        disableLineNumbers: Boolean(config.disableLineNumbers),
-        tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
+        maxTokens: options.maxTokens ? Number(options.maxTokens) : null,
+        verbose: Number(options.verbose || 0),
+        projectTree: Number(options.projectTree || 0),
+        tokenEncoder: (options.tokenEncoder as TokenEncoder) || "cl100k",
+        disableLineNumbers: Boolean(options.disableLineNumbers),
+        tokenLimiter: (options.tokenLimiter as TokenLimiter) || "truncated",
         templateVars: {
-          ...config.templateVars,
+          ...options.templateVars,
           SOURCE_URL: parsedUrl.url,
           FETCHED_FROM:
             parsedUrl.type === "git-repository"
@@ -229,61 +199,10 @@ export async function handleWebFetch(
       });
 
       output = markdown;
-      totalTokens = await countTokens(
-        markdown,
-        config.tokenEncoder || "cl100k"
-      );
     }
 
     // Restore original working directory
     process.chdir(originalCwd);
-  }
-
-  // Token count is already calculated above
-  if (config.tokenCountOnly) {
-    console.log(totalTokens);
-    return;
-  }
-
-  // Output results
-  if (args.dryRun) {
-    if (typeof output === "string") {
-      logger.log(output);
-    } else {
-      // For JSON format in dry-run, output the JSON
-      console.log(JSON.stringify(output, null, 2));
-    }
-  } else {
-    if (typeof output === "string") {
-      // Write markdown
-      const outputFileName =
-        args.outputFile ||
-        `${parsedUrl.domain.replace(/\./g, "-")}-analysis.md`;
-      const outputPath = join(originalCwd, outputFileName);
-      await import("node:fs").then((fs) =>
-        fs.promises.writeFile(outputPath, output)
-      );
-      logger.success(`Output written to ${outputPath}`);
-    } else {
-      // Write JSON
-      const outputFileName =
-        args.outputFile ||
-        `${parsedUrl.domain.replace(/\./g, "-")}-analysis.json`;
-      const outputPath = join(originalCwd, outputFileName);
-      await import("node:fs").then((fs) =>
-        fs.promises.writeFile(outputPath, JSON.stringify(output, null, 2))
-      );
-      logger.success(`Output written to ${outputPath}`);
-    }
-    logger.info(`Total tokens: ${totalTokens.toLocaleString()}`);
-  }
-
-  // Show cache stats
-  if (config.verbose >= 2) {
-    const stats = await cache.getStats();
-    logger.info(
-      `Cache stats: ${stats.entryCount} entries, ${stats.sizeMB.toFixed(2)}MB`
-    );
   }
 
   // Clean up temporary directory for websites
@@ -292,21 +211,17 @@ export async function handleWebFetch(
       await rm(contentPath, { recursive: true, force: true });
       logger.debug("Cleaned up temporary directory");
     } catch (cleanupError) {
-      logger.debug("Failed to clean up temp directory:", cleanupError);
+      logger.debug(`Failed to clean up temp directory: ${cleanupError}`);
     }
   }
 
-  // Clear the safety timeout
-  clearTimeout(safetyTimeout);
-
-  // Website path doesn't need restoration since we didn't change directory
+  return output;
 }
 
 async function fetchGitRepository(
   parsedUrl: any,
-  config: WebFetchConfig,
-  logger: ConsolaInstance,
-  args: any
+  options: FetchOptions,
+  logger: any
 ): Promise<string> {
   // Create temporary directory
   const tempDir = await mkdtemp(join(tmpdir(), "codefetch-git-"));
@@ -314,14 +229,14 @@ async function fetchGitRepository(
 
   try {
     // Try GitHub API first if it's a GitHub URL
-    if (parsedUrl.gitProvider === "github" && !config.noApi) {
+    if (parsedUrl.gitProvider === "github" && !(options as any).noApi) {
       logger.info("Attempting to fetch via GitHub API...");
 
       const apiSuccess = await fetchGitHubViaApi(parsedUrl, repoPath, logger, {
-        branch: config.branch || parsedUrl.gitRef,
-        token: args.githubToken || process.env.GITHUB_TOKEN,
-        extensions: args.extensions,
-        excludeDirs: args.excludeDirs,
+        branch: (options as any).branch || parsedUrl.gitRef,
+        token: (options as any).githubToken || process.env.GITHUB_TOKEN,
+        extensions: options.extensions,
+        excludeDirs: options.excludeDirs,
         maxFiles: 1000,
       });
 
@@ -340,7 +255,7 @@ async function fetchGitRepository(
     const cloneArgs = ["clone"];
 
     // Shallow clone by default
-    if (!config.branch || config.branch === "HEAD") {
+    if (!(options as any).branch || (options as any).branch === "HEAD") {
       cloneArgs.push("--depth", "1");
     }
 
@@ -349,8 +264,8 @@ async function fetchGitRepository(
     cloneArgs.push(repoPath);
 
     // Add branch if specified
-    if (config.branch && config.branch !== "HEAD") {
-      cloneArgs.push("--branch", config.branch);
+    if ((options as any).branch && (options as any).branch !== "HEAD") {
+      cloneArgs.push("--branch", (options as any).branch);
       cloneArgs.push("--single-branch");
     }
 
@@ -359,11 +274,11 @@ async function fetchGitRepository(
     logger.debug(`Running: ${gitCommand}`);
 
     execSync(gitCommand, {
-      stdio: args.verbose >= 3 ? "inherit" : "pipe",
+      stdio: options.verbose && options.verbose >= 3 ? "inherit" : "pipe",
     });
 
     // If a specific ref was in the URL (like tree/branch), checkout to it
-    if (parsedUrl.gitRef && !config.branch) {
+    if (parsedUrl.gitRef && !(options as any).branch) {
       logger.info(`Checking out ref: ${parsedUrl.gitRef}`);
       execSync(`git checkout ${parsedUrl.gitRef}`, {
         cwd: repoPath,
@@ -384,9 +299,8 @@ async function fetchGitRepository(
 
 async function fetchWebsite(
   parsedUrl: any,
-  config: WebFetchConfig,
-  logger: ConsolaInstance,
-  _args: any
+  options: FetchOptions,
+  logger: any
 ): Promise<string> {
   // Create temporary directory for the merged output
   const tempDir = await mkdtemp(join(tmpdir(), "codefetch-web-"));
@@ -398,11 +312,11 @@ async function fetchWebsite(
     const crawler = new WebCrawler(
       parsedUrl,
       {
-        maxDepth: config.maxDepth || 2,
-        maxPages: config.maxPages || 50,
-        ignoreRobots: config.ignoreRobots,
-        ignoreCors: config.ignoreCors,
-        delay: 50, // 50ms delay between requests (reduced from 100ms)
+        maxDepth: (options as any).maxDepth || 2,
+        maxPages: (options as any).maxPages || 50,
+        ignoreRobots: (options as any).ignoreRobots,
+        ignoreCors: (options as any).ignoreCors,
+        delay: 50, // 50ms delay between requests
       },
       logger
     );

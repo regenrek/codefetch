@@ -39,8 +39,8 @@ describe("Regression Tests", () => {
       verbose: 0,
     });
     // Should find file1.ts and nested/file4.ts
-    expect(found.some((f) => f.endsWith("file1.ts"))).toBe(true);
-    expect(found.some((f) => f.endsWith("file4.ts"))).toBe(true);
+    expect(found.some((f: string) => f.endsWith("file1.ts"))).toBe(true);
+    expect(found.some((f: string) => f.endsWith("file4.ts"))).toBe(true);
     expect(found.length).toBe(2);
   });
 

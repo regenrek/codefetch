@@ -17,7 +17,29 @@ export interface FetchOptions extends Partial<CodefetchConfig> {
 }
 
 export async function fetch(options: FetchOptions = {}): Promise<FetchResult | string> {
-  const cwd = options.source ? resolve(options.source) : process.cwd();
+  // Check if source is a URL
+  const source = options.source || process.cwd();
+  
+  // URL detection - check for http(s):// or common domains
+  const isUrl = /^https?:\/\//.test(source) || 
+                /^(www\.|github\.com|gitlab\.com|bitbucket\.org)/.test(source);
+  
+  if (isUrl) {
+    // Import web functionality
+    const { fetchFromWeb } = await import('./web/sdk-web-fetch');
+    
+    // Ensure proper URL format
+    let normalizedUrl = source;
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      // Default to https for URLs without protocol
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+    
+    // Use the SDK-friendly web fetch function
+    return await fetchFromWeb(normalizedUrl, options);
+  }
+  
+  const cwd = resolve(source);
   const format = options.format || 'markdown';
   
   // Set up ignore instance

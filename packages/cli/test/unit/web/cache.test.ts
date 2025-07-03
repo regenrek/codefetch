@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { rm, writeFile } from "node:fs/promises";
+import { rm, writeFile, mkdtemp } from "node:fs/promises";
 import { WebCache, parseURL } from "@codefetch/sdk";
 
 describe("WebCache", () => {
@@ -46,12 +46,19 @@ describe("WebCache", () => {
 
     it("should cache git repository paths", async () => {
       const url = parseURL("https://github.com/user/repo");
-      const repoPath = "/tmp/test-repo";
-      await cache.set(url!, repoPath);
+      // Create an actual temporary directory that exists
+      const repoPath = await mkdtemp(join(tmpdir(), "test-repo-"));
 
-      expect(await cache.has(url!)).toBe(true);
-      const entry = await cache.get(url!);
-      expect(entry?.content).toBe(repoPath);
+      try {
+        await cache.set(url!, repoPath);
+
+        expect(await cache.has(url!)).toBe(true);
+        const entry = await cache.get(url!);
+        expect(entry?.content).toBe(repoPath);
+      } finally {
+        // Clean up the temporary directory
+        await rm(repoPath, { recursive: true, force: true });
+      }
     });
 
     it("should respect TTL expiration", async () => {
@@ -120,14 +127,24 @@ describe("WebCache", () => {
       const mainUrl = parseURL("https://github.com/user/repo");
       const branchUrl = parseURL("https://github.com/user/repo/tree/develop");
 
-      await cache.set(mainUrl!, "/tmp/repo-main");
-      await cache.set(branchUrl!, "/tmp/repo-develop");
+      // Create actual temporary directories that exist
+      const mainRepoPath = await mkdtemp(join(tmpdir(), "repo-main-"));
+      const branchRepoPath = await mkdtemp(join(tmpdir(), "repo-develop-"));
 
-      const mainEntry = await cache.get(mainUrl!);
-      const branchEntry = await cache.get(branchUrl!);
+      try {
+        await cache.set(mainUrl!, mainRepoPath);
+        await cache.set(branchUrl!, branchRepoPath);
 
-      expect(mainEntry?.content).toBe("/tmp/repo-main");
-      expect(branchEntry?.content).toBe("/tmp/repo-develop");
+        const mainEntry = await cache.get(mainUrl!);
+        const branchEntry = await cache.get(branchUrl!);
+
+        expect(mainEntry?.content).toBe(mainRepoPath);
+        expect(branchEntry?.content).toBe(branchRepoPath);
+      } finally {
+        // Clean up the temporary directories
+        await rm(mainRepoPath, { recursive: true, force: true });
+        await rm(branchRepoPath, { recursive: true, force: true });
+      }
     });
   });
 

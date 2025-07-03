@@ -30,8 +30,12 @@ export async function fetchFromWeb(
   options: FetchOptions = {}
 ): Promise<string | FetchResultImpl> {
   const logger = {
-    info: (msg: string) => options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
-    debug: (msg: string) => options.verbose && options.verbose >= 2 && console.error(`[DEBUG] ${msg}`),
+    info: (msg: string) =>
+      options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
+    debug: (msg: string) =>
+      options.verbose &&
+      options.verbose >= 2 &&
+      console.error(`[DEBUG] ${msg}`),
     error: (msg: string) => console.error(`[ERROR] ${msg}`),
     success: (msg: string) => console.error(`[SUCCESS] ${msg}`),
     warn: (msg: string) => console.error(`[WARN] ${msg}`),
@@ -70,6 +74,9 @@ export async function fetchFromWeb(
     }
   }
 
+  // Variables to store crawl results for websites
+  let crawlResults: any[] | null = null;
+
   // Fetch content if not cached
   if (!contentPath) {
     if (parsedUrl.type === "git-repository") {
@@ -77,7 +84,9 @@ export async function fetchFromWeb(
       await cache.set(parsedUrl, contentPath);
     } else {
       // Website crawling
-      contentPath = await fetchWebsite(parsedUrl, options, logger);
+      const result = await fetchWebsite(parsedUrl, options, logger);
+      contentPath = result.tempDir;
+      crawlResults = result.crawlResults;
       await cache.set(parsedUrl, contentPath);
     }
   }
@@ -95,38 +104,143 @@ export async function fetchFromWeb(
     const markdown = await readFile(websiteContentPath, "utf8");
 
     if (options.format === "json") {
-      // Convert markdown to JSON format for websites
-      const root: any = {
-        name: parsedUrl.domain,
-        path: "",
-        type: "directory",
-        children: [
-          {
-            name: "website-content.md",
-            path: "website-content.md",
+      // If we have crawl results and want JSON, create individual files
+      if (crawlResults && crawlResults.length > 0) {
+        // Build a tree structure from URLs
+        const root: any = {
+          name: parsedUrl.domain,
+          path: "",
+          type: "directory",
+          children: [],
+        };
+
+        // Create a map to track directories
+        const dirMap = new Map<string, any>();
+        dirMap.set("", root);
+
+        let totalSize = 0;
+        totalTokens = 0;
+
+        // Process each crawled page
+        for (const page of crawlResults) {
+          if (page.error) continue;
+
+          // Parse URL to get path
+          const url = new URL(page.url);
+          let pathname = url.pathname;
+
+          // Remove trailing slash
+          if (pathname.endsWith("/") && pathname !== "/") {
+            pathname = pathname.slice(0, -1);
+          }
+
+          // Handle root path - already correct, just ensure it stays as "/"
+          if (pathname === "/" || pathname === "") {
+            pathname = "/";
+          }
+
+          // Ensure path starts with /
+          if (!pathname.startsWith("/")) {
+            pathname = "/" + pathname;
+          }
+
+          // Split path into parts
+          const pathParts = pathname.slice(1).split("/").filter(Boolean);
+
+          // Create directories as needed
+          let currentDir = root;
+          let currentPath = "";
+
+          // Build directory structure (all parts except the last one)
+          for (let i = 0; i < pathParts.length - 1; i++) {
+            const part = pathParts[i];
+            currentPath = currentPath ? `${currentPath}/${part}` : `/${part}`;
+
+            if (dirMap.has(currentPath)) {
+              currentDir = dirMap.get(currentPath);
+            } else {
+              const newDir = {
+                name: part,
+                path: currentPath,
+                type: "directory",
+                children: [],
+              };
+              currentDir.children.push(newDir);
+              dirMap.set(currentPath, newDir);
+              currentDir = newDir;
+            }
+          }
+
+          // The last part is the page name, or the root path name
+          const pageName = pathname === "/" ? "/" : (pathParts.length > 0 ? pathParts.at(-1) : "index");
+          const fullPath = pathname;
+
+          // Create markdown content with title and content
+          const pageContent = `# ${page.title}\n\n${page.content}`;
+          const size = Buffer.byteLength(pageContent, "utf8");
+          const tokens = await countTokens(
+            pageContent,
+            options.tokenEncoder || "cl100k"
+          );
+
+          totalSize += size;
+          totalTokens += tokens;
+
+          currentDir.children.push({
+            name: pageName,
+            path: fullPath,
             type: "file",
-            content: markdown,
+            content: pageContent,
             language: "markdown",
-            size: Buffer.byteLength(markdown, "utf8"),
-            tokens: await countTokens(
-              markdown,
-              options.tokenEncoder || "cl100k"
-            ),
-          },
-        ],
-      };
+            size,
+            tokens,
+            url: page.url,
+          });
+        }
 
-      totalTokens = root.children[0].tokens;
+        const metadata = {
+          totalFiles: crawlResults.filter((r) => !r.error).length,
+          totalSize,
+          totalTokens,
+          fetchedAt: new Date(),
+          source: parsedUrl.url,
+        };
 
-      const metadata = {
-        totalFiles: 1,
-        totalSize: root.children[0].size,
-        totalTokens,
-        fetchedAt: new Date(),
-        source: parsedUrl.url,
-      };
+        output = new FetchResultImpl(root, metadata);
+      } else {
+        // Fallback to single file if no crawl results
+        const root: any = {
+          name: parsedUrl.domain,
+          path: "",
+          type: "directory",
+          children: [
+            {
+              name: "website-content.md",
+              path: "website-content.md",
+              type: "file",
+              content: markdown,
+              language: "markdown",
+              size: Buffer.byteLength(markdown, "utf8"),
+              tokens: await countTokens(
+                markdown,
+                options.tokenEncoder || "cl100k"
+              ),
+            },
+          ],
+        };
 
-      output = new FetchResultImpl(root, metadata);
+        totalTokens = root.children[0].tokens;
+
+        const metadata = {
+          totalFiles: 1,
+          totalSize: root.children[0].size,
+          totalTokens,
+          fetchedAt: new Date(),
+          source: parsedUrl.url,
+        };
+
+        output = new FetchResultImpl(root, metadata);
+      }
     } else {
       output = markdown;
     }
@@ -301,7 +415,7 @@ async function fetchWebsite(
   parsedUrl: any,
   options: FetchOptions,
   logger: any
-): Promise<string> {
+): Promise<{ tempDir: string; crawlResults: any[] }> {
   // Create temporary directory for the merged output
   const tempDir = await mkdtemp(join(tmpdir(), "codefetch-web-"));
 
@@ -341,8 +455,8 @@ async function fetchWebsite(
       fs.promises.writeFile(outputPath, fullMarkdown)
     );
 
-    // Return the temp directory so the rest of the pipeline can process it
-    return tempDir;
+    // Return the temp directory and crawl results
+    return { tempDir, crawlResults };
   } catch (error) {
     // Clean up on error
     await rm(tempDir, { recursive: true, force: true });

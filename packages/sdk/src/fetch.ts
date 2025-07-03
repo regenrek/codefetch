@@ -6,10 +6,8 @@ import type { CodefetchConfig } from "./config";
 import { collectFiles } from "./files";
 import { collectFilesAsTree } from "./files-tree";
 import { generateMarkdown } from "./markdown";
-import { countTokens } from "./token-counter";
 import { FetchResultImpl } from "./fetch-result";
 import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
-import { generateProjectTree } from "./tree";
 
 export interface FetchOptions extends Partial<CodefetchConfig> {
   source?: string; // URL or local path, defaults to cwd
@@ -20,9 +18,10 @@ export async function fetch(options: FetchOptions = {}): Promise<FetchResult | s
   // Check if source is a URL
   const source = options.source || process.cwd();
   
-  // URL detection - check for http(s):// or common domains
+  // URL detection - check for http(s):// or domain patterns
   const isUrl = /^https?:\/\//.test(source) || 
-                /^(www\.|github\.com|gitlab\.com|bitbucket\.org)/.test(source);
+                /^(www\.|github\.com|gitlab\.com|bitbucket\.org)/.test(source) ||
+                /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)/.test(source);
   
   if (isUrl) {
     // Import web functionality

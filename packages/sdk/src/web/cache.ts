@@ -102,13 +102,34 @@ export class WebCache {
       // For git repos, content is the path to the cloned directory
       if (parsedUrl.type === "git-repository") {
         const content = await readFile(join(dir, "repo-path.txt"), "utf8");
+        
+        // Validate that the repository directory still exists
+        try {
+          await stat(content);
+        } catch {
+          // Repository directory doesn't exist, clear this cache entry
+          await this.delete(parsedUrl);
+          return null;
+        }
+        
         return { metadata, content };
       }
 
       // For websites, return the content directory path
+      const contentPath = join(dir, "content");
+      
+      // Validate that the content directory still exists
+      try {
+        await stat(contentPath);
+      } catch {
+        // Content directory doesn't exist, clear this cache entry
+        await this.delete(parsedUrl);
+        return null;
+      }
+      
       return {
         metadata,
-        content: join(dir, "content"),
+        content: contentPath,
       };
     } catch {
       // Cache entry doesn't exist or is invalid

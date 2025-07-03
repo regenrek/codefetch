@@ -72,13 +72,17 @@ export class WebCrawler {
       const { url, depth } = this.toVisit.shift()!;
 
       if (this.visited.has(url) || depth > this.options.maxDepth) {
-        this.logger.debug(`Skipping ${url} (already visited: ${this.visited.has(url)}, depth: ${depth} > ${this.options.maxDepth}: ${depth > this.options.maxDepth})`);
+        this.logger.debug(
+          `Skipping ${url} (already visited: ${this.visited.has(url)}, depth: ${depth} > ${this.options.maxDepth}: ${depth > this.options.maxDepth})`
+        );
         continue;
       }
-      
+
       // Check if we've reached max unique pages
       if (this.visitedPaths.size >= this.options.maxPages) {
-        this.logger.debug(`Reached max pages limit (${this.options.maxPages} unique pages)`);
+        this.logger.debug(
+          `Reached max pages limit (${this.options.maxPages} unique pages)`
+        );
         break;
       }
 
@@ -89,7 +93,7 @@ export class WebCrawler {
       }
 
       await this.crawlPage(url, depth);
-      
+
       // Report progress every 5 seconds
       const now = Date.now();
       if (now - lastProgressReport > 5000) {
@@ -116,24 +120,21 @@ export class WebCrawler {
   /**
    * Crawl a single page
    */
-  private async crawlPage(
-    url: string,
-    depth: number
-  ): Promise<void> {
+  private async crawlPage(url: string, depth: number): Promise<void> {
     // Normalize URL before marking as visited
     const normalizedUrl = this.normalizeUrl(url);
     this.visited.add(normalizedUrl);
-    
+
     // Extract path for unique page counting
     try {
       const urlObj = new URL(url);
-      const path = urlObj.pathname || '/';
+      const path = urlObj.pathname || "/";
       this.visitedPaths.add(path);
     } catch {
       // If URL parsing fails, still count it
       this.visitedPaths.add(url);
     }
-    
+
     this.logger.debug(`Crawling: ${url} (depth: ${depth})`);
 
     try {
@@ -184,8 +185,11 @@ export class WebCrawler {
           return cleanMarkdown(markdown);
         })();
 
-        cleanedMarkdown = await Promise.race([processingPromise, timeoutPromise]);
-      } catch (timeoutError) {
+        cleanedMarkdown = await Promise.race([
+          processingPromise,
+          timeoutPromise,
+        ]);
+      } catch {
         this.logger.warn(`HTML processing timeout for ${url}, using fallback`);
         // Fallback: just extract text content without complex parsing
         cleanedMarkdown = this.extractTextFallback(html);
@@ -213,7 +217,9 @@ export class WebCrawler {
             addedCount++;
           }
         }
-        this.logger.debug(`Added ${addedCount} new URLs to crawl queue from ${url}`);
+        this.logger.debug(
+          `Added ${addedCount} new URLs to crawl queue from ${url}`
+        );
       }
 
       this.logger.debug(`✓ Crawled: ${title}`);
@@ -254,7 +260,9 @@ export class WebCrawler {
     }
 
     const uniqueLinks = [...new Set(links)];
-    this.logger.debug(`Extracted ${uniqueLinks.length} unique links from ${baseUrl}`);
+    this.logger.debug(
+      `Extracted ${uniqueLinks.length} unique links from ${baseUrl}`
+    );
     return uniqueLinks;
   }
 
@@ -450,16 +458,24 @@ export class WebCrawler {
     try {
       const urlObj = new URL(url);
       // Remove trailing slash from path (except for root)
-      if (urlObj.pathname !== '/' && urlObj.pathname.endsWith('/')) {
+      if (urlObj.pathname !== "/" && urlObj.pathname.endsWith("/")) {
         urlObj.pathname = urlObj.pathname.slice(0, -1);
       }
       // Remove common tracking parameters
-      const paramsToRemove = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid'];
-      paramsToRemove.forEach(param => urlObj.searchParams.delete(param));
-      
+      const paramsToRemove = [
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content",
+        "utm_term",
+        "fbclid",
+        "gclid",
+      ];
+      for (const param of paramsToRemove) urlObj.searchParams.delete(param);
+
       // Remove hash
-      urlObj.hash = '';
-      
+      urlObj.hash = "";
+
       return urlObj.href;
     } catch {
       return url;
@@ -471,29 +487,28 @@ export class WebCrawler {
    */
   private extractTextFallback(html: string): string {
     // Remove script and style tags
-    let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    
+    let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+
     // Extract body content if available
     const bodyMatch = text.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     if (bodyMatch) {
       text = bodyMatch[1];
     }
-    
+
     // Remove all HTML tags
-    text = text.replace(/<[^>]+>/g, ' ');
-    
+    text = text.replace(/<[^>]+>/g, " ");
+
     // Clean up whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-    
+    text = text.replace(/\s+/g, " ").trim();
+
     // Truncate if too long
     if (text.length > 5000) {
-      text = text.substring(0, 5000) + '...';
+      text = text.slice(0, 5000) + "...";
     }
-    
+
     return text;
   }
-
 }
 
 interface RobotsRule {

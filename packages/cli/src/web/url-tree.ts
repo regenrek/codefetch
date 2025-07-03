@@ -18,15 +18,13 @@ export function buildUrlTree(results: CrawlResult[]): UrlTreeNode {
 
   for (const result of results) {
     if (result.error) continue; // Skip error pages
-    
+
     try {
       const url = new URL(result.url);
       const pathname = url.pathname || "/";
-      
+
       // Split path into segments
-      const segments = pathname
-        .split("/")
-        .filter(Boolean); // Remove empty segments
+      const segments = pathname.split("/").filter(Boolean); // Remove empty segments
 
       let currentNode = root;
       let currentPath = "";
@@ -82,18 +80,16 @@ export function urlTreeToString(
     output += prefix + connector + "/" + pathSegment + "\n";
   }
 
-  const children = Array.from(node.children.entries()).sort(([a], [b]) =>
+  const children = [...node.children.entries()].sort(([a], [b]) =>
     a.localeCompare(b)
   );
 
-  children.forEach(([name, child], index) => {
+  for (const [index, [_name, child]] of children.entries()) {
     const isLastChild = index === children.length - 1;
-    const childPrefix = isRoot
-      ? ""
-      : prefix + (isLast ? "    " : "│   ");
-    
+    const childPrefix = isRoot ? "" : prefix + (isLast ? "    " : "│   ");
+
     output += urlTreeToString(child, childPrefix, isLastChild, false);
-  });
+  }
 
   return output;
 }
@@ -103,20 +99,20 @@ export function urlTreeToString(
  */
 export function generateUrlProjectStructure(results: CrawlResult[]): string {
   const tree = buildUrlTree(results);
-  
+
   let structure = "Project Structure:\n";
-  
+
   // Add root if it exists
   if (tree.result) {
     structure += "├── /\n";
   }
-  
+
   // Add the tree structure
   const treeString = urlTreeToString(tree);
   if (treeString) {
     structure += treeString;
   }
-  
+
   return structure;
 }
 
@@ -126,7 +122,7 @@ export function generateUrlProjectStructure(results: CrawlResult[]): string {
 export function crawlResultsToMarkdown(results: CrawlResult[]): string {
   // Sort results by URL path for consistent output
   const sortedResults = [...results]
-    .filter(r => !r.error)
+    .filter((r) => !r.error)
     .sort((a, b) => {
       const pathA = new URL(a.url).pathname;
       const pathB = new URL(b.url).pathname;
@@ -138,7 +134,7 @@ export function crawlResultsToMarkdown(results: CrawlResult[]): string {
   for (const result of sortedResults) {
     const url = new URL(result.url);
     const path = url.pathname || "/";
-    
+
     // Add section for each page
     markdown += "\n\n";
     markdown += path + "\n";

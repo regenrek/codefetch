@@ -17,7 +17,10 @@ import ignore from "ignore";
 import { parseURL, validateURL } from "./url-handler.js";
 import { WebCache } from "./cache.js";
 import { WebCrawler } from "./crawler.js";
-import { generateUrlProjectStructure, crawlResultsToMarkdown } from "./url-tree.js";
+import {
+  generateUrlProjectStructure,
+  crawlResultsToMarkdown,
+} from "./url-tree.js";
 import { fetchGitHubViaApi } from "./github-api.js";
 import { loadCodefetchConfig } from "../config.js";
 import type { WebFetchConfig } from "./types.js";
@@ -27,10 +30,13 @@ export async function handleWebFetch(
   logger: ConsolaInstance
 ): Promise<void> {
   // Set a safety timeout for the entire operation
-  const safetyTimeout = setTimeout(() => {
-    logger.error("Operation timed out after 10 minutes");
-    process.exit(1);
-  }, 10 * 60 * 1000); // 10 minutes
+  const safetyTimeout = setTimeout(
+    () => {
+      logger.error("Operation timed out after 10 minutes");
+      process.exit(1);
+    },
+    10 * 60 * 1000
+  ); // 10 minutes
   const webConfig: WebFetchConfig = {
     url: args.url,
     cacheTTL: args.cacheTTL,
@@ -69,14 +75,14 @@ export async function handleWebFetch(
 
   // Check cache unless --no-cache is specified
   let contentPath: string | null = null;
-  if (!webConfig.noCache) {
+  if (webConfig.noCache) {
+    logger.debug("Cache disabled by --no-cache flag");
+  } else {
     const cached = await cache.get(parsedUrl);
     if (cached) {
       logger.info("Using cached content");
       contentPath = cached.content;
     }
-  } else {
-    logger.debug("Cache disabled by --no-cache flag");
   }
 
   // Fetch content if not cached
@@ -101,50 +107,58 @@ export async function handleWebFetch(
 
   // Load config (use defaults for web fetching)
   const config = await loadCodefetchConfig(".", args);
-  
+
   let output: string | FetchResultImpl;
   let totalTokens = 0;
   const originalCwd = process.cwd();
-  
+
   if (parsedUrl.type === "website") {
     // For websites, we already have the markdown in the temp directory
     const websiteContentPath = join(contentPath, "website-content.md");
     const markdown = await import("node:fs").then((fs) =>
       fs.promises.readFile(websiteContentPath, "utf8")
     );
-    
-    if (config.format === 'json') {
+
+    if (config.format === "json") {
       // Convert markdown to JSON format for websites
       // Create a simple file node structure
       const root: any = {
         name: parsedUrl.domain,
-        path: '',
-        type: 'directory',
-        children: [{
-          name: 'website-content.md',
-          path: 'website-content.md',
-          type: 'file',
-          content: markdown,
-          language: 'markdown',
-          size: Buffer.byteLength(markdown, 'utf8'),
-          tokens: await countTokens(markdown, config.tokenEncoder || "cl100k")
-        }]
+        path: "",
+        type: "directory",
+        children: [
+          {
+            name: "website-content.md",
+            path: "website-content.md",
+            type: "file",
+            content: markdown,
+            language: "markdown",
+            size: Buffer.byteLength(markdown, "utf8"),
+            tokens: await countTokens(
+              markdown,
+              config.tokenEncoder || "cl100k"
+            ),
+          },
+        ],
       };
-      
+
       totalTokens = root.children[0].tokens;
-      
+
       const metadata = {
         totalFiles: 1,
         totalSize: root.children[0].size,
         totalTokens,
         fetchedAt: new Date(),
-        source: parsedUrl.url
+        source: parsedUrl.url,
       };
-      
+
       output = new FetchResultImpl(root, metadata);
     } else {
       output = markdown;
-      totalTokens = await countTokens(markdown, config.tokenEncoder || "cl100k");
+      totalTokens = await countTokens(
+        markdown,
+        config.tokenEncoder || "cl100k"
+      );
     }
   } else {
     // For git repositories, use the existing pipeline
@@ -169,19 +183,19 @@ export async function handleWebFetch(
       verbose: config.verbose,
     });
 
-    if (config.format === 'json') {
+    if (config.format === "json") {
       // Generate JSON format
-      const { root, totalSize, totalTokens: tokens } = await collectFilesAsTree(
-        ".",
-        files,
-        {
-          tokenEncoder: config.tokenEncoder,
-          tokenLimit: config.maxTokens
-        }
-      );
-      
+      const {
+        root,
+        totalSize,
+        totalTokens: tokens,
+      } = await collectFilesAsTree(".", files, {
+        tokenEncoder: config.tokenEncoder,
+        tokenLimit: config.maxTokens,
+      });
+
       totalTokens = tokens;
-      
+
       const metadata = {
         totalFiles: files.length,
         totalSize,
@@ -191,9 +205,9 @@ export async function handleWebFetch(
         gitProvider: parsedUrl.gitProvider,
         gitOwner: parsedUrl.gitOwner,
         gitRepo: parsedUrl.gitRepo,
-        gitRef: parsedUrl.gitRef || config.branch || 'main'
+        gitRef: parsedUrl.gitRef || webConfig.branch || "main",
       };
-      
+
       output = new FetchResultImpl(root, metadata);
     } else {
       // Generate markdown
@@ -213,11 +227,14 @@ export async function handleWebFetch(
               : parsedUrl.domain,
         },
       });
-      
+
       output = markdown;
-      totalTokens = await countTokens(markdown, config.tokenEncoder || "cl100k");
+      totalTokens = await countTokens(
+        markdown,
+        config.tokenEncoder || "cl100k"
+      );
     }
-    
+
     // Restore original working directory
     process.chdir(originalCwd);
   }
@@ -230,17 +247,18 @@ export async function handleWebFetch(
 
   // Output results
   if (args.dryRun) {
-    if (typeof output === 'string') {
+    if (typeof output === "string") {
       logger.log(output);
     } else {
       // For JSON format in dry-run, output the JSON
       console.log(JSON.stringify(output, null, 2));
     }
   } else {
-    if (typeof output === 'string') {
+    if (typeof output === "string") {
       // Write markdown
       const outputFileName =
-        args.outputFile || `${parsedUrl.domain.replace(/\./g, "-")}-analysis.md`;
+        args.outputFile ||
+        `${parsedUrl.domain.replace(/\./g, "-")}-analysis.md`;
       const outputPath = join(originalCwd, outputFileName);
       await import("node:fs").then((fs) =>
         fs.promises.writeFile(outputPath, output)
@@ -249,7 +267,8 @@ export async function handleWebFetch(
     } else {
       // Write JSON
       const outputFileName =
-        args.outputFile || `${parsedUrl.domain.replace(/\./g, "-")}-analysis.json`;
+        args.outputFile ||
+        `${parsedUrl.domain.replace(/\./g, "-")}-analysis.json`;
       const outputPath = join(originalCwd, outputFileName);
       await import("node:fs").then((fs) =>
         fs.promises.writeFile(outputPath, JSON.stringify(output, null, 2))
@@ -297,25 +316,20 @@ async function fetchGitRepository(
     // Try GitHub API first if it's a GitHub URL
     if (parsedUrl.gitProvider === "github" && !config.noApi) {
       logger.info("Attempting to fetch via GitHub API...");
-      
-      const apiSuccess = await fetchGitHubViaApi(
-        parsedUrl,
-        repoPath,
-        logger,
-        {
-          branch: config.branch || parsedUrl.gitRef,
-          token: args.githubToken || process.env.GITHUB_TOKEN,
-          extensions: args.extensions,
-          excludeDirs: args.excludeDirs,
-          maxFiles: 1000,
-        }
-      );
+
+      const apiSuccess = await fetchGitHubViaApi(parsedUrl, repoPath, logger, {
+        branch: config.branch || parsedUrl.gitRef,
+        token: args.githubToken || process.env.GITHUB_TOKEN,
+        extensions: args.extensions,
+        excludeDirs: args.excludeDirs,
+        maxFiles: 1000,
+      });
 
       if (apiSuccess) {
         logger.success("Repository fetched successfully via API");
         return repoPath;
       }
-      
+
       logger.info("Falling back to git clone...");
     }
 
@@ -372,7 +386,7 @@ async function fetchWebsite(
   parsedUrl: any,
   config: WebFetchConfig,
   logger: ConsolaInstance,
-  args: any
+  _args: any
 ): Promise<string> {
   // Create temporary directory for the merged output
   const tempDir = await mkdtemp(join(tmpdir(), "codefetch-web-"));
@@ -397,22 +411,22 @@ async function fetchWebsite(
     const crawlResults = await crawler.crawl();
 
     logger.success("Website crawled successfully");
-    
+
     // Generate project structure
     const projectStructure = generateUrlProjectStructure(crawlResults);
-    
+
     // Generate content sections
     const contentSections = crawlResultsToMarkdown(crawlResults);
-    
+
     // Combine into single markdown file
     const fullMarkdown = projectStructure + contentSections;
-    
+
     // Save to a file in temp directory
     const outputPath = join(tempDir, "website-content.md");
     await import("node:fs").then((fs) =>
       fs.promises.writeFile(outputPath, fullMarkdown)
     );
-    
+
     // Return the temp directory so the rest of the pipeline can process it
     return tempDir;
   } catch (error) {

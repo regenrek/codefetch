@@ -34,10 +34,10 @@ export function htmlToMarkdown(
   virtualConsole.on("warn", () => {});
   virtualConsole.on("info", () => {});
   virtualConsole.on("dir", () => {});
-  
-  const dom = new JSDOM(html, { 
+
+  const dom = new JSDOM(html, {
     url: baseUrl,
-    virtualConsole
+    virtualConsole,
   });
   const document = dom.window.document;
 
@@ -168,13 +168,13 @@ export function extractMainContent(html: string, url?: string): string {
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("error", () => {});
   virtualConsole.on("warn", () => {});
-  
-  const dom = new JSDOM(html, { 
+
+  const dom = new JSDOM(html, {
     url,
     virtualConsole,
     // Don't execute scripts or load resources
     runScripts: "outside-only",
-    resources: undefined
+    resources: undefined,
   });
   const document = dom.window.document;
 

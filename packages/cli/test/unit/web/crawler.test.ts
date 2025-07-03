@@ -1,10 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { WebCrawler } from "../../../src/web/crawler.js";
 import { parseURL } from "../../../src/web/url-handler.js";
 import { createConsola } from "consola";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { mkdir, readFile, rm } from "node:fs/promises";
 
 // Mock fetch globally
 globalThis.fetch = vi.fn();
@@ -12,17 +9,14 @@ globalThis.fetch = vi.fn();
 describe("WebCrawler", () => {
   let crawler: WebCrawler;
   let logger: any;
-  let testDir: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     logger = createConsola({ level: -999 }); // Silent logger
-    testDir = join(tmpdir(), `crawler-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
   });
 
   afterEach(async () => {
-    await rm(testDir, { recursive: true, force: true });
+    // Cleanup if needed
   });
 
   describe("Basic Crawling", () => {
@@ -70,12 +64,12 @@ describe("WebCrawler", () => {
         logger
       );
 
-      const outputDir = await crawler.crawl(testDir);
+      const results = await crawler.crawl();
 
-      // Check that pages were created
-      const indexContent = await readFile(join(outputDir, "index.md"), "utf8");
-      expect(indexContent).toContain("Website Crawl Index");
-      expect(indexContent).toContain("Pages crawled: 2");
+      // Check that results were returned
+      expect(results).toHaveLength(2);
+      expect(results[0].url).toBe("https://example.com");
+      expect(results[1].url).toBe("https://example.com/about");
 
       // Check that fetch was called correctly
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -111,7 +105,7 @@ describe("WebCrawler", () => {
         logger
       );
 
-      await crawler.crawl(testDir);
+      await crawler.crawl();
 
       // Should only fetch the root page
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -145,7 +139,7 @@ describe("WebCrawler", () => {
         logger
       );
 
-      await crawler.crawl(testDir);
+      await crawler.crawl();
 
       // Should only fetch 2 pages
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -211,7 +205,7 @@ Sitemap: https://example.com/sitemap.xml
         logger
       );
 
-      await crawler.crawl(testDir);
+      await crawler.crawl();
 
       // Check that private page was not fetched
       const calls = mockFetch.mock.calls.map((call: any) => call[0]);
@@ -251,12 +245,12 @@ Sitemap: https://example.com/sitemap.xml
         logger
       );
 
-      const outputDir = await crawler.crawl(testDir);
+      const results = await crawler.crawl();
 
-      // Should still create index with error noted
-      const indexContent = await readFile(join(outputDir, "index.md"), "utf8");
-      expect(indexContent).toContain("Pages crawled: 2");
-      expect(indexContent).toContain("Error: Network error");
+      // Should still return results with error noted
+      expect(results).toHaveLength(2);
+      expect(results[0].url).toBe("https://example.com");
+      expect(results[1].error).toContain("Network error");
     });
 
     it("should skip non-HTML content", async () => {
@@ -291,11 +285,11 @@ Sitemap: https://example.com/sitemap.xml
         logger
       );
 
-      const outputDir = await crawler.crawl(testDir);
+      const results = await crawler.crawl();
 
       // Should note the error for non-HTML content
-      const indexContent = await readFile(join(outputDir, "index.md"), "utf8");
-      expect(indexContent).toContain("Error: Not HTML content");
+      expect(results).toHaveLength(2);
+      expect(results[1].error).toContain("Not HTML content");
     });
   });
 
@@ -328,7 +322,7 @@ Sitemap: https://example.com/sitemap.xml
         logger
       );
 
-      await crawler.crawl(testDir);
+      await crawler.crawl();
 
       // Check that external links were not crawled
       const calls = mockFetch.mock.calls.map((call: any) => call[0]);
@@ -369,7 +363,7 @@ Sitemap: https://example.com/sitemap.xml
         logger
       );
 
-      await crawler.crawl(testDir);
+      await crawler.crawl();
 
       // Should only crawl the normal page
       const calls = mockFetch.mock.calls.map((call: any) => call[0]);

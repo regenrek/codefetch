@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { readFile, rm, unlink } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve, join } from "pathe";
 

@@ -39,7 +39,7 @@
     "cli": "node ./dist/cli.mjs"
   },
   "dependencies": {
-    "@codefetch/sdk": "workspace:*",
+    "codefetch-sdk": "workspace:*",
     "c12": "^2.0.1",
     "consola": "^3.3.3",
     "ignore": "^7.0.0",

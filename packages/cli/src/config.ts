@@ -5,14 +5,14 @@ import {
   resolveCodefetchConfig,
   createCustomConfigMerger,
   mergeWithCliArgs,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 
 export {
   type CodefetchConfig,
   getDefaultConfig,
   resolveCodefetchConfig,
   mergeWithCliArgs,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 
 export async function loadCodefetchConfig(
   cwd: string,

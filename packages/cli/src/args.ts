@@ -1,7 +1,7 @@
 import mri from "mri";
 import { resolve } from "pathe";
-import type { TokenEncoder, TokenLimiter } from "@codefetch/sdk";
-import { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "@codefetch/sdk";
+import type { TokenEncoder, TokenLimiter } from "codefetch-sdk";
+import { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "codefetch-sdk";
 
 export function parseArgs(args: string[]) {
   const argv = mri(args, {

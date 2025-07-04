@@ -2,7 +2,7 @@ import consola from "consola";
 import {
   generateMarkdown as generateMarkdownSdk,
   type MarkdownGeneratorOptions,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 
 export async function generateMarkdown(
   files: string[],

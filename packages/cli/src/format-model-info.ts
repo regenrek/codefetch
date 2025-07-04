@@ -1,4 +1,4 @@
-import type { ModelDb } from "@codefetch/sdk";
+import type { ModelDb } from "codefetch-sdk";
 
 export function formatModelInfo(
   trackedModels: string[],

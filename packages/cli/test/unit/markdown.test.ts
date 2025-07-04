@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolve, join } from "pathe";
 import { generateMarkdown } from "../../src/index";
-import { countTokens } from "@codefetch/sdk";
+import { countTokens } from "codefetch-sdk";
 
 const FIXTURE_DIR = resolve(__dirname, "../fixtures/codebase-test");
 const UTILS_DIR = join(FIXTURE_DIR, "src/utils");

@@ -38,17 +38,20 @@ npx codefetch --url gitlab.com/gitlab-org/gitlab
 ## Installation
 
 ### Using npx (recommended)
+
 ```bash
 npx codefetch
 ```
 
 ### Global Installation
+
 ```bash
 npm install -g codefetch
 codefetch --help
 ```
 
 ### In Your Project
+
 ```bash
 npm install --save-dev @codefetch/cli
 # Add to package.json scripts
@@ -57,6 +60,7 @@ npm install --save-dev @codefetch/cli
 ## Basic Examples
 
 ### Local Codebase
+
 ```bash
 # Basic usage - outputs to codefetch/codebase.md
 npx codefetch
@@ -68,9 +72,9 @@ npx codefetch -e ts,tsx -t 3
 npx codefetch -p improve --max-tokens 50000
 ```
 
-
 ### Git Repository Fetching
-```bash
+
+````bash
 # Analyze a GitHub repository
 npx codefetch --url github.com/vuejs/vue --branch main -e js,ts
 
@@ -84,14 +88,16 @@ npx codefetch --include-files "*.ts" -o typescript-only.md
 
 # Include src directory, exclude test files
 npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
-```
+````
 
 Dry run (only output to console)
+
 ```bash
 npx codefetch --d
 ```
 
 Count tokens only (without generating markdown file)
+
 ```bash
 # Count tokens with default encoder
 npx codefetch -c
@@ -107,25 +113,26 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 
 ## Options
 
-| Option | Description |
-|--------|-------------|
-| `-o, --output <file>` | Specify output filename (defaults to codebase.md). Note: If you include "codefetch/" in the path, it will be automatically stripped to avoid double-nesting |
-| `--dir <path>` | Specify the directory to scan (defaults to current directory) |
-| `--max-tokens <number>` | Limit output tokens (default: 500,000) |
-| `-e, --extension <ext,...>` | Filter by file extensions (e.g., .ts,.js) |
-| `--token-limiter <type>` | Token limiting strategy when using --max-tokens (sequential, truncated) |
-| `--include-files <pattern,...>` | Include specific files (supports patterns like *.ts) |
-| `--exclude-files <pattern,...>` | Exclude specific files (supports patterns like *.test.ts) |
-| `--include-dir <dir,...>` | Include specific directories |
-| `--exclude-dir <dir,...>` | Exclude specific directories |
-| `-v, --verbose [level]` | Show processing information (0=none, 1=basic, 2=debug) |
-| `-t, --project-tree [depth]` | Generate visual project tree (optional depth, default: 2) |
-| `--token-encoder <type>` | Token encoding method (simple, p50k, o200k, cl100k) |
-| `--disable-line-numbers` | Disable line numbers in output |
-| `-d, --dry-run` | Output markdown to stdout instead of file |
-| `-c, --token-count-only` | Output only the token count without generating markdown file |
+| Option                          | Description                                                                                                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-o, --output <file>`           | Specify output filename (defaults to codebase.md). Note: If you include "codefetch/" in the path, it will be automatically stripped to avoid double-nesting |
+| `--dir <path>`                  | Specify the directory to scan (defaults to current directory)                                                                                               |
+| `--max-tokens <number>`         | Limit output tokens (default: 500,000)                                                                                                                      |
+| `-e, --extension <ext,...>`     | Filter by file extensions (e.g., .ts,.js)                                                                                                                   |
+| `--token-limiter <type>`        | Token limiting strategy when using --max-tokens (sequential, truncated)                                                                                     |
+| `--include-files <pattern,...>` | Include specific files (supports patterns like \*.ts)                                                                                                       |
+| `--exclude-files <pattern,...>` | Exclude specific files (supports patterns like \*.test.ts)                                                                                                  |
+| `--include-dir <dir,...>`       | Include specific directories                                                                                                                                |
+| `--exclude-dir <dir,...>`       | Exclude specific directories                                                                                                                                |
+| `-v, --verbose [level]`         | Show processing information (0=none, 1=basic, 2=debug)                                                                                                      |
+| `-t, --project-tree [depth]`    | Generate visual project tree (optional depth, default: 2)                                                                                                   |
+| `--token-encoder <type>`        | Token encoding method (simple, p50k, o200k, cl100k)                                                                                                         |
+| `--disable-line-numbers`        | Disable line numbers in output                                                                                                                              |
+| `-d, --dry-run`                 | Output markdown to stdout instead of file                                                                                                                   |
+| `-c, --token-count-only`        | Output only the token count without generating markdown file                                                                                                |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
+
 - `*` matches any number of characters
 - `?` matches a single character
 
@@ -145,6 +152,7 @@ npx codefetch -t 2 -o output.md
 ```
 
 Example output:
+
 ```
 Project Tree:
 └── my-project
@@ -197,6 +205,7 @@ export default {
 ```
 
 The prompt resolution order is:
+
 1. CLI argument (`-p` or `--prompt`)
 2. Config file prompt setting
 3. No prompt if neither is specified
@@ -227,11 +236,11 @@ codefetch supports two ways to ignore files:
 1. `.gitignore` - Respects your project's existing `.gitignore` patterns
 2. `.codefetchignore` - Additional patterns specific to codefetch
 
-The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`. 
+The `.codefetchignore` file works exactly like `.gitignore` and is useful when you want to ignore files that aren't in your `.gitignore`.
 
 ### Default Ignore Patterns
 
-Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis. 
+Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis.
 
 You can view the complete list of default patterns in [default-ignore.ts](src/default-ignore.ts).
 
@@ -241,7 +250,7 @@ Codefetch supports different token counting methods to match various AI models:
 
 - `simple`: Basic word-based estimation (not very accurate but fastest!)
 - `p50k`: GPT-3 style tokenization
-- `o200k`: gpt-4o style tokenization  
+- `o200k`: gpt-4o style tokenization
 - `cl100k`: GPT-4 style tokenization
 
 Select the appropriate encoder based on your target model:
@@ -254,25 +263,27 @@ npx codefetch --token-encoder o200k
 ## Output Directory
 
 By default (unless using --dry-run) codefetch will:
+
 1. Create a `codefetch/` directory in your project
 2. Store all output files in this directory
 
 This ensures that:
+
 - Your fetched code is organized in one place
 - The output directory won't be fetched so we avoid fetching the codebase again
 
-Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase. 
+Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase.
 
 ## Use with AI Tools
 
-You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
-
+You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase.
 
 ## Packages
 
 Codefetch is organized as a monorepo with multiple packages:
 
 ### [@codefetch/cli](./packages/cli/README.md)
+
 Command-line interface for Codefetch with web fetching capabilities.
 
 ```bash
@@ -280,6 +291,7 @@ npm install -g @codefetch/cli
 ```
 
 **Features:**
+
 - Full CLI with all options
 - Website crawling and conversion
 - Git repository cloning
@@ -288,14 +300,16 @@ npm install -g @codefetch/cli
 
 [Read the full CLI documentation →](./packages/cli/README.md)
 
-### [@codefetch/sdk](./packages/sdk/README.md)
+### [codefetch-sdk](./packages/sdk/README.md)
+
 Core SDK for programmatic usage in your applications.
 
 ```bash
-npm install @codefetch/sdk
+npm install codefetch-sdk
 ```
 
 **Features:**
+
 - File collection and filtering
 - Markdown generation
 - Token counting
@@ -305,6 +319,7 @@ npm install @codefetch/sdk
 [Read the full SDK documentation →](./packages/sdk/README.md)
 
 ### [@codefetch/mcp-server](./packages/mcp/README.md)
+
 Model Context Protocol server for AI assistants like Claude.
 
 ```bash
@@ -312,6 +327,7 @@ npx @codefetch/mcp-server
 ```
 
 **Features:**
+
 - MCP tools for codebase analysis
 - Direct integration with Claude Desktop
 - Token counting tools
@@ -328,10 +344,10 @@ npx codefetch init
 ```
 
 This will:
+
 1. Create a `.codefetchignore` file for excluding files
 2. Generate a `codefetch.config.mjs` with your preferences
 3. Set up the project structure
-
 
 ### Configuration
 
@@ -355,23 +371,19 @@ export default {
   outputPath: "codefetch",
   outputFile: "codebase.md",
   maxTokens: 999_000,
-  
+
   // Processing options
   projectTree: 2,
   tokenEncoder: "cl100k",
   tokenLimiter: "truncated",
-  
+
   // File filtering
   extensions: [".ts", ".js"],
   excludeDirs: ["test", "dist"],
-  
+
   // AI/LLM settings
-  trackedModels: [
-    "gpt-4",
-    "claude-3-opus",
-    "gpt-3.5-turbo"
-  ]
-}
+  trackedModels: ["gpt-4", "claude-3-opus", "gpt-3.5-turbo"],
+};
 ```
 
 ## Links
@@ -380,6 +392,7 @@ export default {
 - Bluesky: [@kevinkern.dev](https://bsky.app/profile/kevinkern.dev)
 
 ## Courses
+
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
@@ -388,19 +401,19 @@ export default {
 ### Programmatic SDK Usage
 
 ```typescript
-import { collectFiles, generateMarkdown, countTokens } from '@codefetch/sdk';
+import { collectFiles, generateMarkdown, countTokens } from "codefetch-sdk";
 
-const files = await collectFiles('./src', {
-  extensionSet: new Set(['.ts', '.tsx']),
-  excludeDirs: ['node_modules', 'dist']
+const files = await collectFiles("./src", {
+  extensionSet: new Set([".ts", ".tsx"]),
+  excludeDirs: ["node_modules", "dist"],
 });
 
 const markdown = await generateMarkdown(files, {
   maxTokens: 50000,
-  tokenEncoder: 'cl100k'
+  tokenEncoder: "cl100k",
 });
 
-const tokens = await countTokens(markdown, 'cl100k');
+const tokens = await countTokens(markdown, "cl100k");
 console.log(`Generated ${tokens} tokens`);
 ```
 
@@ -422,13 +435,13 @@ documentation:
 
 ## See my other projects:
 
-* [aidex](https://github.com/regenrek/aidex) - AI model information CLI tool
-* [codetie](https://github.com/codetie-ai/codetie) - XCode CLI
+- [aidex](https://github.com/regenrek/aidex) - AI model information CLI tool
+- [codetie](https://github.com/codetie-ai/codetie) - XCode CLI
 
 ## Credits
 
-This project was inspired by 
+This project was inspired by
 
-* [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
-* [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
-[unjs](https://github.com/unjs) - for bringing us the best javascript tooling system
+- [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
+- [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
+  [unjs](https://github.com/unjs) - for bringing us the best javascript tooling system

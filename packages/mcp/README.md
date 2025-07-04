@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server that provides AI assistants with tools to 
 ## Overview
 
 The Codefetch MCP server enables AI assistants like Claude to:
+
 - Analyze local codebases and convert them to AI-friendly markdown
 - Respect `.gitignore` and `.codefetchignore` patterns
 - Count tokens for various AI models
@@ -14,16 +15,19 @@ The Codefetch MCP server enables AI assistants like Claude to:
 ## Installation
 
 ### Via NPX (Recommended)
+
 ```bash
 npx @codefetch/mcp-server
 ```
 
 ### Global Installation
+
 ```bash
 npm install -g @codefetch/mcp-server
 ```
 
 ### Local Installation
+
 ```bash
 npm install @codefetch/mcp-server
 ```
@@ -35,6 +39,7 @@ npm install @codefetch/mcp-server
 Add the Codefetch server to your Claude Desktop configuration:
 
 #### macOS
+
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
@@ -49,6 +54,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 
 #### Windows
+
 Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
@@ -89,6 +95,7 @@ You can configure default settings via environment variables:
 Analyzes a codebase and returns structured markdown documentation.
 
 **Parameters:**
+
 - `path` (required): Directory path to analyze
 - `extensions`: Comma-separated list of file extensions (e.g., "ts,tsx,js,jsx")
 - `excludeDirs`: Comma-separated list of directories to exclude
@@ -101,8 +108,9 @@ Analyzes a codebase and returns structured markdown documentation.
 - `disableLineNumbers`: Disable line numbers in code blocks
 
 **Example Usage in Claude:**
+
 ```
-Use the analyze_codebase tool to analyze the /Users/me/project directory, 
+Use the analyze_codebase tool to analyze the /Users/me/project directory,
 including only TypeScript files and excluding test files.
 ```
 
@@ -111,10 +119,12 @@ including only TypeScript files and excluding test files.
 Counts tokens in the provided text using the specified encoder.
 
 **Parameters:**
+
 - `text` (required): Text to count tokens for
 - `encoder`: Token encoder to use (default: "cl100k")
 
 **Example Usage in Claude:**
+
 ```
 Count the tokens in this text using the GPT-4 encoder.
 ```
@@ -122,22 +132,26 @@ Count the tokens in this text using the GPT-4 encoder.
 ## Usage Examples
 
 ### Basic Analysis
+
 ```
 Analyze the codebase at /path/to/project
 ```
 
 ### Filtered Analysis
+
 ```
-Analyze /path/to/project including only .ts and .tsx files, 
+Analyze /path/to/project including only .ts and .tsx files,
 excluding the test and dist directories
 ```
 
 ### With Token Limit
+
 ```
 Analyze /path/to/project with a maximum of 50000 tokens
 ```
 
 ### Project Structure Only
+
 ```
 Show me the project structure of /path/to/project with depth 3
 ```
@@ -145,16 +159,19 @@ Show me the project structure of /path/to/project with depth 3
 ## Features
 
 ### Intelligent File Filtering
+
 - Automatically respects `.gitignore` patterns
 - Supports custom `.codefetchignore` files
 - Built-in exclusion of common non-source files
 
 ### Token Management
+
 - Accurate token counting for various AI models
 - Configurable token limits
 - Support for different token encoders
 
 ### Output Formatting
+
 - Structured markdown with syntax highlighting
 - Optional line numbers
 - Project tree visualization
@@ -170,15 +187,18 @@ Show me the project structure of /path/to/project with depth 3
 ## Troubleshooting
 
 ### Server Not Starting
+
 1. Ensure you have Node.js 18+ installed
 2. Check Claude Desktop configuration syntax
 3. Verify the command path is correct
 
 ### Permission Errors
+
 - Ensure Claude Desktop has file system access permissions
 - On macOS, grant Full Disk Access if needed
 
 ### Large Codebases
+
 - Use `maxTokens` to limit output size
 - Filter by specific extensions or directories
 - Exclude unnecessary directories like `node_modules`
@@ -186,6 +206,7 @@ Show me the project structure of /path/to/project with depth 3
 ## Development
 
 ### Running Locally
+
 ```bash
 # Clone the repository
 git clone https://github.com/codefetch-ai/codefetch
@@ -199,13 +220,16 @@ pnpm dev
 ```
 
 ### Building
+
 ```bash
 pnpm build
 ```
 
 ### Testing with Claude Desktop
+
 1. Build the server locally
 2. Update Claude Desktop config to point to local build:
+
 ```json
 {
   "mcpServers": {
@@ -220,8 +244,9 @@ pnpm build
 ## Architecture
 
 The MCP server is built on:
+
 - `@modelcontextprotocol/sdk`: Official MCP SDK
-- `@codefetch/sdk`: Core Codefetch functionality
+- `codefetch-sdk`: Core Codefetch functionality
 - TypeScript for type safety
 - ES modules for modern JavaScript
 

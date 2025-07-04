@@ -2,7 +2,7 @@
   "name": "codefetch-playground",
   "version": "1.0.0",
   "type": "module",
-  "description": "Playground for testing @codefetch/sdk",
+  "description": "Playground for testing codefetch-sdk",
   "scripts": {
     "test": "node test-sdk.js",
     "analyze-github": "node analyze-github-repo.js",

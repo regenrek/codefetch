@@ -5,7 +5,7 @@ import {
   generateMarkdown,
   getDefaultConfig,
   type CodefetchConfig,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 
 // TODO: Implement MCP server functionality
 export async function createMcpServer() {

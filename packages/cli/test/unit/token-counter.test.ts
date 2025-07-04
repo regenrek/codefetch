@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countTokens } from "@codefetch/sdk";
+import { countTokens } from "codefetch-sdk";
 
 describe("token-counter", () => {
   it("counts tokens with the 'simple' encoder by splitting on whitespace", async () => {

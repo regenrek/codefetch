@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rm, writeFile, mkdtemp } from "node:fs/promises";
-import { WebCache, parseURL } from "@codefetch/sdk";
+import { WebCache, parseURL } from "codefetch-sdk";
 
 describe("WebCache", () => {
   let cache: WebCache;

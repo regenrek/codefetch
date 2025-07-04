@@ -4,7 +4,7 @@ import {
   detectGitProvider,
   parseURL,
   extractCacheKey,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 
 describe("URL Validation", () => {
   it("should accept valid HTTP/HTTPS URLs", () => {

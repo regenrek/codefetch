@@ -13,10 +13,10 @@ import {
   VALID_PROMPTS,
   collectFilesAsTree,
   FetchResultImpl,
-} from "@codefetch/sdk";
+} from "codefetch-sdk";
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
-import type { TokenEncoder, TokenLimiter } from "@codefetch/sdk";
+import type { TokenEncoder, TokenLimiter } from "codefetch-sdk";
 
 export default async function defaultMain(rawArgs: Argv) {
   if (rawArgs.help || rawArgs.h) {
@@ -95,7 +95,7 @@ export default async function defaultMain(rawArgs: Argv) {
   // Handle URLs using SDK's fetch
   if (isUrl) {
     logger.info(`Using format: ${config.format || "markdown"}`);
-    const { fetch } = await import("@codefetch/sdk");
+    const { fetch } = await import("codefetch-sdk");
     output = await fetch({
       source,
       format: config.format,

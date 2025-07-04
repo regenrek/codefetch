@@ -38,13 +38,9 @@
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.0",
     "js-tiktoken": "^1.0.16",
-    "jsdom": "^25.0.1",
-    "pathe": "^2.0.1",
-    "turndown": "^7.2.0"
+    "pathe": "^2.0.1"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
-    "@types/jsdom": "^21.1.7",
-    "@types/turndown": "^5.0.5"
+    "@types/adm-zip": "^0.5.7"
   }
 }

@@ -10,27 +10,27 @@ const CODEFETCH_DIR = join(FIXTURE_DIR, "codefetch");
 
 describe("Integration: init command", () => {
   beforeEach(async () => {
-    if (existsSync(CODEFETCH_DIR)) {
-      await rm(CODEFETCH_DIR, { recursive: true, force: true });
-    }
-    if (existsSync(join(FIXTURE_DIR, ".codefetchignore"))) {
-      await unlink(join(FIXTURE_DIR, ".codefetchignore"));
-    }
-    if (existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
-      await unlink(join(FIXTURE_DIR, "codefetch.config.mjs"));
-    }
+    // if (existsSync(CODEFETCH_DIR)) {
+    //   await rm(CODEFETCH_DIR, { recursive: true, force: true });
+    // }
+    // if (existsSync(join(FIXTURE_DIR, ".codefetchignore"))) {
+    //   await unlink(join(FIXTURE_DIR, ".codefetchignore"));
+    // }
+    // if (existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
+    //   await unlink(join(FIXTURE_DIR, "codefetch.config.mjs"));
+    // }
   });
 
   afterEach(async () => {
-    if (existsSync(CODEFETCH_DIR)) {
-      await rm(CODEFETCH_DIR, { recursive: true, force: true });
-    }
-    if (existsSync(join(FIXTURE_DIR, ".codefetchignore"))) {
-      await unlink(join(FIXTURE_DIR, ".codefetchignore"));
-    }
-    if (existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
-      await unlink(join(FIXTURE_DIR, "codefetch.config.mjs"));
-    }
+    // if (existsSync(CODEFETCH_DIR)) {
+    //   await rm(CODEFETCH_DIR, { recursive: true, force: true });
+    // }
+    // if (existsSync(join(FIXTURE_DIR, ".codefetchignore"))) {
+    //   await unlink(join(FIXTURE_DIR, ".codefetchignore"));
+    // }
+    // if (existsSync(join(FIXTURE_DIR, "codefetch.config.mjs"))) {
+    //   await unlink(join(FIXTURE_DIR, "codefetch.config.mjs"));
+    // }
   });
 
   it("creates default configuration", async () => {
@@ -76,9 +76,10 @@ describe("Integration: init command", () => {
   });
 
   it("creates default.md in prompts directory", async () => {
-    const result = spawnSync("node", [cliPath, "init", "--default"], {
+    const result = spawnSync("node", [cliPath, "init"], {
       cwd: FIXTURE_DIR,
       encoding: "utf8",
+      input: "default\n",
       stdio: ["pipe", "pipe", "pipe"],
     });
 

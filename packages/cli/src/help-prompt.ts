@@ -23,15 +23,11 @@ Options:
   -h, --help                  Display this help message
   -p, --prompt <type>         Add a default prompt (fix, improve, codegen, testgen) or add a custom prompt file with .md/.txt extension
 
-Web Fetching Options:
-  --url <URL>                 Fetch and analyze content from a URL (website or git repository)
+Git Repository Options:
+  --url <URL>                 Fetch and analyze content from a git repository URL
   --no-cache                  Skip cache and fetch fresh content
   --cache-ttl <hours>         Cache time-to-live in hours (default: 1)
-  --max-depth <n>             Maximum crawl depth for websites (default: no limit)
-  --max-pages <n>             Maximum pages to crawl (default: no limit)
-  --branch <name>             Git branch/tag/commit to fetch (for git repositories)
-  --ignore-robots             Ignore robots.txt when crawling websites
-  --ignore-cors               Ignore CORS restrictions (CLI-only feature)
+  --branch <name>             Git branch/tag/commit to fetch
   --no-api                    Disable GitHub API and use git clone instead
   --github-token <token>      GitHub API token for private repos (or set GITHUB_TOKEN env var)
 
@@ -48,7 +44,8 @@ Examples:
   # Force git clone instead of API
   codefetch --url https://github.com/user/repo --no-api
 
-  # Analyze a website
-  codefetch --url https://docs.example.com --max-depth 3
+  # Analyze from GitLab or Bitbucket
+  codefetch --url https://gitlab.com/user/repo
+  codefetch --url https://bitbucket.org/user/repo
 `);
 }

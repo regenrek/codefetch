@@ -46,7 +46,7 @@ async function loadModelDb(): Promise<ModelDb> {
   if (!response?.ok) return {};
 
   const rawData = await response.json().catch(() => ({}));
-  return rawData;
+  return rawData as ModelDb;
 }
 
 export async function fetchModels(trackedModels: string[]): Promise<{

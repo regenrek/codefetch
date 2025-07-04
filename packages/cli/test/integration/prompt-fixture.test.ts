@@ -63,15 +63,7 @@ describe("Integration: prompt functionality", () => {
   it("handles MESSAGE variable from command line", async () => {
     const result = spawnSync(
       "node",
-      [
-        cliPath,
-        "-p",
-        "fix",
-        "fix this issue",
-        "-o",
-        "fix-test.md",
-        "--skip-root-check",
-      ],
+      [cliPath, "-p", "fix", "fix this issue", "-o", "fix-test.md"],
       {
         cwd: FIXTURE_DIR,
         encoding: "utf8",
@@ -114,15 +106,7 @@ describe("Integration: prompt functionality", () => {
   it("uses built-in fix prompt", async () => {
     const result = spawnSync(
       "node",
-      [
-        cliPath,
-        "-p",
-        "fix",
-        "fix issue",
-        "-o",
-        "builtin-test.md",
-        "--skip-root-check",
-      ],
+      [cliPath, "-p", "fix", "fix issue", "-o", "builtin-test.md"],
       {
         cwd: FIXTURE_DIR,
         encoding: "utf8",

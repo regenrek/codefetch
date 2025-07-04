@@ -19,8 +19,6 @@ export function parseArgs(args: string[]) {
       "disable-line-numbers",
       "token-count-only",
       "no-cache",
-      "ignore-robots",
-      "ignore-cors",
       "no-api",
     ],
     string: [
@@ -39,8 +37,6 @@ export function parseArgs(args: string[]) {
       "var",
       "url",
       "cache-ttl",
-      "max-depth",
-      "max-pages",
       "branch",
       "github-token",
       "format",
@@ -176,15 +172,11 @@ export function parseArgs(args: string[]) {
     tokenCountOnly: Boolean(argv["token-count-only"]),
     ...(argv.format && { format: argv.format as "markdown" | "json" }),
 
-    // Web-related flags
+    // Git repository flags
     ...(argv.url && { url: String(argv.url) }),
     ...(argv["cache-ttl"] && { cacheTTL: Number(argv["cache-ttl"]) }),
-    ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
-    ...(argv["max-pages"] && { maxPages: Number(argv["max-pages"]) }),
     ...(argv.branch && { branch: String(argv.branch) }),
     noCache: argv.cache === false, // mri converts --no-cache to cache: false
-    ignoreRobots: Boolean(argv["ignore-robots"]),
-    ignoreCors: Boolean(argv["ignore-cors"]),
     noApi: argv.api === false, // mri converts --no-api to api: false
     ...(argv["github-token"] && { githubToken: String(argv["github-token"]) }),
   };

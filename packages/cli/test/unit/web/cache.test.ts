@@ -30,18 +30,23 @@ describe("WebCache", () => {
       expect(stats.repoCount).toBe(0);
     });
 
-    it("should cache website content", async () => {
-      const url = parseURL("https://example.com/docs");
-      await cache.set(url!, "test-content", {
-        contentType: "text/html",
-        headers: { "content-type": "text/html" },
-      });
+    it("should cache git repository content", async () => {
+      const url = parseURL("https://github.com/user/repo");
+      // Create an actual temporary directory that exists
+      const repoPath = await mkdtemp(join(tmpdir(), "test-repo-"));
 
-      expect(await cache.has(url!)).toBe(true);
-      const entry = await cache.get(url!);
-      expect(entry).toBeTruthy();
-      expect(entry?.metadata.url).toBe("https://example.com/docs");
-      expect(entry?.metadata.contentType).toBe("text/html");
+      try {
+        await cache.set(url!, repoPath);
+
+        expect(await cache.has(url!)).toBe(true);
+        const entry = await cache.get(url!);
+        expect(entry).toBeTruthy();
+        expect(entry?.metadata.url).toBe("https://github.com/user/repo");
+        expect(entry?.content).toBe(repoPath);
+      } finally {
+        // Clean up the temporary directory
+        await rm(repoPath, { recursive: true, force: true });
+      }
     });
 
     it("should cache git repository paths", async () => {
@@ -69,7 +74,7 @@ describe("WebCache", () => {
         maxSizeMB: 10,
       });
 
-      const url = parseURL("https://example.com");
+      const url = parseURL("https://github.com/test/repo");
       await shortCache.set(url!, "content");
 
       // Should exist immediately
@@ -84,7 +89,7 @@ describe("WebCache", () => {
     });
 
     it("should delete cache entries", async () => {
-      const url = parseURL("https://example.com");
+      const url = parseURL("https://gitlab.com/test/repo");
       await cache.set(url!, "content");
 
       expect(await cache.has(url!)).toBe(true);
@@ -93,8 +98,8 @@ describe("WebCache", () => {
     });
 
     it("should clear entire cache", async () => {
-      const url1 = parseURL("https://example.com");
-      const url2 = parseURL("https://github.com/user/repo");
+      const url1 = parseURL("https://github.com/user/repo1");
+      const url2 = parseURL("https://github.com/user/repo2");
 
       await cache.set(url1!, "content1");
       await cache.set(url2!, "content2");
@@ -111,16 +116,28 @@ describe("WebCache", () => {
 
   describe("Cache Key Generation", () => {
     it("should generate unique keys for different URLs", async () => {
-      const url1 = parseURL("https://example.com/page1");
-      const url2 = parseURL("https://example.com/page2");
+      const url1 = parseURL("https://github.com/user/repo1");
+      const url2 = parseURL("https://github.com/user/repo2");
 
-      await cache.set(url1!, "content1");
-      await cache.set(url2!, "content2");
+      // Create actual temporary directories
+      const repoPath1 = await mkdtemp(join(tmpdir(), "test-repo1-"));
+      const repoPath2 = await mkdtemp(join(tmpdir(), "test-repo2-"));
 
-      const entry1 = await cache.get(url1!);
-      const entry2 = await cache.get(url2!);
+      try {
+        await cache.set(url1!, repoPath1);
+        await cache.set(url2!, repoPath2);
 
-      expect(entry1?.content).not.toBe(entry2?.content);
+        const entry1 = await cache.get(url1!);
+        const entry2 = await cache.get(url2!);
+
+        expect(entry1?.content).toBe(repoPath1);
+        expect(entry2?.content).toBe(repoPath2);
+        expect(entry1?.content).not.toBe(entry2?.content);
+      } finally {
+        // Clean up
+        await rm(repoPath1, { recursive: true, force: true });
+        await rm(repoPath2, { recursive: true, force: true });
+      }
     });
 
     it("should handle git repository URLs with branches", async () => {
@@ -150,7 +167,7 @@ describe("WebCache", () => {
 
   describe("Cache Size Management", () => {
     it("should track cache size", async () => {
-      const url = parseURL("https://example.com");
+      const url = parseURL("https://bitbucket.org/test/repo");
       await cache.set(url!, "some content here");
 
       const stats = await cache.getStats();
@@ -160,8 +177,8 @@ describe("WebCache", () => {
 
     it("should track cache size", async () => {
       // This is a simpler test that just verifies size tracking works
-      const url1 = parseURL("https://example.com/page1");
-      const url2 = parseURL("https://example.com/page2");
+      const url1 = parseURL("https://gitlab.com/user/repo1");
+      const url2 = parseURL("https://gitlab.com/user/repo2");
 
       await cache.set(url1!, "x".repeat(1000));
       await cache.set(url2!, "y".repeat(2000));
@@ -169,34 +186,34 @@ describe("WebCache", () => {
       const stats = await cache.getStats();
       expect(stats.sizeMB).toBeGreaterThan(0);
       expect(stats.entryCount).toBe(2);
-      expect(stats.websiteCount).toBe(2);
+      expect(stats.repoCount).toBe(2);
     });
   });
 
   describe("Error Handling", () => {
     it("should handle missing cache entries gracefully", async () => {
-      const url = parseURL("https://nonexistent.com");
+      const url = parseURL("https://github.com/nonexistent/repo");
       expect(await cache.has(url!)).toBe(false);
       expect(await cache.get(url!)).toBe(null);
     });
 
     it("should handle corrupted metadata gracefully", async () => {
-      const url = parseURL("https://example.com");
+      const url = parseURL("https://github.com/corrupt/repo");
       await cache.set(url!, "content");
 
       // Get the actual cache directory for this URL
       // The cache module uses md5 hash, so we need to get it directly
       const cacheStats = await cache.getStats();
-      expect(cacheStats.websiteCount).toBe(1);
+      expect(cacheStats.repoCount).toBe(1);
 
       // Corrupt the metadata by writing invalid JSON to the cache directory
-      const websitesDir = join(testCacheDir, "websites");
+      const reposDir = join(testCacheDir, "repos");
       const dirs = await import("node:fs/promises").then((fs) =>
-        fs.readdir(websitesDir)
+        fs.readdir(reposDir)
       );
       expect(dirs.length).toBe(1); // Should have exactly one cached entry
 
-      const metadataPath = join(websitesDir, dirs[0], "metadata.json");
+      const metadataPath = join(reposDir, dirs[0], "metadata.json");
       await writeFile(metadataPath, "invalid json");
 
       expect(await cache.has(url!)).toBe(false);

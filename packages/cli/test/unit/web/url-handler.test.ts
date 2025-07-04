@@ -4,7 +4,6 @@ import {
   detectGitProvider,
   parseURL,
   extractCacheKey,
-  urlToFilePath,
 } from "@codefetch/sdk";
 
 describe("URL Validation", () => {
@@ -124,37 +123,16 @@ describe("Git Provider Detection", () => {
 });
 
 describe("URL Parsing", () => {
-  it("should parse regular website URLs", () => {
-    const parsed = parseURL("https://docs.example.com/api/v1");
-    expect(parsed).toEqual({
-      type: "website",
-      url: "https://docs.example.com/api/v1",
-      normalizedUrl: "https://docs.example.com/api/v1",
-      domain: "docs.example.com",
-      path: "/api/v1",
-    });
-  });
-
-  it("should parse URLs without protocol", () => {
-    const parsed = parseURL("example.com");
-    expect(parsed).toEqual({
-      type: "website",
-      url: "https://example.com",
-      normalizedUrl: "https://example.com/",
-      domain: "example.com",
-      path: "/",
-    });
-  });
-
-  it("should parse URLs with path but no protocol", () => {
-    const parsed = parseURL("docs.example.com/api/guide");
-    expect(parsed).toEqual({
-      type: "website",
-      url: "https://docs.example.com/api/guide",
-      normalizedUrl: "https://docs.example.com/api/guide",
-      domain: "docs.example.com",
-      path: "/api/guide",
-    });
+  it("should reject non-git repository URLs", () => {
+    expect(() => parseURL("https://docs.example.com/api/v1")).toThrow(
+      "Only GitHub, GitLab, and Bitbucket repository URLs are supported"
+    );
+    expect(() => parseURL("https://example.com")).toThrow(
+      "Only GitHub, GitLab, and Bitbucket repository URLs are supported"
+    );
+    expect(() => parseURL("docs.example.com/api/guide")).toThrow(
+      "Only GitHub, GitLab, and Bitbucket repository URLs are supported"
+    );
   });
 
   it("should parse GitHub repository URLs", () => {
@@ -215,12 +193,6 @@ describe("URL Parsing", () => {
 });
 
 describe("Cache Key Extraction", () => {
-  it("should generate cache keys for websites", () => {
-    const parsed = parseURL("https://example.com/docs/api");
-    const key = extractCacheKey(parsed!);
-    expect(key).toMatch(/^example\.com-docs-api/);
-  });
-
   it("should generate cache keys for git repositories", () => {
     const parsed = parseURL("https://github.com/user/repo");
     const key = extractCacheKey(parsed!);
@@ -231,29 +203,5 @@ describe("Cache Key Extraction", () => {
     const parsed = parseURL("https://github.com/user/repo/tree/develop");
     const key = extractCacheKey(parsed!);
     expect(key).toBe("github-user-repo-develop");
-  });
-});
-
-describe("URL to File Path Conversion", () => {
-  it("should convert URLs to valid file paths", () => {
-    expect(urlToFilePath("https://example.com")).toBe("example.com.html");
-    expect(urlToFilePath("https://example.com/docs")).toBe(
-      "example.com/docs.html"
-    );
-    expect(urlToFilePath("https://example.com/api/users")).toBe(
-      "example.com/api/users.html"
-    );
-  });
-
-  it("should preserve existing file extensions", () => {
-    expect(urlToFilePath("https://example.com/style.css")).toBe(
-      "example.com/style.css"
-    );
-    expect(urlToFilePath("https://example.com/script.js")).toBe(
-      "example.com/script.js"
-    );
-    expect(urlToFilePath("https://example.com/data.json")).toBe(
-      "example.com/data.json"
-    );
   });
 });

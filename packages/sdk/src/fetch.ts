@@ -18,10 +18,9 @@ export async function fetch(options: FetchOptions = {}): Promise<FetchResult | s
   // Check if source is a URL
   const source = options.source || process.cwd();
   
-  // URL detection - check for http(s):// or domain patterns
+  // URL detection - check for http(s):// or known git providers
   const isUrl = /^https?:\/\//.test(source) || 
-                /^(www\.|github\.com|gitlab\.com|bitbucket\.org)/.test(source) ||
-                /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)/.test(source);
+                /^(github\.com|gitlab\.com|bitbucket\.org)/.test(source);
   
   if (isUrl) {
     // Import web functionality

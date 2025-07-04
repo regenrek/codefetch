@@ -31,9 +31,9 @@
   "scripts": {
     "build": "unbuild",
     "dev": "vitest",
-    "lint": "eslint --cache . && prettier -c src test",
+    "lint": "eslint --cache . && prettier -c 'src/**/*' 'test/**/*' '!test/fixtures/**'",
     "start": "tsx src/cli.ts",
-    "lint:fix": "eslint --cache . --fix && prettier -c src test -w",
+    "lint:fix": "eslint --cache . --fix && prettier -c 'src/**/*' 'test/**/*' '!test/fixtures/**' -w",
     "test": "npm run lint && npm run test:types && vitest run --coverage",
     "test:types": "tsc --noEmit --skipLibCheck",
     "cli": "node ./dist/cli.mjs"

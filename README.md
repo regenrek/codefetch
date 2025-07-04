@@ -4,15 +4,15 @@
 
 [![npm (tag)](https://img.shields.io/npm/v/codefetch)](https://www.npmjs.com/package/codefetch)
 
-> Turn code and websites into AI-friendly Markdown documentation
+> Turn code repositories into AI-friendly Markdown documentation
 
-Codefetch is a powerful tool that converts codebases and websites into structured Markdown files optimized for Large Language Models (LLMs). It intelligently collects, processes, and formats code while respecting ignore patterns and providing token counting for various AI models.
+Codefetch is a powerful tool that converts git repositories and local codebases into structured Markdown files optimized for Large Language Models (LLMs). It intelligently collects, processes, and formats code while respecting ignore patterns and providing token counting for various AI models.
 
 ## Key Features
 
 - 📁 **Local Codebase Processing** - Convert entire codebases into AI-friendly Markdown
-- 🌐 **Website Fetching** - Crawl and convert websites into structured documentation  
 - 🔗 **Git Repository Support** - Fast GitHub API fetching with git clone fallback
+- 🐙 **Multi-Platform Support** - Works with GitHub, GitLab, and Bitbucket
 - 🎯 **Smart Filtering** - Respect .gitignore patterns and custom exclusions
 - 📊 **Token Counting** - Track tokens for GPT-4, Claude, and other models
 - 🚀 **CLI & SDK** - Use via command line or integrate programmatically
@@ -28,11 +28,11 @@ Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898
 # Analyze current directory
 npx codefetch
 
-# Fetch a website
-npx codefetch --url example.com
-
 # Analyze a GitHub repo (uses API - no git needed!)
 npx codefetch --url github.com/facebook/react
+
+# Analyze from GitLab or Bitbucket
+npx codefetch --url gitlab.com/gitlab-org/gitlab
 ```
 
 ## Installation
@@ -68,16 +68,8 @@ npx codefetch -e ts,tsx -t 3
 npx codefetch -p improve --max-tokens 50000
 ```
 
-### Website Fetching
-```bash
-# Fetch a documentation site
-npx codefetch --url docs.example.com --max-pages 100
 
-# Fetch with custom depth
-npx codefetch --url example.com --max-depth 3 --no-cache
-```
-
-### Git Repository
+### Git Repository Fetching
 ```bash
 # Analyze a GitHub repository
 npx codefetch --url github.com/vuejs/vue --branch main -e js,ts

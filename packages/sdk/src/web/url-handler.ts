@@ -28,14 +28,14 @@ const PRIVATE_IP_RANGES = [
 ];
 
 export interface ParsedURL {
-  type: "website" | "git-repository";
+  type: "git-repository";
   url: string;
   normalizedUrl: string;
   domain: string;
   path: string;
-  gitProvider?: keyof typeof GIT_PROVIDERS;
-  gitOwner?: string;
-  gitRepo?: string;
+  gitProvider: keyof typeof GIT_PROVIDERS;
+  gitOwner: string;
+  gitRepo: string;
   gitRef?: string; // branch/tag/commit
 }
 
@@ -147,56 +147,52 @@ export function parseURL(urlString: string): ParsedURL | null {
   const url = new URL(normalizedUrlString);
   const gitProvider = detectGitProvider(normalizedUrlString);
 
-  if (gitProvider) {
-    // Parse git repository URL
-    const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
-    if (!match) {
-      throw new Error("Failed to parse git repository URL");
-    }
-
-    const [, owner, repo] = match;
-    let gitRef: string | undefined;
-
-    // Extract branch/tag/commit from URL path
-    // e.g., /owner/repo/tree/branch or /owner/repo/commit/sha
-    const pathParts = url.pathname.split("/").filter(Boolean);
-    if (pathParts.length > 2) {
-      const refType = pathParts[2]; // 'tree', 'commit', 'blob', etc.
-      if (["tree", "commit", "blob"].includes(refType) && pathParts[3]) {
-        gitRef = pathParts.slice(3).join("/");
-      } else if (
-        pathParts[2] === "releases" &&
-        pathParts[3] === "tag" &&
-        pathParts[4]
-      ) {
-        gitRef = pathParts[4];
-      }
-    }
-
-    // Normalize repository URL (remove .git suffix if present)
-    const repoName = repo.replace(/\.git$/, "");
-    const normalizedUrl = `https://${gitProvider}.com/${owner}/${repoName}`;
-
-    return {
-      type: "git-repository",
-      url: normalizedUrlString,
-      normalizedUrl,
-      domain: url.hostname,
-      path: url.pathname,
-      gitProvider,
-      gitOwner: owner,
-      gitRepo: repoName,
-      gitRef,
-    };
+  if (!gitProvider) {
+    throw new Error(
+      "Only GitHub, GitLab, and Bitbucket repository URLs are supported. " +
+      "Please provide a valid git repository URL (e.g., https://github.com/owner/repo)"
+    );
   }
 
-  // Regular website
+  // Parse git repository URL
+  const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
+  if (!match) {
+    throw new Error("Failed to parse git repository URL");
+  }
+
+  const [, owner, repo] = match;
+  let gitRef: string | undefined;
+
+  // Extract branch/tag/commit from URL path
+  // e.g., /owner/repo/tree/branch or /owner/repo/commit/sha
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  if (pathParts.length > 2) {
+    const refType = pathParts[2]; // 'tree', 'commit', 'blob', etc.
+    if (["tree", "commit", "blob"].includes(refType) && pathParts[3]) {
+      gitRef = pathParts.slice(3).join("/");
+    } else if (
+      pathParts[2] === "releases" &&
+      pathParts[3] === "tag" &&
+      pathParts[4]
+    ) {
+      gitRef = pathParts[4];
+    }
+  }
+
+  // Normalize repository URL (remove .git suffix if present)
+  const repoName = repo.replace(/\.git$/, "");
+  const normalizedUrl = `https://${gitProvider}.com/${owner}/${repoName}`;
+
   return {
-    type: "website",
+    type: "git-repository",
     url: normalizedUrlString,
-    normalizedUrl: `${url.protocol}//${url.host}${url.pathname}`,
+    normalizedUrl,
     domain: url.hostname,
     path: url.pathname,
+    gitProvider,
+    gitOwner: owner,
+    gitRepo: repoName,
+    gitRef,
   };
 }
 
@@ -204,38 +200,7 @@ export function parseURL(urlString: string): ParsedURL | null {
  * Extracts base domain from URL for caching
  */
 export function extractCacheKey(parsedUrl: ParsedURL): string {
-  if (parsedUrl.type === "git-repository") {
-    const ref = parsedUrl.gitRef || "default";
-    return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
-  }
-
-  // For websites, use domain + path hash
-  const pathHash = parsedUrl.path
-    .replace(/^\//, "") // Remove leading slash
-    .replace(/[^a-zA-Z0-9]/g, "-")
-    .replace(/-+/g, "-") // Replace multiple dashes with single dash
-    .slice(0, 20);
-  return `${parsedUrl.domain}-${pathHash}`;
+  const ref = parsedUrl.gitRef || "default";
+  return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
 }
 
-/**
- * Converts URL to file system safe path
- */
-export function urlToFilePath(url: string): string {
-  const parsed = new URL(url);
-  const pathParts = [
-    parsed.hostname,
-    ...parsed.pathname.split("/").filter(Boolean),
-  ];
-
-  // Ensure the last part has an extension, default to .html
-  const lastPart = pathParts.at(-1);
-  if (lastPart && !lastPart.includes(".")) {
-    pathParts[pathParts.length - 1] = `${lastPart}.html`;
-  } else if (pathParts.length === 1) {
-    // Special case for root domain
-    pathParts[0] = `${pathParts[0]}.html`;
-  }
-
-  return pathParts.join("/");
-}

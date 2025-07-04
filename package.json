@@ -11,7 +11,9 @@
     "test": "pnpm -r test",
     "cli": "pnpm --filter codefetch run cli",
     "lint": "pnpm -r lint",
-    "release": "tsx scripts/release.ts"
+    "release:cli": "cd packages/cli && tsx ../../scripts/release.ts",
+    "release:sdk": "cd packages/sdk && tsx ../../scripts/release.ts",
+    "release:all": "pnpm release:sdk && pnpm release:cli"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

@@ -43,7 +43,7 @@ function bumpVersion(
   isAlpha: boolean = false
 ): string {
   const pkgJsonPath = path.join(pkgPath, "package.json");
-  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
   const currentVersion = pkgJson.version;
   let newVersion: string;
 
@@ -71,7 +71,7 @@ function bumpVersion(
       // patch
       baseVersion = `${major}.${minor}.${patch + 1}`;
     }
-  } else if (type.match(/^\d+\.\d+\.\d+$/)) {
+  } else if (/^\d+\.\d+\.\d+$/.test(type)) {
     // Use the provided version string directly as base version
     baseVersion = type;
   } else {

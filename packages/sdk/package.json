@@ -1,0 +1,46 @@
+{
+  "name": "@codefetch/sdk",
+  "version": "1.5.2-alpha.0",
+  "description": "Core SDK for codefetch functionality",
+  "repository": "regenrek/codefetch",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "c12": "^2.0.1",
+    "consola": "^3.3.3",
+    "defu": "^6.1.4",
+    "fast-glob": "^3.3.3",
+    "ignore": "^7.0.0",
+    "js-tiktoken": "^1.0.16",
+    "pathe": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7"
+  }
+}

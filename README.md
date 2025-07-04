@@ -4,34 +4,75 @@
 
 [![npm (tag)](https://img.shields.io/npm/v/codefetch)](https://www.npmjs.com/package/codefetch)
 
->Turn code into Markdown for LLMs with one simple terminal command
+> Turn code repositories into AI-friendly Markdown documentation
 
+Codefetch is a powerful tool that converts git repositories and local codebases into structured Markdown files optimized for Large Language Models (LLMs). It intelligently collects, processes, and formats code while respecting ignore patterns and providing token counting for various AI models.
 
-Fetches all code files in the current directory, ignoring what's in `.gitignore` and `.codefetchignore`, then outputs them into a single Markdown file with line numbers.
+## Key Features
+
+- 📁 **Local Codebase Processing** - Convert entire codebases into AI-friendly Markdown
+- 🔗 **Git Repository Support** - Fast GitHub API fetching with git clone fallback
+- 🐙 **Multi-Platform Support** - Works with GitHub, GitLab, and Bitbucket
+- 🎯 **Smart Filtering** - Respect .gitignore patterns and custom exclusions
+- 📊 **Token Counting** - Track tokens for GPT-4, Claude, and other models
+- 🚀 **CLI & SDK** - Use via command line or integrate programmatically
+- 💾 **Intelligent Caching** - Speed up repeated fetches with smart caching
+- 🌲 **Project Structure Visualization** - Generate tree views of your codebase
+- ⚡ **GitHub API Integration** - Fetch repos without git using the GitHub API
 
 Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 
-## Usage
-Basic usage with output file and tree
+## Quick Start
+
+```bash
+# Analyze current directory
+npx codefetch
+
+# Analyze a GitHub repo (uses API - no git needed!)
+npx codefetch --url github.com/facebook/react
+
+# Analyze from GitLab or Bitbucket
+npx codefetch --url gitlab.com/gitlab-org/gitlab
+```
+
+## Installation
+
+### Using npx (recommended)
 ```bash
 npx codefetch
-# You codebase will be saved to `codefetch/codebase.md`
 ```
 
-Include a default prompt:
+### Global Installation
 ```bash
-npx codefetch -p improve
+npm install -g codefetch
+codefetch --help
 ```
 
-Include a tree with depth
+### In Your Project
 ```bash
-npx codefetch -t 3
+npm install --save-dev @codefetch/cli
+# Add to package.json scripts
 ```
 
-Filter by file extensions:
+## Basic Examples
+
+### Local Codebase
 ```bash
-npx codefetch -e .ts,.js -o typescript-files.md --token-encoder cl100k
+# Basic usage - outputs to codefetch/codebase.md
+npx codefetch
+
+# Include only TypeScript files with tree view
+npx codefetch -e ts,tsx -t 3
+
+# Generate with AI prompt template
+npx codefetch -p improve --max-tokens 50000
 ```
+
+
+### Git Repository Fetching
+```bash
+# Analyze a GitHub repository
+npx codefetch --url github.com/vuejs/vue --branch main -e js,ts
 
 Include or exclude specific files and directories:
 ```bash
@@ -227,13 +268,58 @@ Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codeb
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase. 
 
 
-## Or install globally:
+## Packages
+
+Codefetch is organized as a monorepo with multiple packages:
+
+### [@codefetch/cli](./packages/cli/README.md)
+Command-line interface for Codefetch with web fetching capabilities.
+
 ```bash
-npm install -g codefetch
-codefetch -o output.md
+npm install -g @codefetch/cli
 ```
 
-## Integrate codefetch into your project
+**Features:**
+- Full CLI with all options
+- Website crawling and conversion
+- Git repository cloning
+- Built-in caching system
+- Progress reporting
+
+[Read the full CLI documentation →](./packages/cli/README.md)
+
+### [@codefetch/sdk](./packages/sdk/README.md)
+Core SDK for programmatic usage in your applications.
+
+```bash
+npm install @codefetch/sdk
+```
+
+**Features:**
+- File collection and filtering
+- Markdown generation
+- Token counting
+- Template processing
+- Full TypeScript support
+
+[Read the full SDK documentation →](./packages/sdk/README.md)
+
+### [@codefetch/mcp-server](./packages/mcp/README.md)
+Model Context Protocol server for AI assistants like Claude.
+
+```bash
+npx @codefetch/mcp-server
+```
+
+**Features:**
+- MCP tools for codebase analysis
+- Direct integration with Claude Desktop
+- Token counting tools
+- Configurable via environment variables
+
+[Read the full MCP documentation →](./packages/mcp/README.md)
+
+## Integrate into Your Project
 
 Initialize your project with codefetch:
 
@@ -247,52 +333,46 @@ This will:
 3. Set up the project structure
 
 
-### `codefetch.config.mjs` Config File
+### Configuration
 
-Create a `codefetch.config.mjs` file in your project root:
+Create a `.codefetchrc` file in your project root:
+
+```json
+{
+  "extensions": [".ts", ".tsx", ".js", ".jsx"],
+  "excludeDirs": ["node_modules", "dist", "coverage"],
+  "maxTokens": 100000,
+  "outputFile": "codebase.md",
+  "tokenEncoder": "cl100k"
+}
+```
+
+Or use `codefetch.config.mjs` for more control:
 
 ```js
 export default {
   // Output settings
-  outputPath: "codefetch", // Directory for output files
-  outputFile: "codebase.md", // Output filename
-  maxTokens: 999_000, // Token limit
-  disableLineNumbers: false, // Toggle line numbers in output
+  outputPath: "codefetch",
+  outputFile: "codebase.md",
+  maxTokens: 999_000,
   
   // Processing options
-  verbose: 1, // Logging level (0=none, 1=basic, 2=debug)
-  projectTree: 2, // Project tree depth
-  defaultIgnore: true, // Use default ignore patterns
-  gitignore: true, // Respect .gitignore
-  dryRun: false, // Output to console instead of file
-  
-  // Token handling
-  tokenEncoder: "simple", // Token counting method (simple, p50k, o200k, cl100k)
-  tokenLimiter: "truncated", // Token limiting strategy
+  projectTree: 2,
+  tokenEncoder: "cl100k",
+  tokenLimiter: "truncated",
   
   // File filtering
-  extensions: [".ts", ".js"], // File extensions to include
-  includeFiles: ["src/**/*.ts"], // Files to include (glob patterns)
-  excludeFiles: ["**/*.test.ts"], // Files to exclude
-  includeDirs: ["src", "lib"], // Directories to include
-  excludeDirs: ["test", "dist"], // Directories to exclude
+  extensions: [".ts", ".js"],
+  excludeDirs: ["test", "dist"],
   
   // AI/LLM settings
   trackedModels: [
-    "o3",
-    "gemini-2.5-pro",
-    "claude-sonnet-4",
-    "claude-opus-4",
-  ],
-  
-  // Prompt handling
-  prompt: "dev", // Built-in prompt or custom prompt file
-  defaultChat: "https://chat.com", // Default chat URL
-  templateVars: {}, // Variables for template substitution
+    "gpt-4",
+    "claude-3-opus",
+    "gpt-3.5-turbo"
+  ]
 }
 ```
-
-All configuration options are optional and will fall back to defaults if not specified. You can override any config option using CLI arguments.
 
 ## Links
 
@@ -303,10 +383,46 @@ All configuration options are optional and will fall back to defaults if not spe
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
+## Advanced Usage
+
+### Programmatic SDK Usage
+
+```typescript
+import { collectFiles, generateMarkdown, countTokens } from '@codefetch/sdk';
+
+const files = await collectFiles('./src', {
+  extensionSet: new Set(['.ts', '.tsx']),
+  excludeDirs: ['node_modules', 'dist']
+});
+
+const markdown = await generateMarkdown(files, {
+  maxTokens: 50000,
+  tokenEncoder: 'cl100k'
+});
+
+const tokens = await countTokens(markdown, 'cl100k');
+console.log(`Generated ${tokens} tokens`);
+```
+
+### CI/CD Integration
+
+```yaml
+# GitHub Actions
+- name: Generate Documentation
+  run: npx codefetch -e ts,tsx,js,jsx -o docs/codebase.md
+
+# GitLab CI
+documentation:
+  script:
+    - npx codefetch --max-tokens 100000
+  artifacts:
+    paths:
+      - codefetch/
+```
+
 ## See my other projects:
 
-* [codefetch](https://github.com/regenrek/codefetch) - Turn code into Markdown for LLMs with one simple terminal command
-* [aidex](https://github.com/regenrek/aidex) A CLI tool that provides detailed information about AI language models, helping developers choose the right model for their needs.
+* [aidex](https://github.com/regenrek/aidex) - AI model information CLI tool
 * [codetie](https://github.com/codetie-ai/codetie) - XCode CLI
 
 ## Credits

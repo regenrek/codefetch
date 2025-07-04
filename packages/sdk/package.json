@@ -1,8 +1,11 @@
 {
-  "name": "@codefetch/sdk",
+  "name": "codefetch-sdk",
   "version": "1.5.2-alpha.0",
   "description": "Core SDK for codefetch functionality",
-  "repository": "regenrek/codefetch",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/regenrek/codefetch.git"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

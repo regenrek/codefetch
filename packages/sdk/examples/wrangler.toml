@@ -1,0 +1,26 @@
+name = "codefetch-worker"
+main = "src/worker.ts"
+compatibility_date = "2025-07-07"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (add your GitHub token)
+# [vars]
+# GITHUB_TOKEN = "your-github-token"
+
+# Or use secrets for sensitive data
+# wrangler secret put GITHUB_TOKEN
+
+# Routes (optional)
+# routes = [
+#   { pattern = "codefetch.example.com/*", zone_name = "example.com" }
+# ]
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Limits
+[[limits]]
+cpu_ms = 50
+memory_mb = 128

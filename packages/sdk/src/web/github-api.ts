@@ -5,6 +5,7 @@ import { mkdtemp } from "node:fs/promises";
 import AdmZip from "adm-zip";
 import type { ConsolaInstance } from "consola";
 import type { ParsedURL } from "./url-handler.js";
+import { isCloudflareWorker, getCacheSizeLimit } from "../env.js";
 
 interface GitHubRepo {
   default_branch: string;
@@ -92,8 +93,23 @@ export class GitHubApiClient {
 
     const contentLength = response.headers.get("content-length");
     if (contentLength) {
-      const sizeMB = (Number.parseInt(contentLength) / 1024 / 1024).toFixed(2);
+      const sizeBytes = Number.parseInt(contentLength);
+      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
       this.logger.info(`Archive size: ${sizeMB} MB`);
+      
+      // Check size limit in Worker environment
+      if (isCloudflareWorker && sizeBytes > getCacheSizeLimit()) {
+        throw new Error(
+          `Archive size (${sizeMB} MB) exceeds Worker storage limit (${getCacheSizeLimit() / 1024 / 1024} MB). ` +
+          "Please use a smaller repository or filter files more aggressively."
+        );
+      }
+    } else {
+      // No Content-Length header - cannot determine size
+      throw new Error(
+        "GitHub API did not provide Content-Length header. " +
+        "Cannot download archive without knowing its size."
+      );
     }
 
     const arrayBuffer = await response.arrayBuffer();

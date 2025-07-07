@@ -14,6 +14,9 @@ import {
 import ignore from "ignore";
 import { parseURL, validateURL, type ParsedURL } from "./url-handler.js";
 import { WebCache } from "./cache.js";
+
+import { isCloudflareWorker } from "../env.js";
+
 import { fetchGitHubViaApi } from "./github-api.js";
 import type { FetchOptions } from "../fetch.js";
 
@@ -184,6 +187,13 @@ async function fetchGitRepository(
     }
 
     // Fall back to git clone
+    if (isCloudflareWorker) {
+      throw new Error(
+        "git clone is not supported in Cloudflare Workers. " +
+        "Use a public GitHub repo or provide GITHUB_TOKEN for ZIP mode."
+      );
+    }
+    
     logger.info("Cloning repository...");
 
     // Build clone command

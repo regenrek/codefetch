@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { extractCacheKey, ParsedURL } from "./url-handler.js";
+import { getCacheSizeLimit } from "../env.js";
 
 export interface CacheMetadata {
   url: string;
@@ -36,7 +37,9 @@ export class WebCache {
   }) {
     this.cacheDir = options?.cacheDir || join(tmpdir(), ".codefetch-cache");
     this.ttlHours = options?.ttlHours ?? 1;
-    this.maxSizeMB = options?.maxSizeMB ?? 500;
+    // Use environment-specific default: 8MB for Workers, 100MB for Node
+    const defaultMaxSize = getCacheSizeLimit() / (1024 * 1024); // Convert bytes to MB
+    this.maxSizeMB = options?.maxSizeMB ?? defaultMaxSize;
   }
 
   /**

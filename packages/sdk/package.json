@@ -17,16 +17,24 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./worker": {
+      "worker": "./dist-worker/worker.mjs",
+      "types": "./dist-worker/worker.d.mts",
+      "default": "./dist-worker/worker.mjs"
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
   "files": [
-    "dist"
+    "dist",
+    "dist-worker"
   ],
   "scripts": {
     "build": "unbuild",
+    "build:worker": "unbuild --config build.worker.config.ts",
+    "build:all": "npm run build && npm run build:worker",
     "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck"
   },

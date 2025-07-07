@@ -233,6 +233,70 @@ try {
 }
 ```
 
+## Cloudflare Workers Support
+
+The SDK provides a Worker-compatible build that runs in Cloudflare Workers with the `nodejs_compat` flag:
+
+### Installation
+
+```bash
+npm install @codefetch/sdk
+```
+
+### Worker Configuration
+
+Create a `wrangler.toml`:
+
+```toml
+name = "codefetch-worker"
+main = "src/worker.ts"
+compatibility_date = "2025-07-07"
+compatibility_flags = ["nodejs_compat"]
+```
+
+### Usage in Workers
+
+```typescript
+import { fetchFromWeb } from "@codefetch/sdk/worker";
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Fetch from a website
+    const webResult = await fetchFromWeb("https://example.com", {
+      maxPages: 10,
+      maxDepth: 1,
+    });
+    
+    // Fetch from GitHub (via fetchFromWeb with GitHub URL)
+    const githubResult = await fetchFromWeb("https://github.com/owner/repo", {
+      githubToken: env.GITHUB_TOKEN,
+      maxFiles: 50,
+      extensions: [".ts", ".js"],
+    });
+    
+    return new Response(webResult.markdown, {
+      headers: { "Content-Type": "text/markdown" },
+    });
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+### Worker Limitations
+
+- **No local file system access** - `collectFiles` and `fetchFiles` are not available
+- **No git clone support** - Only GitHub ZIP API is supported
+- **10MB storage limit** - Large repositories may exceed Worker ephemeral storage
+- **Content-Length required** - Archives without size headers will be rejected
+
+### Worker-Safe Exports
+
+The `/worker` entry point only exports APIs that work in Workers:
+- `fetchFromWeb` - Crawl and convert websites to markdown (including GitHub repos)
+- `countTokens` - Count tokens for AI models
+- `htmlToMarkdown` - Convert HTML to markdown
+- `generateMarkdown` - Generate markdown from files
+- Prompt templates and utilities
+
 ## TypeScript Support
 
 The SDK is written in TypeScript and provides full type definitions:

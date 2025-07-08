@@ -71,15 +71,31 @@ interface MarkdownGeneratorOptions {
 }
 declare function generateMarkdown(files: string[], options: MarkdownGeneratorOptions): Promise<string>;
 
+/**
+ * Worker-compatible markdown generation from file content objects
+ */
+
+interface FileContent {
+    path: string;
+    content: string;
+}
+interface MarkdownFromContentOptions {
+    maxTokens?: number;
+    includeTreeStructure?: boolean;
+    tokenEncoder?: TokenEncoder;
+    disableLineNumbers?: boolean;
+}
+/**
+ * Generate markdown from file content objects (Worker-compatible)
+ * This function doesn't require filesystem access
+ */
+declare function generateMarkdownFromContent(files: FileContent[], options?: MarkdownFromContentOptions): Promise<string>;
+
 interface WebFetchConfig {
     url: string;
     cacheTTL?: number;
-    maxDepth?: number;
-    maxPages?: number;
     branch?: string;
     noCache?: boolean;
-    ignoreRobots?: boolean;
-    ignoreCors?: boolean;
     noApi?: boolean;
     githubToken?: string;
 }
@@ -87,25 +103,16 @@ interface CrawlOptions {
     maxDepth?: number;
     maxPages?: number;
     ignoreRobots?: boolean;
+    ignoreCors?: boolean;
     followRedirects?: boolean;
     userAgent?: string;
-    timeout?: number;
-    concurrency?: number;
 }
 interface CrawlResult {
     url: string;
     content: string;
-    contentType: string;
-    statusCode: number;
-    headers: Record<string, string>;
     links: string[];
-    codeBlocks: CodeBlock[];
-}
-interface CodeBlock {
-    language?: string;
-    content: string;
-    startLine?: number;
-    endLine?: number;
+    depth: number;
+    error?: string;
 }
 
 declare function collectFilesAsTree(baseDir: string, files: string[], options?: {
@@ -156,16 +163,24 @@ declare const _default: "You are a senior test developer. You produce optimized,
 
 declare function fetchFromWeb(url: string, options?: FetchOptions): Promise<string | FetchResultImpl>;
 
+/**
+ * Browser-compatible HTML to Markdown converter
+ * Designed for Cloudflare Workers without external dependencies
+ */
 interface HtmlToMarkdownOptions {
-    baseUrl?: string;
-    includeImages?: boolean;
-    includeLinks?: boolean;
-    codeBlockStyle?: "fenced" | "indented";
-    removeScripts?: boolean;
-    removeStyles?: boolean;
+    /** Whether to include link URLs inline */
+    includeUrls?: boolean;
+    /** Whether to preserve whitespace */
+    preserveWhitespace?: boolean;
+    /** Custom replacements */
+    customReplacements?: Array<{
+        pattern: RegExp;
+        replacement: string;
+    }>;
 }
 /**
- * Convert HTML content to Markdown
+ * Convert HTML string to Markdown format
+ * This is a lightweight implementation suitable for Worker environments
  */
 declare function htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string;
 
@@ -182,4 +197,4 @@ declare const isCloudflareWorker: boolean;
  */
 declare const getCacheSizeLimit: () => number;
 
-export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchResult, type FileNode, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, _default$2 as fixPrompt, generateMarkdown, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, _default as testgenPrompt };
+export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchResult, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, _default$2 as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, _default as testgenPrompt };

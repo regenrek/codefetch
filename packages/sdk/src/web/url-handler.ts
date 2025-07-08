@@ -150,7 +150,7 @@ export function parseURL(urlString: string): ParsedURL | null {
   if (!gitProvider) {
     throw new Error(
       "Only GitHub, GitLab, and Bitbucket repository URLs are supported. " +
-      "Please provide a valid git repository URL (e.g., https://github.com/owner/repo)"
+        "Please provide a valid git repository URL (e.g., https://github.com/owner/repo)"
     );
   }
 
@@ -203,4 +203,3 @@ export function extractCacheKey(parsedUrl: ParsedURL): string {
   const ref = parsedUrl.gitRef || "default";
   return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
 }
-

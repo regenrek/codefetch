@@ -4,11 +4,11 @@ export type TokenLimiter = "sequential" | "truncated";
 export interface FileNode {
   name: string;
   path: string;
-  type: 'file' | 'directory';
-  content?: string;  // Only for files
+  type: "file" | "directory";
+  content?: string; // Only for files
   language?: string; // Detected language
-  size?: number;     // File size in bytes
-  tokens?: number;   // Token count
+  size?: number; // File size in bytes
+  tokens?: number; // Token count
   lastModified?: Date;
   children?: FileNode[]; // Only for directories
 }
@@ -26,4 +26,4 @@ export interface FetchResult {
   metadata: FetchMetadata;
 }
 
-export type OutputFormat = 'markdown' | 'json';
+export type OutputFormat = "markdown" | "json";

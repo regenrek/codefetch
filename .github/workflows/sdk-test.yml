@@ -1,0 +1,140 @@
+name: SDK Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/sdk/**'
+      - '.github/workflows/sdk-test.yml'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/sdk/**'
+      - '.github/workflows/sdk-test.yml'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  test:
+    name: Test SDK (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18.x, 20.x, 22.x]
+        # Skip some combinations to reduce CI time
+        exclude:
+          - os: macos-latest
+            node-version: 18.x
+          - os: windows-latest
+            node-version: 18.x
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+        shell: bash
+
+      - name: Run linting
+        if: runner.os != 'Windows'
+        run: pnpm --filter codefetch-sdk lint
+        
+      - name: Run linting (Windows - ESLint only)
+        if: runner.os == 'Windows'
+        run: pnpm --filter codefetch-sdk lint:eslint
+
+      - name: Run type checking
+        run: pnpm --filter codefetch-sdk test:types
+
+      - name: Run tests with coverage
+        run: pnpm --filter codefetch-sdk test:coverage
+        env:
+          CI: true
+
+      - name: Upload coverage reports
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./packages/sdk/coverage
+          flags: sdk
+          name: sdk-coverage
+          fail_ci_if_error: false
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+
+      - name: Build SDK
+        run: pnpm --filter codefetch-sdk build
+
+      - name: Build Worker
+        run: pnpm --filter codefetch-sdk build:worker
+
+      - name: Check build output
+        run: |
+          echo "Checking build artifacts..."
+          ls -la packages/sdk/dist/
+          ls -la packages/sdk/dist-worker/
+          
+          # Test that the built package can be imported
+          cd packages/sdk
+          node -e "const sdk = require('./dist/index.cjs'); console.log('CJS import successful');"
+          node --input-type=module -e "import * as sdk from './dist/index.mjs'; console.log('ESM import successful');"

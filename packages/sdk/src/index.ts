@@ -8,6 +8,7 @@ export * from "./types";
 export * from "./tree";
 export * from "./template-parser";
 export * from "./utils";
+export * from "./utils/path";
 export * from "./constants";
 export * from "./model-db";
 export * from "./default-ignore";

@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker-compatible entry point for @codefetch/sdk
- * 
+ *
  * This module re-exports only the APIs that work within Worker constraints:
  * - No local file system access
  * - No child_process (git clone)
@@ -12,20 +12,25 @@ export {
   getDefaultConfig,
   resolveCodefetchConfig,
   mergeWithCliArgs,
-  type CodefetchConfig
+  type CodefetchConfig,
 } from "./config.js";
 export { countTokens } from "./token-counter.js";
 export { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants.js";
 
 // Markdown utilities (pure JS, Worker-safe)
 export { generateMarkdown } from "./markdown.js";
+export {
+  generateMarkdownFromContent,
+  type FileContent,
+  type MarkdownFromContentOptions,
+} from "./markdown-content.js";
 
 // Web fetch functionality (Worker-safe)
 export {
   fetchFromWeb,
   type WebFetchConfig,
   type CrawlOptions,
-  type CrawlResult
+  type CrawlResult,
 } from "./web/index.js";
 
 // HTML to Markdown conversion (Worker-safe)

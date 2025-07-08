@@ -49,7 +49,9 @@ export async function fetchFromWeb(
   }
 
   logger.info(`Fetching from: ${parsedUrl.url}`);
-  logger.info(`Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`);
+  logger.info(
+    `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+  );
 
   // Initialize cache
   const cache = new WebCache({
@@ -152,7 +154,6 @@ export async function fetchFromWeb(
   // Restore original working directory
   process.chdir(originalCwd);
 
-
   return output;
 }
 
@@ -190,10 +191,10 @@ async function fetchGitRepository(
     if (isCloudflareWorker) {
       throw new Error(
         "git clone is not supported in Cloudflare Workers. " +
-        "Use a public GitHub repo or provide GITHUB_TOKEN for ZIP mode."
+          "Use a public GitHub repo or provide GITHUB_TOKEN for ZIP mode."
       );
     }
-    
+
     logger.info("Cloning repository...");
 
     // Build clone command
@@ -241,4 +242,3 @@ async function fetchGitRepository(
     );
   }
 }
-

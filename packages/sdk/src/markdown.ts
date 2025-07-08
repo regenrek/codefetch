@@ -117,7 +117,7 @@ export async function generateMarkdown(
 ): Promise<string> {
   const {
     maxTokens,
-    verbose = 0,
+    verbose: _verbose = 0,
     projectTree = 0,
     tokenEncoder,
     disableLineNumbers = false,

@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "target": "ES2022"
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "dist-worker", "coverage"]
 }

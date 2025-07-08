@@ -1,5 +1,9 @@
 # codefetch-sdk
 
+[![SDK Tests](https://github.com/regenrek/codefetch/actions/workflows/sdk-test.yml/badge.svg)](https://github.com/regenrek/codefetch/actions/workflows/sdk-test.yml)
+[![npm version](https://badge.fury.io/js/codefetch-sdk.svg)](https://www.npmjs.com/package/codefetch-sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 The core SDK for Codefetch - a powerful tool for converting codebases into AI-friendly markdown formats.
 
 ## Installation

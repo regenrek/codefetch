@@ -1,0 +1,108 @@
+name: SDK Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/sdk/**'
+      - '.github/workflows/sdk-test.yml'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/sdk/**'
+      - '.github/workflows/sdk-test.yml'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  test:
+    name: Test SDK (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18.x, 20.x, 22.x]
+        # Skip some combinations to reduce CI time
+        exclude:
+          - os: windows-latest
+            node-version: 18.x
+          - os: macos-latest
+            node-version: 18.x
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: pnpm --filter codefetch-sdk lint
+
+      - name: Run type checking
+        run: pnpm --filter codefetch-sdk test:types
+
+      - name: Run tests with coverage
+        run: pnpm --filter codefetch-sdk test:coverage
+        env:
+          CI: true
+
+      - name: Upload coverage reports
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./packages/sdk/coverage
+          flags: sdk
+          name: sdk-coverage
+          fail_ci_if_error: false
+
+  build-check:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm --filter codefetch-sdk build
+
+      - name: Build Worker
+        run: pnpm --filter codefetch-sdk build:worker
+
+      - name: Check build output
+        run: |
+          echo "Checking build artifacts..."
+          ls -la packages/sdk/dist/
+          ls -la packages/sdk/dist-worker/
+          
+          # Test that the built package can be imported
+          cd packages/sdk
+          node -e "const sdk = require('./dist/index.cjs'); console.log('CJS import successful');"
+          node --input-type=module -e "import * as sdk from './dist/index.mjs'; console.log('ESM import successful');"

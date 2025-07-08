@@ -72,11 +72,9 @@ jobs:
         if: runner.os != 'Windows'
         run: pnpm --filter codefetch-sdk lint
         
-      - name: Run linting (Windows)
+      - name: Run linting (Windows - ESLint only)
         if: runner.os == 'Windows'
-        run: |
-          pnpm --filter codefetch-sdk lint:eslint
-          pnpm --filter codefetch-sdk lint:prettier
+        run: pnpm --filter codefetch-sdk lint:eslint
 
       - name: Run type checking
         run: pnpm --filter codefetch-sdk test:types

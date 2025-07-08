@@ -105,10 +105,10 @@ export class GitHubApiClient {
         );
       }
     } else {
-      // No Content-Length header - cannot determine size
-      throw new Error(
+      // No Content-Length header - proceed with download anyway
+      this.logger.warn(
         "GitHub API did not provide Content-Length header. " +
-          "Cannot download archive without knowing its size."
+          "Archive size cannot be determined in advance."
       );
     }
 

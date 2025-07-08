@@ -1590,8 +1590,8 @@ class GitHubApiClient {
         );
       }
     } else {
-      throw new Error(
-        "GitHub API did not provide Content-Length header. Cannot download archive without knowing its size."
+      this.logger.warn(
+        "GitHub API did not provide Content-Length header. Archive size cannot be determined in advance."
       );
     }
     const arrayBuffer = await response.arrayBuffer();

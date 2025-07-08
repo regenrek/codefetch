@@ -105,7 +105,7 @@ export class WebCache {
       // For git repos, content is the path to the cloned directory
       if (parsedUrl.type === "git-repository") {
         const content = await readFile(join(dir, "repo-path.txt"), "utf8");
-        
+
         // Validate that the repository directory still exists
         try {
           await stat(content);
@@ -114,13 +114,13 @@ export class WebCache {
           await this.delete(parsedUrl);
           return null;
         }
-        
+
         return { metadata, content };
       }
 
       // For websites, return the content directory path
       const contentPath = join(dir, "content");
-      
+
       // Validate that the content directory still exists
       try {
         await stat(contentPath);
@@ -129,7 +129,7 @@ export class WebCache {
         await this.delete(parsedUrl);
         return null;
       }
-      
+
       return {
         metadata,
         content: contentPath,

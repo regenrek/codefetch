@@ -69,9 +69,10 @@ export async function handleWebFetch(
   const output = await fetchFromWeb(args.url, fetchOptions);
 
   // Calculate total tokens
-  const totalTokens = typeof output === "string" 
-    ? await countTokens(output, config.tokenEncoder || "cl100k")
-    : output.metadata.totalTokens;
+  const totalTokens =
+    typeof output === "string"
+      ? await countTokens(output, config.tokenEncoder || "cl100k")
+      : output.metadata.totalTokens;
 
   const originalCwd = process.cwd();
 

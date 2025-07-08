@@ -18,15 +18,15 @@ describe("Worker exports", () => {
   test("should export Worker-safe APIs", async () => {
     // Dynamically import to test the exports
     const workerModule = await import("../src/worker.js");
-    
+
     // Check core exports exist
     expect(workerModule.fetchFromWeb).toBeDefined();
     expect(workerModule.countTokens).toBeDefined();
     expect(workerModule.htmlToMarkdown).toBeDefined();
     expect(workerModule.generateMarkdown).toBeDefined();
-    
+
     // Check that Node-specific exports are NOT included
-    expect(workerModule.collectFiles).toBeUndefined();
-    expect(workerModule.fetchFiles).toBeUndefined();
+    expect((workerModule as any).collectFiles).toBeUndefined();
+    expect((workerModule as any).fetchFiles).toBeUndefined();
   });
 });

@@ -96,19 +96,19 @@ export class GitHubApiClient {
       const sizeBytes = Number.parseInt(contentLength);
       const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
       this.logger.info(`Archive size: ${sizeMB} MB`);
-      
+
       // Check size limit in Worker environment
       if (isCloudflareWorker && sizeBytes > getCacheSizeLimit()) {
         throw new Error(
           `Archive size (${sizeMB} MB) exceeds Worker storage limit (${getCacheSizeLimit() / 1024 / 1024} MB). ` +
-          "Please use a smaller repository or filter files more aggressively."
+            "Please use a smaller repository or filter files more aggressively."
         );
       }
     } else {
       // No Content-Length header - cannot determine size
       throw new Error(
         "GitHub API did not provide Content-Length header. " +
-        "Cannot download archive without knowing its size."
+          "Cannot download archive without knowing its size."
       );
     }
 

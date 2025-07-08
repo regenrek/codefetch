@@ -54,7 +54,7 @@ export async function resolveCodefetchConfig(
   cwd: string
 ): Promise<CodefetchConfig> {
   const resolved = { ...config };
-  
+
   if (typeof resolved.outputPath === "string") {
     resolved.outputPath = resolve(cwd, resolved.outputPath);
   }

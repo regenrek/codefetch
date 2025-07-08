@@ -7,11 +7,9 @@ import { tmpdir } from 'node:os';
 import { join as join$1 } from 'node:path';
 import { execSync } from 'node:child_process';
 import ignore from 'ignore';
-import { URL as URL$1 } from 'node:url';
+import { URL } from 'node:url';
 import { isIPv4, isIPv6 } from 'node:net';
 import { createHash } from 'node:crypto';
-import TurndownService from 'turndown';
-import { VirtualConsole, JSDOM } from 'jsdom';
 import AdmZip from 'adm-zip';
 import fg from 'fast-glob';
 
@@ -253,7 +251,7 @@ async function readFileWithTokenLimit(file, tokenEncoder, remainingTokensRef, di
 async function generateMarkdown(files, options) {
   const {
     maxTokens,
-    verbose = 0,
+    verbose: _verbose = 0,
     projectTree = 0,
     tokenEncoder,
     disableLineNumbers = false,
@@ -353,6 +351,152 @@ async function generateMarkdown(files, options) {
   return !promptFile || promptTemplate === "" ? content : processPromptTemplate(promptTemplate, content, templateVars ?? {});
 }
 
+const detectLanguage = (fileName) => {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const languageMap = {
+    // JavaScript/TypeScript
+    "js": "javascript",
+    "jsx": "javascript",
+    "ts": "typescript",
+    "tsx": "typescript",
+    "mjs": "javascript",
+    "cjs": "javascript",
+    "mts": "typescript",
+    "cts": "typescript",
+    // Web
+    "html": "html",
+    "htm": "html",
+    "css": "css",
+    "scss": "scss",
+    "sass": "sass",
+    "less": "less",
+    // Config
+    "json": "json",
+    "yaml": "yaml",
+    "yml": "yaml",
+    "toml": "toml",
+    "xml": "xml",
+    "ini": "ini",
+    "conf": "conf",
+    // Programming languages
+    "py": "python",
+    "java": "java",
+    "c": "c",
+    "cpp": "cpp",
+    "cs": "csharp",
+    "go": "go",
+    "rs": "rust",
+    "php": "php",
+    "rb": "ruby",
+    "swift": "swift",
+    "kt": "kotlin",
+    "scala": "scala",
+    "r": "r",
+    "lua": "lua",
+    "dart": "dart",
+    // Shell
+    "sh": "bash",
+    "bash": "bash",
+    "zsh": "bash",
+    "fish": "fish",
+    "ps1": "powershell",
+    // Documentation
+    "md": "markdown",
+    "mdx": "markdown",
+    "rst": "restructuredtext",
+    "tex": "latex",
+    // Other
+    "sql": "sql",
+    "dockerfile": "dockerfile",
+    "makefile": "makefile",
+    "cmake": "cmake",
+    "gradle": "gradle",
+    "vim": "vim",
+    "vue": "vue",
+    "svelte": "svelte"
+  };
+  const fileNameLower = fileName.toLowerCase();
+  if (fileNameLower === "dockerfile") return "dockerfile";
+  if (fileNameLower === "makefile") return "makefile";
+  if (fileNameLower === "cmakelists.txt") return "cmake";
+  return languageMap[ext || ""] || "text";
+};
+
+async function generateMarkdownFromContent(files, options = {}) {
+  const {
+    maxTokens,
+    includeTreeStructure = false,
+    tokenEncoder = "cl100k",
+    disableLineNumbers = false
+  } = options;
+  let markdown = "";
+  let totalTokens = 0;
+  if (includeTreeStructure) {
+    markdown += "# Project Structure\n\n```\n";
+    const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path));
+    const tree = /* @__PURE__ */ new Map();
+    for (const file of sortedFiles) {
+      const parts = file.path.split("/");
+      const fileName = parts.pop();
+      const dir = parts.join("/") || ".";
+      if (!tree.has(dir)) {
+        tree.set(dir, []);
+      }
+      tree.get(dir).push(fileName);
+    }
+    for (const [dir, fileNames] of tree) {
+      if (dir !== ".") {
+        markdown += `${dir}/
+`;
+      }
+      for (const fileName of fileNames) {
+        const indent = dir === "." ? "" : "  ";
+        markdown += `${indent}${fileName}
+`;
+      }
+    }
+    markdown += "```\n\n";
+  }
+  markdown += "# File Contents\n\n";
+  for (const file of files) {
+    if (maxTokens && totalTokens >= maxTokens) {
+      markdown += `
+... Remaining files truncated due to token limit (${maxTokens}) ...
+`;
+      break;
+    }
+    const language = detectLanguage(file.path);
+    const lines = file.content.split("\n");
+    markdown += `## ${file.path}
+
+`;
+    markdown += `\`\`\`${language}
+`;
+    if (disableLineNumbers) {
+      markdown += file.content;
+    } else {
+      const paddingWidth = Math.max(4, lines.length.toString().length + 1);
+      for (const [i, line] of lines.entries()) {
+        const lineNumber = (i + 1).toString().padStart(paddingWidth, " ");
+        markdown += `${lineNumber} ${line}
+`;
+      }
+    }
+    markdown += "\n```\n\n";
+    const fileTokens = await countTokens(markdown, tokenEncoder);
+    totalTokens = fileTokens;
+    if (maxTokens && totalTokens > maxTokens) {
+      const excess = totalTokens - maxTokens;
+      const approximateCharsPerToken = 4;
+      const charsToRemove = excess * approximateCharsPerToken;
+      markdown = markdown.slice(0, -charsToRemove);
+      markdown += "\n... File truncated due to token limit ...\n```\n\n";
+      break;
+    }
+  }
+  return markdown.trim();
+}
+
 const GIT_PROVIDERS = {
   github: /^https:\/\/github\.com\/([\w-]+)\/([\w.-]+)/,
   gitlab: /^https:\/\/gitlab\.com\/([\w-]+)\/([\w.-]+)/,
@@ -388,7 +532,7 @@ function normalizeURLString(urlString) {
 function validateURL(urlString) {
   try {
     const normalizedUrlString = normalizeURLString(urlString);
-    const url = new URL$1(normalizedUrlString);
+    const url = new URL(normalizedUrlString);
     if (!["http:", "https:"].includes(url.protocol)) {
       return {
         valid: false,
@@ -442,56 +586,48 @@ function parseURL(urlString) {
   if (!validation.valid) {
     throw new Error(validation.error);
   }
-  const url = new URL$1(normalizedUrlString);
+  const url = new URL(normalizedUrlString);
   const gitProvider = detectGitProvider(normalizedUrlString);
-  if (gitProvider) {
-    const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
-    if (!match) {
-      throw new Error("Failed to parse git repository URL");
-    }
-    const [, owner, repo] = match;
-    let gitRef;
-    const pathParts = url.pathname.split("/").filter(Boolean);
-    if (pathParts.length > 2) {
-      const refType = pathParts[2];
-      if (["tree", "commit", "blob"].includes(refType) && pathParts[3]) {
-        gitRef = pathParts.slice(3).join("/");
-      } else if (pathParts[2] === "releases" && pathParts[3] === "tag" && pathParts[4]) {
-        gitRef = pathParts[4];
-      }
-    }
-    const repoName = repo.replace(/\.git$/, "");
-    const normalizedUrl = `https://${gitProvider}.com/${owner}/${repoName}`;
-    return {
-      type: "git-repository",
-      url: normalizedUrlString,
-      normalizedUrl,
-      domain: url.hostname,
-      path: url.pathname,
-      gitProvider,
-      gitOwner: owner,
-      gitRepo: repoName,
-      gitRef
-    };
+  if (!gitProvider) {
+    throw new Error(
+      "Only GitHub, GitLab, and Bitbucket repository URLs are supported. Please provide a valid git repository URL (e.g., https://github.com/owner/repo)"
+    );
   }
+  const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
+  if (!match) {
+    throw new Error("Failed to parse git repository URL");
+  }
+  const [, owner, repo] = match;
+  let gitRef;
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  if (pathParts.length > 2) {
+    const refType = pathParts[2];
+    if (["tree", "commit", "blob"].includes(refType) && pathParts[3]) {
+      gitRef = pathParts.slice(3).join("/");
+    } else if (pathParts[2] === "releases" && pathParts[3] === "tag" && pathParts[4]) {
+      gitRef = pathParts[4];
+    }
+  }
+  const repoName = repo.replace(/\.git$/, "");
+  const normalizedUrl = `https://${gitProvider}.com/${owner}/${repoName}`;
   return {
-    type: "website",
+    type: "git-repository",
     url: normalizedUrlString,
-    normalizedUrl: `${url.protocol}//${url.host}${url.pathname}`,
+    normalizedUrl,
     domain: url.hostname,
-    path: url.pathname
+    path: url.pathname,
+    gitProvider,
+    gitOwner: owner,
+    gitRepo: repoName,
+    gitRef
   };
 }
 function extractCacheKey(parsedUrl) {
-  if (parsedUrl.type === "git-repository") {
-    const ref = parsedUrl.gitRef || "default";
-    return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
-  }
-  const pathHash = parsedUrl.path.replace(/^\//, "").replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").slice(0, 20);
-  return `${parsedUrl.domain}-${pathHash}`;
+  const ref = parsedUrl.gitRef || "default";
+  return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
 }
 
-const isCloudflareWorker = typeof globalThis.WebSocketPair !== "undefined" && !("__dirname" in globalThis);
+const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
 const getCacheSizeLimit = () => {
   if (isCloudflareWorker) {
     return 8 * 1024 * 1024;
@@ -795,77 +931,6 @@ async function collectFiles(baseDir, options) {
   });
 }
 
-const detectLanguage = (fileName) => {
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  const languageMap = {
-    // JavaScript/TypeScript
-    "js": "javascript",
-    "jsx": "javascript",
-    "ts": "typescript",
-    "tsx": "typescript",
-    "mjs": "javascript",
-    "cjs": "javascript",
-    "mts": "typescript",
-    "cts": "typescript",
-    // Web
-    "html": "html",
-    "htm": "html",
-    "css": "css",
-    "scss": "scss",
-    "sass": "sass",
-    "less": "less",
-    // Config
-    "json": "json",
-    "yaml": "yaml",
-    "yml": "yaml",
-    "toml": "toml",
-    "xml": "xml",
-    "ini": "ini",
-    "conf": "conf",
-    // Programming languages
-    "py": "python",
-    "java": "java",
-    "c": "c",
-    "cpp": "cpp",
-    "cs": "csharp",
-    "go": "go",
-    "rs": "rust",
-    "php": "php",
-    "rb": "ruby",
-    "swift": "swift",
-    "kt": "kotlin",
-    "scala": "scala",
-    "r": "r",
-    "lua": "lua",
-    "dart": "dart",
-    // Shell
-    "sh": "bash",
-    "bash": "bash",
-    "zsh": "bash",
-    "fish": "fish",
-    "ps1": "powershell",
-    // Documentation
-    "md": "markdown",
-    "mdx": "markdown",
-    "rst": "restructuredtext",
-    "tex": "latex",
-    // Other
-    "sql": "sql",
-    "dockerfile": "dockerfile",
-    "makefile": "makefile",
-    "cmake": "cmake",
-    "gradle": "gradle",
-    "vim": "vim",
-    "vue": "vue",
-    "svelte": "svelte"
-  };
-  const fileNameLower = fileName.toLowerCase();
-  if (fileNameLower === "dockerfile") return "dockerfile";
-  if (fileNameLower === "makefile") return "makefile";
-  if (fileNameLower === "cmakelists.txt") return "cmake";
-  return languageMap[ext || ""] || "text";
-};
-
 async function collectFilesAsTree(baseDir, files, options = {}) {
   const root = {
     name: path.basename(baseDir),
@@ -900,8 +965,8 @@ async function collectFilesAsTree(baseDir, files, options = {}) {
       currentNode = dirNode;
     }
     try {
-      const fileName = pathParts[pathParts.length - 1];
-      const content = await readFile(filePath, "utf-8");
+      const fileName = pathParts.at(-1);
+      const content = await readFile(filePath, "utf8");
       const stats = await stat(filePath);
       const encoder = options.tokenEncoder || "simple";
       const tokens = await countTokens(content, encoder);
@@ -1260,9 +1325,9 @@ class FetchResultImpl {
         lines.push(`${file.path}`);
         lines.push("```");
         const contentLines = file.content.split("\n");
-        contentLines.forEach((line, index) => {
+        for (const [index, line] of contentLines.entries()) {
           lines.push(`${index + 1} | ${line}`);
-        });
+        }
         lines.push("```");
         lines.push("");
       }
@@ -1281,10 +1346,10 @@ class FetchResultImpl {
     if (node.type === "directory" && node.children) {
       const extension = node.name ? isLast ? "    " : "\u2502   " : "";
       const newPrefix = prefix + extension;
-      node.children.forEach((child, index) => {
+      for (const [index, child] of node.children.entries()) {
         const childIsLast = index === node.children.length - 1;
         lines.push(this.buildTreeString(child, newPrefix, childIsLast));
-      });
+      }
     }
     return lines.join("\n");
   }
@@ -1454,637 +1519,6 @@ const testgen = {
   __proto__: null,
   default: testgen_default
 };
-
-function htmlToMarkdown(html, options = {}) {
-  const {
-    baseUrl,
-    includeImages = false,
-    includeLinks = true,
-    codeBlockStyle = "fenced",
-    removeScripts = true,
-    removeStyles = true
-  } = options;
-  const virtualConsole = new VirtualConsole();
-  virtualConsole.on("error", () => {
-  });
-  virtualConsole.on("warn", () => {
-  });
-  virtualConsole.on("info", () => {
-  });
-  virtualConsole.on("dir", () => {
-  });
-  const dom = new JSDOM(html, {
-    url: baseUrl,
-    virtualConsole
-  });
-  const document = dom.window.document;
-  if (removeScripts) {
-    for (const el of document.querySelectorAll("script")) {
-      el.remove();
-    }
-  }
-  if (removeStyles) {
-    for (const el of document.querySelectorAll("style")) {
-      el.remove();
-    }
-  }
-  for (const el of document.querySelectorAll(
-    '[style*="display:none"], [style*="display: none"]'
-  )) {
-    el.remove();
-  }
-  const turndownService = new TurndownService({
-    headingStyle: "atx",
-    codeBlockStyle,
-    bulletListMarker: "-"
-  });
-  if (!includeLinks) {
-    turndownService.addRule("removeLinks", {
-      filter: "a",
-      replacement: (content) => content
-    });
-  } else if (baseUrl) {
-    turndownService.addRule("absoluteLinks", {
-      filter: "a",
-      replacement: (content, node) => {
-        const href = node.getAttribute("href");
-        if (!href) return content;
-        try {
-          const absoluteUrl = new URL$1(href, baseUrl).href;
-          return `[${content}](${absoluteUrl})`;
-        } catch {
-          return content;
-        }
-      }
-    });
-  }
-  if (!includeImages) {
-    turndownService.addRule("removeImages", {
-      filter: "img",
-      replacement: () => ""
-    });
-  }
-  turndownService.addRule("codeBlocks", {
-    filter: (node) => {
-      return node.nodeName === "PRE" && node.firstChild && node.firstChild.nodeName === "CODE";
-    },
-    replacement: (content, node) => {
-      const codeNode = node.firstChild;
-      const language = extractLanguage(codeNode);
-      const code = codeNode.textContent || "";
-      if (codeBlockStyle === "fenced") {
-        return "\n```" + language + "\n" + code + "\n```\n";
-      }
-      return code.split("\n").map((line) => "    " + line).join("\n");
-    }
-  });
-  const markdown = turndownService.turndown(document.body.innerHTML);
-  return markdown.replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
-}
-function extractLanguage(codeElement) {
-  const className = codeElement.className || "";
-  const matches = className.match(/language-(\w+)/);
-  if (matches) {
-    return matches[1];
-  }
-  const commonPatterns = [
-    /lang-(\w+)/,
-    /highlight-(\w+)/,
-    /brush:\s*(\w+)/,
-    /^(\w+)$/
-  ];
-  for (const pattern of commonPatterns) {
-    const match = className.match(pattern);
-    if (match) {
-      return match[1];
-    }
-  }
-  return "";
-}
-function extractMainContent(html, url) {
-  const virtualConsole = new VirtualConsole();
-  virtualConsole.on("error", () => {
-  });
-  virtualConsole.on("warn", () => {
-  });
-  const dom = new JSDOM(html, {
-    url,
-    virtualConsole,
-    // Don't execute scripts or load resources
-    runScripts: "outside-only",
-    resources: undefined
-  });
-  const document = dom.window.document;
-  const removeSelectors = [
-    "script",
-    "style",
-    "nav",
-    "header",
-    "footer",
-    "aside",
-    ".nav",
-    ".navigation",
-    ".sidebar",
-    ".menu",
-    ".header",
-    ".footer",
-    ".advertisement",
-    ".ads",
-    "#comments",
-    ".comments"
-  ];
-  for (const selector of removeSelectors) {
-    for (const el of document.querySelectorAll(selector)) {
-      el.remove();
-    }
-  }
-  const contentSelectors = [
-    "main",
-    "article",
-    '[role="main"]',
-    ".main-content",
-    ".content",
-    "#content",
-    ".post",
-    ".entry-content",
-    ".documentation",
-    ".markdown-body"
-  ];
-  for (const selector of contentSelectors) {
-    const element = document.querySelector(selector);
-    if (element && element.textContent && element.textContent.trim().length > 100) {
-      return element.innerHTML;
-    }
-  }
-  const body = document.body;
-  const allElements = body.querySelectorAll("*");
-  for (const el of allElements) {
-    const element = el;
-    const text = element.textContent || "";
-    const htmlLength = element.innerHTML.length;
-    const textLength = text.trim().length;
-    if (htmlLength > 0 && textLength / htmlLength < 0.1 && textLength < 50) {
-      element.remove();
-    }
-  }
-  return body.innerHTML;
-}
-function cleanMarkdown(markdown) {
-  return markdown.replace(/\n{3,}/g, "\n\n").replace(/ +$/gm, "").replace(/\[([^\]]+)\]\s+\(([^)]+)\)/g, "[$1]($2)").replace(/\[]\([^)]*\)/g, "").replace(/^#+\s*$/gm, "").trim();
-}
-
-class WebCrawler {
-  constructor(baseUrl, options, logger) {
-    this.baseUrl = baseUrl;
-    this.options = options;
-    this.logger = logger;
-    this.toVisit.push({ url: baseUrl.url, depth: 0 });
-  }
-  visited = /* @__PURE__ */ new Set();
-  visitedPaths = /* @__PURE__ */ new Set();
-  // Track unique paths for max-pages limit
-  toVisit = [];
-  results = [];
-  robotsCache = /* @__PURE__ */ new Map();
-  sitemapUrls = /* @__PURE__ */ new Set();
-  /**
-   * Start crawling from the base URL
-   */
-  async crawl() {
-    this.logger.info(`Starting crawl of ${this.baseUrl.url}`);
-    if (!this.options.ignoreRobots) {
-      await this.loadRobotsTxt();
-      await this.loadSitemap();
-    }
-    let sitemapCount = 0;
-    for (const url of this.sitemapUrls) {
-      if (this.shouldCrawlUrl(url)) {
-        this.toVisit.push({ url, depth: 1 });
-        sitemapCount++;
-      }
-    }
-    this.logger.info(`Added ${sitemapCount} URLs from sitemap to crawl queue`);
-    let lastProgressReport = Date.now();
-    while (this.toVisit.length > 0 && this.visitedPaths.size < this.options.maxPages) {
-      const { url, depth } = this.toVisit.shift();
-      if (this.visited.has(url) || depth > this.options.maxDepth) {
-        this.logger.debug(
-          `Skipping ${url} (already visited: ${this.visited.has(url)}, depth: ${depth} > ${this.options.maxDepth}: ${depth > this.options.maxDepth})`
-        );
-        continue;
-      }
-      if (this.visitedPaths.size >= this.options.maxPages) {
-        this.logger.debug(
-          `Reached max pages limit (${this.options.maxPages} unique pages)`
-        );
-        break;
-      }
-      if (!this.options.ignoreRobots && !this.isAllowedByRobots(url)) {
-        this.logger.debug(`Skipping ${url} (blocked by robots.txt)`);
-        continue;
-      }
-      await this.crawlPage(url, depth);
-      const now = Date.now();
-      if (now - lastProgressReport > 5e3) {
-        this.logger.info(
-          `Progress: ${this.visitedPaths.size}/${this.options.maxPages} unique pages crawled`
-        );
-        lastProgressReport = now;
-      }
-      if (this.options.delay && this.toVisit.length > 0) {
-        await new Promise((resolve) => setTimeout(resolve, this.options.delay));
-      }
-    }
-    this.logger.success(
-      `Crawled ${this.visitedPaths.size} unique pages (${this.visited.size} total URLs) (max depth: ${this.options.maxDepth}, max pages: ${this.options.maxPages})`
-    );
-    this.logger.info(`URLs still in queue: ${this.toVisit.length}`);
-    return this.results;
-  }
-  /**
-   * Crawl a single page
-   */
-  async crawlPage(url, depth) {
-    const normalizedUrl = this.normalizeUrl(url);
-    this.visited.add(normalizedUrl);
-    try {
-      const urlObj = new URL$1(url);
-      const path = urlObj.pathname || "/";
-      this.visitedPaths.add(path);
-    } catch {
-      this.visitedPaths.add(url);
-    }
-    this.logger.debug(`Crawling: ${url} (depth: ${depth})`);
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": this.options.userAgent || "Codefetch/1.0",
-          Accept: "text/html,application/xhtml+xml"
-        },
-        redirect: "follow"
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("text/html")) {
-        throw new Error(`Not HTML content: ${contentType}`);
-      }
-      const html = await response.text();
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      const title = titleMatch ? titleMatch[1].trim() : "Untitled";
-      let cleanedMarkdown = "";
-      try {
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("HTML processing timeout")), 5e3);
-        });
-        const processingPromise = (async () => {
-          const mainContent = extractMainContent(html, url);
-          const markdown = htmlToMarkdown(mainContent, {
-            baseUrl: url,
-            includeImages: false,
-            includeLinks: true
-          });
-          return cleanMarkdown(markdown);
-        })();
-        cleanedMarkdown = await Promise.race([
-          processingPromise,
-          timeoutPromise
-        ]);
-      } catch {
-        this.logger.warn(`HTML processing timeout for ${url}, using fallback`);
-        cleanedMarkdown = this.extractTextFallback(html);
-      }
-      const links = this.extractLinks(html, url);
-      this.results.push({
-        url,
-        title,
-        content: cleanedMarkdown,
-        links: links.filter((link) => this.shouldCrawlUrl(link)),
-        depth
-      });
-      if (depth < this.options.maxDepth) {
-        let addedCount = 0;
-        for (const link of links) {
-          const normalizedLink = this.normalizeUrl(link);
-          if (this.shouldCrawlUrl(link) && !this.visited.has(normalizedLink)) {
-            this.toVisit.push({ url: link, depth: depth + 1 });
-            addedCount++;
-          }
-        }
-        this.logger.debug(
-          `Added ${addedCount} new URLs to crawl queue from ${url}`
-        );
-      }
-      this.logger.debug(`\u2713 Crawled: ${title}`);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Failed to crawl ${url}: ${errorMessage}`);
-      this.results.push({
-        url,
-        title: "Error",
-        content: "",
-        links: [],
-        depth,
-        error: errorMessage
-      });
-    }
-  }
-  /**
-   * Extract links from HTML
-   */
-  extractLinks(html, baseUrl) {
-    const links = [];
-    const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>/gi;
-    let match;
-    while ((match = linkRegex.exec(html)) !== null) {
-      try {
-        const url = new URL$1(match[1], baseUrl);
-        if (url.protocol === "http:" || url.protocol === "https:") {
-          links.push(url.href);
-        }
-      } catch {
-      }
-    }
-    const uniqueLinks = [...new Set(links)];
-    this.logger.debug(
-      `Extracted ${uniqueLinks.length} unique links from ${baseUrl}`
-    );
-    return uniqueLinks;
-  }
-  /**
-   * Check if URL should be crawled
-   */
-  shouldCrawlUrl(url) {
-    try {
-      const urlObj = new URL$1(url);
-      const baseUrlObj = new URL$1(this.baseUrl.url);
-      if (urlObj.hostname !== baseUrlObj.hostname) {
-        return false;
-      }
-      const skipPatterns = [
-        /\.(jpg|jpeg|png|gif|pdf|zip|exe|dmg|iso|tar|gz)$/i,
-        /\/(?:login|signin|signup|register|logout|auth)/i,
-        /\/(api|graphql)\//i,
-        /#/
-      ];
-      const shouldSkip = skipPatterns.some((pattern) => pattern.test(url));
-      if (shouldSkip) {
-        this.logger.debug(`Skipping URL ${url} due to pattern match`);
-      }
-      return !shouldSkip;
-    } catch {
-      return false;
-    }
-  }
-  /**
-   * Convert URL to safe file ID
-   */
-  urlToId(url) {
-    return url.replace(/^https?:\/\//, "").replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 100);
-  }
-  /**
-   * Load and parse robots.txt
-   */
-  async loadRobotsTxt() {
-    try {
-      const robotsUrl = new URL$1("/robots.txt", this.baseUrl.url).href;
-      const response = await fetch(robotsUrl);
-      if (response.ok) {
-        const text = await response.text();
-        const rules = this.parseRobotsTxt(text);
-        const hostname = new URL$1(this.baseUrl.url).hostname;
-        this.robotsCache.set(hostname, rules);
-        const sitemapMatch = text.match(/^Sitemap:\s*(.+)$/im);
-        if (sitemapMatch) {
-          this.sitemapUrls.add(sitemapMatch[1].trim());
-        }
-      }
-    } catch {
-    }
-  }
-  /**
-   * Parse robots.txt content
-   */
-  parseRobotsTxt(content) {
-    const rules = [];
-    const lines = content.split("\n");
-    let currentUserAgent = "*";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("#") || !trimmed) continue;
-      const [key, ...valueParts] = trimmed.split(":");
-      const value = valueParts.join(":").trim();
-      if (key.toLowerCase() === "user-agent") {
-        currentUserAgent = value.toLowerCase();
-      } else if (key.toLowerCase() === "disallow" && value) {
-        rules.push({
-          userAgent: currentUserAgent,
-          path: value,
-          allow: false
-        });
-      } else if (key.toLowerCase() === "allow" && value) {
-        rules.push({
-          userAgent: currentUserAgent,
-          path: value,
-          allow: true
-        });
-      }
-    }
-    return rules;
-  }
-  /**
-   * Check if URL is allowed by robots.txt
-   */
-  isAllowedByRobots(url) {
-    try {
-      const urlObj = new URL$1(url);
-      const rules = this.robotsCache.get(urlObj.hostname) || [];
-      const applicableRules = rules.filter(
-        (rule) => rule.userAgent === "*" || rule.userAgent === "codefetch" || this.options.userAgent?.toLowerCase().includes(rule.userAgent)
-      );
-      const sortedRules = applicableRules.sort(
-        (a, b) => b.path.length - a.path.length
-      );
-      for (const rule of sortedRules) {
-        if (urlObj.pathname.startsWith(rule.path)) {
-          return rule.allow;
-        }
-      }
-      return true;
-    } catch {
-      return true;
-    }
-  }
-  /**
-   * Load and parse sitemap.xml
-   */
-  async loadSitemap() {
-    const sitemapUrls = [
-      new URL$1("/sitemap.xml", this.baseUrl.url).href,
-      new URL$1("/sitemap_index.xml", this.baseUrl.url).href
-    ];
-    for (const url of this.sitemapUrls) {
-      sitemapUrls.push(url);
-    }
-    for (const sitemapUrl of sitemapUrls) {
-      try {
-        const response = await fetch(sitemapUrl);
-        if (response.ok) {
-          const xml = await response.text();
-          this.parseSitemap(xml);
-        }
-      } catch {
-      }
-    }
-  }
-  /**
-   * Parse sitemap XML
-   */
-  parseSitemap(xml) {
-    const urlMatches = xml.matchAll(/<loc>([^<]+)<\/loc>/gi);
-    for (const match of urlMatches) {
-      const url = match[1].trim();
-      if (this.shouldCrawlUrl(url)) {
-        this.sitemapUrls.add(url);
-      }
-    }
-    const sitemapMatches = xml.matchAll(/<sitemap>[^<]*<loc>([^<]+)<\/loc>/gi);
-    for (const match of sitemapMatches) {
-      this.sitemapUrls.add(match[1].trim());
-    }
-  }
-  /**
-   * Normalize URL for deduplication
-   */
-  normalizeUrl(url) {
-    try {
-      const urlObj = new URL$1(url);
-      if (urlObj.pathname !== "/" && urlObj.pathname.endsWith("/")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -1);
-      }
-      const paramsToRemove = [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_content",
-        "utm_term",
-        "fbclid",
-        "gclid"
-      ];
-      for (const param of paramsToRemove) urlObj.searchParams.delete(param);
-      urlObj.hash = "";
-      return urlObj.href;
-    } catch {
-      return url;
-    }
-  }
-  /**
-   * Simple text extraction fallback when HTML parsing times out
-   */
-  extractTextFallback(html) {
-    let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
-    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-    const bodyMatch = text.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    if (bodyMatch) {
-      text = bodyMatch[1];
-    }
-    text = text.replace(/<[^>]+>/g, " ");
-    text = text.replace(/\s+/g, " ").trim();
-    if (text.length > 5e3) {
-      text = text.slice(0, 5e3) + "...";
-    }
-    return text;
-  }
-}
-
-function buildUrlTree(results) {
-  const root = {
-    path: "/",
-    children: /* @__PURE__ */ new Map()
-  };
-  for (const result of results) {
-    if (result.error) continue;
-    try {
-      const url = new URL$1(result.url);
-      const pathname = url.pathname || "/";
-      const segments = pathname.split("/").filter(Boolean);
-      let currentNode = root;
-      let currentPath = "";
-      if (segments.length === 0) {
-        root.result = result;
-        continue;
-      }
-      for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        currentPath += "/" + segment;
-        if (!currentNode.children.has(segment)) {
-          currentNode.children.set(segment, {
-            path: currentPath,
-            children: /* @__PURE__ */ new Map()
-          });
-        }
-        currentNode = currentNode.children.get(segment);
-        if (i === segments.length - 1) {
-          currentNode.result = result;
-        }
-      }
-    } catch (error) {
-      console.warn(`Failed to parse URL: ${result.url}`, error);
-    }
-  }
-  return root;
-}
-function urlTreeToString(node, prefix = "", isLast = true, isRoot = true) {
-  let output = "";
-  if (!isRoot) {
-    const connector = isLast ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
-    const pathSegment = node.path.split("/").pop() || "";
-    output += prefix + connector + "/" + pathSegment + "\n";
-  }
-  const children = [...node.children.entries()].sort(
-    ([a], [b]) => a.localeCompare(b)
-  );
-  for (const [index, [_name, child]] of children.entries()) {
-    const isLastChild = index === children.length - 1;
-    const childPrefix = isRoot ? "" : prefix + (isLast ? "    " : "\u2502   ");
-    output += urlTreeToString(child, childPrefix, isLastChild, false);
-  }
-  return output;
-}
-function generateUrlProjectStructure(results) {
-  const tree = buildUrlTree(results);
-  let structure = "Project Structure:\n";
-  if (tree.result) {
-    structure += "\u251C\u2500\u2500 /\n";
-  }
-  const treeString = urlTreeToString(tree);
-  if (treeString) {
-    structure += treeString;
-  }
-  return structure;
-}
-function crawlResultsToMarkdown(results) {
-  const sortedResults = [...results].filter((r) => !r.error).sort((a, b) => {
-    const pathA = new URL$1(a.url).pathname;
-    const pathB = new URL$1(b.url).pathname;
-    return pathA.localeCompare(pathB);
-  });
-  let markdown = "";
-  for (const result of sortedResults) {
-    const url = new URL$1(result.url);
-    const path = url.pathname || "/";
-    markdown += "\n\n";
-    markdown += path + "\n";
-    markdown += "```\n";
-    markdown += `# ${result.title}
-
-`;
-    markdown += result.content;
-    markdown += "\n```";
-  }
-  return markdown;
-}
 
 class GitHubApiClient {
   constructor(owner, repo, logger, options = {}) {
@@ -2309,7 +1743,7 @@ async function fetchFromWeb(url, options = {}) {
     throw new Error("Failed to parse URL");
   }
   logger.info(`Fetching from: ${parsedUrl.url}`);
-  logger.info(`Type: ${parsedUrl.type}`);
+  logger.info(`Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`);
   const cache = new WebCache({
     ttlHours: options.cacheTTL || 1
   });
@@ -2324,198 +1758,68 @@ async function fetchFromWeb(url, options = {}) {
       contentPath = cached.content;
     }
   }
-  let crawlResults = null;
   if (!contentPath) {
-    if (parsedUrl.type === "git-repository") {
-      contentPath = await fetchGitRepository(parsedUrl, options, logger);
-      await cache.set(parsedUrl, contentPath);
-    } else {
-      const result = await fetchWebsite(parsedUrl, options, logger);
-      contentPath = result.tempDir;
-      crawlResults = result.crawlResults;
-      await cache.set(parsedUrl, contentPath);
-    }
+    contentPath = await fetchGitRepository(parsedUrl, options, logger);
+    await cache.set(parsedUrl, contentPath);
   }
   logger.info("Analyzing fetched content...");
   let output;
   let totalTokens = 0;
   const originalCwd = process.cwd();
-  if (parsedUrl.type === "website") {
-    const websiteContentPath = join$1(contentPath, "website-content.md");
-    const markdown = await readFile(websiteContentPath, "utf8");
-    if (options.format === "json") {
-      if (crawlResults && crawlResults.length > 0) {
-        const root = {
-          name: parsedUrl.domain,
-          path: "",
-          type: "directory",
-          children: []
-        };
-        const dirMap = /* @__PURE__ */ new Map();
-        dirMap.set("", root);
-        let totalSize = 0;
-        totalTokens = 0;
-        for (const page of crawlResults) {
-          if (page.error) continue;
-          const url2 = new URL(page.url);
-          let pathname = url2.pathname;
-          if (pathname.endsWith("/") && pathname !== "/") {
-            pathname = pathname.slice(0, -1);
-          }
-          if (pathname === "/" || pathname === "") {
-            pathname = "/";
-          }
-          if (!pathname.startsWith("/")) {
-            pathname = "/" + pathname;
-          }
-          const pathParts = pathname.slice(1).split("/").filter(Boolean);
-          let currentDir = root;
-          let currentPath = "";
-          for (let i = 0; i < pathParts.length - 1; i++) {
-            const part = pathParts[i];
-            currentPath = currentPath ? `${currentPath}/${part}` : `/${part}`;
-            if (dirMap.has(currentPath)) {
-              currentDir = dirMap.get(currentPath);
-            } else {
-              const newDir = {
-                name: part,
-                path: currentPath,
-                type: "directory",
-                children: []
-              };
-              currentDir.children.push(newDir);
-              dirMap.set(currentPath, newDir);
-              currentDir = newDir;
-            }
-          }
-          const pageName = pathname === "/" ? "/" : pathParts.length > 0 ? pathParts.at(-1) : "index";
-          const fullPath = pathname;
-          const pageContent = `# ${page.title}
-
-${page.content}`;
-          const size = Buffer.byteLength(pageContent, "utf8");
-          const tokens = await countTokens(
-            pageContent,
-            options.tokenEncoder || "cl100k"
-          );
-          totalSize += size;
-          totalTokens += tokens;
-          currentDir.children.push({
-            name: pageName,
-            path: fullPath,
-            type: "file",
-            content: pageContent,
-            language: "markdown",
-            size,
-            tokens,
-            url: page.url
-          });
-        }
-        const metadata = {
-          totalFiles: crawlResults.filter((r) => !r.error).length,
-          totalSize,
-          totalTokens,
-          fetchedAt: /* @__PURE__ */ new Date(),
-          source: parsedUrl.url
-        };
-        output = new FetchResultImpl(root, metadata);
-      } else {
-        const root = {
-          name: parsedUrl.domain,
-          path: "",
-          type: "directory",
-          children: [
-            {
-              name: "website-content.md",
-              path: "website-content.md",
-              type: "file",
-              content: markdown,
-              language: "markdown",
-              size: Buffer.byteLength(markdown, "utf8"),
-              tokens: await countTokens(
-                markdown,
-                options.tokenEncoder || "cl100k"
-              )
-            }
-          ]
-        };
-        totalTokens = root.children[0].tokens;
-        const metadata = {
-          totalFiles: 1,
-          totalSize: root.children[0].size,
-          totalTokens,
-          fetchedAt: /* @__PURE__ */ new Date(),
-          source: parsedUrl.url
-        };
-        output = new FetchResultImpl(root, metadata);
-      }
-    } else {
-      output = markdown;
-    }
-  } else {
-    process.chdir(contentPath);
-    const ig = ignore().add(
-      DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-        (line) => line && !line.startsWith("#")
-      )
-    );
-    const files = await collectFiles(".", {
-      ig,
-      extensionSet: options.extensions ? new Set(options.extensions) : null,
-      excludeFiles: options.excludeFiles || null,
-      includeFiles: options.includeFiles || null,
-      excludeDirs: options.excludeDirs || null,
-      includeDirs: options.includeDirs || null,
-      verbose: options.verbose || 0
+  process.chdir(contentPath);
+  const ig = ignore().add(
+    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
+      (line) => line && !line.startsWith("#")
+    )
+  );
+  const files = await collectFiles(".", {
+    ig,
+    extensionSet: options.extensions ? new Set(options.extensions) : null,
+    excludeFiles: options.excludeFiles || null,
+    includeFiles: options.includeFiles || null,
+    excludeDirs: options.excludeDirs || null,
+    includeDirs: options.includeDirs || null,
+    verbose: options.verbose || 0
+  });
+  if (options.format === "json") {
+    const {
+      root,
+      totalSize,
+      totalTokens: tokens
+    } = await collectFilesAsTree(".", files, {
+      tokenEncoder: options.tokenEncoder,
+      tokenLimit: options.maxTokens
     });
-    if (options.format === "json") {
-      const {
-        root,
-        totalSize,
-        totalTokens: tokens
-      } = await collectFilesAsTree(".", files, {
-        tokenEncoder: options.tokenEncoder,
-        tokenLimit: options.maxTokens
-      });
-      totalTokens = tokens;
-      const metadata = {
-        totalFiles: files.length,
-        totalSize,
-        totalTokens,
-        fetchedAt: /* @__PURE__ */ new Date(),
-        source: parsedUrl.url,
-        gitProvider: parsedUrl.gitProvider,
-        gitOwner: parsedUrl.gitOwner,
-        gitRepo: parsedUrl.gitRepo,
-        gitRef: parsedUrl.gitRef || options.branch || "main"
-      };
-      output = new FetchResultImpl(root, metadata);
-    } else {
-      const markdown = await generateMarkdown(files, {
-        maxTokens: options.maxTokens ? Number(options.maxTokens) : null,
-        verbose: Number(options.verbose || 0),
-        projectTree: Number(options.projectTree || 0),
-        tokenEncoder: options.tokenEncoder || "cl100k",
-        disableLineNumbers: Boolean(options.disableLineNumbers),
-        tokenLimiter: options.tokenLimiter || "truncated",
-        templateVars: {
-          ...options.templateVars,
-          SOURCE_URL: parsedUrl.url,
-          FETCHED_FROM: parsedUrl.type === "git-repository" ? `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}` : parsedUrl.domain
-        }
-      });
-      output = markdown;
-    }
-    process.chdir(originalCwd);
+    totalTokens = tokens;
+    const metadata = {
+      totalFiles: files.length,
+      totalSize,
+      totalTokens,
+      fetchedAt: /* @__PURE__ */ new Date(),
+      source: parsedUrl.url,
+      gitProvider: parsedUrl.gitProvider,
+      gitOwner: parsedUrl.gitOwner,
+      gitRepo: parsedUrl.gitRepo,
+      gitRef: parsedUrl.gitRef || options.branch || "main"
+    };
+    output = new FetchResultImpl(root, metadata);
+  } else {
+    const markdown = await generateMarkdown(files, {
+      maxTokens: options.maxTokens ? Number(options.maxTokens) : null,
+      verbose: Number(options.verbose || 0),
+      projectTree: Number(options.projectTree || 0),
+      tokenEncoder: options.tokenEncoder || "cl100k",
+      disableLineNumbers: Boolean(options.disableLineNumbers),
+      tokenLimiter: options.tokenLimiter || "truncated",
+      templateVars: {
+        ...options.templateVars,
+        SOURCE_URL: parsedUrl.url,
+        FETCHED_FROM: `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+      }
+    });
+    output = markdown;
   }
-  if (parsedUrl.type === "website" && contentPath) {
-    try {
-      await rm(contentPath, { recursive: true, force: true });
-      logger.debug("Cleaned up temporary directory");
-    } catch (cleanupError) {
-      logger.debug(`Failed to clean up temp directory: ${cleanupError}`);
-    }
-  }
+  process.chdir(originalCwd);
   return output;
 }
 async function fetchGitRepository(parsedUrl, options, logger) {
@@ -2574,38 +1878,61 @@ async function fetchGitRepository(parsedUrl, options, logger) {
     );
   }
 }
-async function fetchWebsite(parsedUrl, options, logger) {
-  const tempDir = await mkdtemp(join$1(tmpdir(), "codefetch-web-"));
-  try {
-    logger.info("Starting website crawl...");
-    const crawler = new WebCrawler(
-      parsedUrl,
-      {
-        maxDepth: options.maxDepth || 2,
-        maxPages: options.maxPages || 50,
-        ignoreRobots: options.ignoreRobots,
-        ignoreCors: options.ignoreCors,
-        delay: 50
-        // 50ms delay between requests
-      },
-      logger
-    );
-    const crawlResults = await crawler.crawl();
-    logger.success("Website crawled successfully");
-    const projectStructure = generateUrlProjectStructure(crawlResults);
-    const contentSections = crawlResultsToMarkdown(crawlResults);
-    const fullMarkdown = projectStructure + contentSections;
-    const outputPath = join$1(tempDir, "website-content.md");
-    await import('node:fs').then(
-      (fs) => fs.promises.writeFile(outputPath, fullMarkdown)
-    );
-    return { tempDir, crawlResults };
-  } catch (error) {
-    await rm(tempDir, { recursive: true, force: true });
-    throw new Error(
-      `Failed to crawl website: ${error instanceof Error ? error.message : String(error)}`
-    );
+
+function htmlToMarkdown(html, options = {}) {
+  const { includeUrls = true, preserveWhitespace = false, customReplacements = [] } = options;
+  let markdown = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  for (const { pattern, replacement } of customReplacements) {
+    markdown = markdown.replace(pattern, replacement);
   }
+  markdown = markdown.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'");
+  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n");
+  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n");
+  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n");
+  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, "#### $1\n\n");
+  markdown = markdown.replace(/<h5[^>]*>(.*?)<\/h5>/gi, "##### $1\n\n");
+  markdown = markdown.replace(/<h6[^>]*>(.*?)<\/h6>/gi, "###### $1\n\n");
+  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**");
+  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**");
+  markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*");
+  markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*");
+  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`");
+  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, (match, content) => {
+    const cleanContent = content.replace(/<[^>]+>/g, "").replace(/^\n+|\n+$/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+    return "\n```\n" + cleanContent + "\n```\n\n";
+  });
+  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
+    return "\n" + items.map((item) => {
+      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
+      return "- " + text;
+    }).join("\n") + "\n\n";
+  });
+  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
+    return "\n" + items.map((item, index) => {
+      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
+      return `${index + 1}. ${text}`;
+    }).join("\n") + "\n\n";
+  });
+  markdown = includeUrls ? markdown.replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)") : markdown.replace(/<a[^>]+href="[^"]*"[^>]*>(.*?)<\/a>/gi, "$1");
+  markdown = markdown.replace(/<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi, "![$1]($2)");
+  markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi, "![$2]($1)");
+  markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, "![]($1)");
+  markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
+    const lines = content.trim().split("\n");
+    return "\n" + lines.map((line) => "> " + line.trim()).join("\n") + "\n\n";
+  });
+  markdown = markdown.replace(/<hr[^>]*>/gi, "\n---\n\n");
+  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, "$1\n\n");
+  markdown = markdown.replace(/<br[^>]*>/gi, "\n");
+  markdown = markdown.replace(/<[^>]+>/g, "");
+  if (!preserveWhitespace) {
+    markdown = markdown.replace(/\r\n/g, "\n");
+    markdown = markdown.replace(/\n{3,}/g, "\n\n");
+    markdown = markdown.trim();
+  }
+  return markdown;
 }
 
-export { VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, fix_default as fixPrompt, generateMarkdown, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, testgen_default as testgenPrompt };
+export { VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, fix_default as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, testgen_default as testgenPrompt };

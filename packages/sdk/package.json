@@ -38,8 +38,10 @@
     "build": "unbuild",
     "build:worker": "unbuild --config build.worker.config.ts",
     "build:all": "npm run build && npm run build:worker",
-    "test": "vitest run",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "test": "npm run lint && npm run test:types && vitest run --coverage",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "lint": "eslint --cache . && prettier -c 'src/**/*' 'test/**/*'",
+    "lint:fix": "eslint --cache . --fix && prettier -c 'src/**/*' 'test/**/*' -w"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
@@ -53,6 +55,11 @@
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
-    "unbuild": "^3.5.0"
+    "eslint": "^9.18.0",
+    "eslint-config-unjs": "^0.4.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "unbuild": "^3.5.0",
+    "vitest": "^2.1.8"
   }
 }

@@ -7,7 +7,7 @@
  * Workers have WebSocketPair but no __dirname in globalThis
  */
 export const isCloudflareWorker =
-  typeof (globalThis as any).WebSocketPair !== "undefined" && 
+  (globalThis as any).WebSocketPair !== undefined &&
   !("__dirname" in globalThis);
 
 /**

@@ -3,7 +3,7 @@ type TokenLimiter = "sequential" | "truncated";
 interface FileNode {
     name: string;
     path: string;
-    type: 'file' | 'directory';
+    type: "file" | "directory";
     content?: string;
     language?: string;
     size?: number;
@@ -22,7 +22,7 @@ interface FetchResult {
     root: FileNode;
     metadata: FetchMetadata;
 }
-type OutputFormat = 'markdown' | 'json';
+type OutputFormat = "markdown" | "json";
 
 interface CodefetchConfig {
     outputFile: string;

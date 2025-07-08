@@ -355,65 +355,65 @@ const detectLanguage = (fileName) => {
   const ext = fileName.split(".").pop()?.toLowerCase();
   const languageMap = {
     // JavaScript/TypeScript
-    "js": "javascript",
-    "jsx": "javascript",
-    "ts": "typescript",
-    "tsx": "typescript",
-    "mjs": "javascript",
-    "cjs": "javascript",
-    "mts": "typescript",
-    "cts": "typescript",
+    js: "javascript",
+    jsx: "javascript",
+    ts: "typescript",
+    tsx: "typescript",
+    mjs: "javascript",
+    cjs: "javascript",
+    mts: "typescript",
+    cts: "typescript",
     // Web
-    "html": "html",
-    "htm": "html",
-    "css": "css",
-    "scss": "scss",
-    "sass": "sass",
-    "less": "less",
+    html: "html",
+    htm: "html",
+    css: "css",
+    scss: "scss",
+    sass: "sass",
+    less: "less",
     // Config
-    "json": "json",
-    "yaml": "yaml",
-    "yml": "yaml",
-    "toml": "toml",
-    "xml": "xml",
-    "ini": "ini",
-    "conf": "conf",
+    json: "json",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "toml",
+    xml: "xml",
+    ini: "ini",
+    conf: "conf",
     // Programming languages
-    "py": "python",
-    "java": "java",
-    "c": "c",
-    "cpp": "cpp",
-    "cs": "csharp",
-    "go": "go",
-    "rs": "rust",
-    "php": "php",
-    "rb": "ruby",
-    "swift": "swift",
-    "kt": "kotlin",
-    "scala": "scala",
-    "r": "r",
-    "lua": "lua",
-    "dart": "dart",
+    py: "python",
+    java: "java",
+    c: "c",
+    cpp: "cpp",
+    cs: "csharp",
+    go: "go",
+    rs: "rust",
+    php: "php",
+    rb: "ruby",
+    swift: "swift",
+    kt: "kotlin",
+    scala: "scala",
+    r: "r",
+    lua: "lua",
+    dart: "dart",
     // Shell
-    "sh": "bash",
-    "bash": "bash",
-    "zsh": "bash",
-    "fish": "fish",
-    "ps1": "powershell",
+    sh: "bash",
+    bash: "bash",
+    zsh: "bash",
+    fish: "fish",
+    ps1: "powershell",
     // Documentation
-    "md": "markdown",
-    "mdx": "markdown",
-    "rst": "restructuredtext",
-    "tex": "latex",
+    md: "markdown",
+    mdx: "markdown",
+    rst: "restructuredtext",
+    tex: "latex",
     // Other
-    "sql": "sql",
-    "dockerfile": "dockerfile",
-    "makefile": "makefile",
-    "cmake": "cmake",
-    "gradle": "gradle",
-    "vim": "vim",
-    "vue": "vue",
-    "svelte": "svelte"
+    sql: "sql",
+    dockerfile: "dockerfile",
+    makefile: "makefile",
+    cmake: "cmake",
+    gradle: "gradle",
+    vim: "vim",
+    vue: "vue",
+    svelte: "svelte"
   };
   const fileNameLower = fileName.toLowerCase();
   if (fileNameLower === "dockerfile") return "dockerfile";
@@ -867,7 +867,8 @@ async function getDirectorySize(dir) {
 }
 
 function escapeGlobPath(str) {
-  return str.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
+  const normalized = str.replace(/\\/g, "/");
+  return normalized.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
 }
 async function collectFiles(baseDir, options) {
   const {
@@ -892,7 +893,7 @@ async function collectFiles(baseDir, options) {
   }
   const ignore = [
     ...excludeDirs?.map((dir) => `${escapeGlobPath(dir)}/**`) || [],
-    ...excludeFiles || []
+    ...excludeFiles?.map((file) => file.replace(/\\/g, "/")) || []
   ];
   if (extensionSet) {
     const exts = [...extensionSet];
@@ -911,12 +912,12 @@ async function collectFiles(baseDir, options) {
   }
   if (includeFiles?.length) {
     patterns.length = 0;
-    patterns.push(...includeFiles);
+    patterns.push(...includeFiles.map((file) => file.replace(/\\/g, "/")));
   }
   logVerbose(`Scanning with patterns: ${patterns.join(", ")}`, 2);
   logVerbose(`Ignoring: ${ignore.join(", ")}`, 2);
   const entries = await fg(patterns, {
-    cwd: baseDir,
+    cwd: baseDir.replace(/\\/g, "/"),
     dot: true,
     absolute: true,
     ignore,
@@ -1743,7 +1744,9 @@ async function fetchFromWeb(url, options = {}) {
     throw new Error("Failed to parse URL");
   }
   logger.info(`Fetching from: ${parsedUrl.url}`);
-  logger.info(`Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`);
+  logger.info(
+    `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+  );
   const cache = new WebCache({
     ttlHours: options.cacheTTL || 1
   });
@@ -1880,7 +1883,11 @@ async function fetchGitRepository(parsedUrl, options, logger) {
 }
 
 function htmlToMarkdown(html, options = {}) {
-  const { includeUrls = true, preserveWhitespace = false, customReplacements = [] } = options;
+  const {
+    includeUrls = true,
+    preserveWhitespace = false,
+    customReplacements = []
+  } = options;
   let markdown = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
   for (const { pattern, replacement } of customReplacements) {
     markdown = markdown.replace(pattern, replacement);
@@ -1916,13 +1923,22 @@ function htmlToMarkdown(html, options = {}) {
     }).join("\n") + "\n\n";
   });
   markdown = includeUrls ? markdown.replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)") : markdown.replace(/<a[^>]+href="[^"]*"[^>]*>(.*?)<\/a>/gi, "$1");
-  markdown = markdown.replace(/<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi, "![$1]($2)");
-  markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi, "![$2]($1)");
+  markdown = markdown.replace(
+    /<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi,
+    "![$1]($2)"
+  );
+  markdown = markdown.replace(
+    /<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi,
+    "![$2]($1)"
+  );
   markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, "![]($1)");
-  markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
-    const lines = content.trim().split("\n");
-    return "\n" + lines.map((line) => "> " + line.trim()).join("\n") + "\n\n";
-  });
+  markdown = markdown.replace(
+    /<blockquote[^>]*>(.*?)<\/blockquote>/gis,
+    (match, content) => {
+      const lines = content.trim().split("\n");
+      return "\n" + lines.map((line) => "> " + line.trim()).join("\n") + "\n\n";
+    }
+  );
   markdown = markdown.replace(/<hr[^>]*>/gi, "\n---\n\n");
   markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, "$1\n\n");
   markdown = markdown.replace(/<br[^>]*>/gi, "\n");

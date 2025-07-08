@@ -8,6 +8,7 @@ import type { TokenEncoder } from "../src/types";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
+import { normalizePathSeparators } from "../src/utils/path";
 
 describe("SDK Config", () => {
   describe("getDefaultConfig", () => {
@@ -81,7 +82,9 @@ describe("SDK Config", () => {
       const config = getDefaultConfig();
       const resolved = await resolveCodefetchConfig(config, tempDir);
 
-      expect(resolved.outputPath).toBe(join(tempDir, "codefetch"));
+      expect(normalizePathSeparators(resolved.outputPath)).toBe(
+        normalizePathSeparators(join(tempDir, "codefetch"))
+      );
     });
 
     test("should resolve includeFiles paths", async () => {
@@ -92,9 +95,9 @@ describe("SDK Config", () => {
 
       const resolved = await resolveCodefetchConfig(config, tempDir);
 
-      expect(resolved.includeFiles).toEqual([
-        join(tempDir, "src/*.js"),
-        join(tempDir, "lib/*.ts"),
+      expect(resolved.includeFiles?.map(normalizePathSeparators)).toEqual([
+        normalizePathSeparators(join(tempDir, "src/*.js")),
+        normalizePathSeparators(join(tempDir, "lib/*.ts")),
       ]);
     });
 
@@ -106,9 +109,9 @@ describe("SDK Config", () => {
 
       const resolved = await resolveCodefetchConfig(config, tempDir);
 
-      expect(resolved.excludeFiles).toEqual([
-        join(tempDir, "test/*.js"),
-        join(tempDir, "*.spec.ts"),
+      expect(resolved.excludeFiles?.map(normalizePathSeparators)).toEqual([
+        normalizePathSeparators(join(tempDir, "test/*.js")),
+        normalizePathSeparators(join(tempDir, "*.spec.ts")),
       ]);
     });
 
@@ -120,9 +123,9 @@ describe("SDK Config", () => {
 
       const resolved = await resolveCodefetchConfig(config, tempDir);
 
-      expect(resolved.includeDirs).toEqual([
-        join(tempDir, "src"),
-        join(tempDir, "lib"),
+      expect(resolved.includeDirs?.map(normalizePathSeparators)).toEqual([
+        normalizePathSeparators(join(tempDir, "src")),
+        normalizePathSeparators(join(tempDir, "lib")),
       ]);
     });
 
@@ -134,9 +137,9 @@ describe("SDK Config", () => {
 
       const resolved = await resolveCodefetchConfig(config, tempDir);
 
-      expect(resolved.excludeDirs).toEqual([
-        join(tempDir, "node_modules"),
-        join(tempDir, "dist"),
+      expect(resolved.excludeDirs?.map(normalizePathSeparators)).toEqual([
+        normalizePathSeparators(join(tempDir, "node_modules")),
+        normalizePathSeparators(join(tempDir, "dist")),
       ]);
     });
 

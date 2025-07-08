@@ -20,13 +20,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [18.x, 20.x, 22.x]
         # Skip some combinations to reduce CI time
         exclude:
-          - os: windows-latest
-            node-version: 18.x
           - os: macos-latest
+            node-version: 18.x
+          - os: windows-latest
             node-version: 18.x
     
     steps:

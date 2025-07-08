@@ -3,8 +3,10 @@ import fg from "fast-glob";
 
 // Helper function to escape special glob characters in paths
 function escapeGlobPath(str: string): string {
-  // Escape special glob characters: * ? [ ] { } ( ) ! @ + |
-  return str.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
+  // First normalize path separators to forward slashes for fast-glob
+  const normalized = str.replace(/\\/g, "/");
+  // Then escape special glob characters: * ? [ ] { } ( ) ! @ + |
+  return normalized.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
 }
 
 export async function collectFiles(
@@ -48,7 +50,7 @@ export async function collectFiles(
   // Handle exclude directories
   const ignore = [
     ...(excludeDirs?.map((dir) => `${escapeGlobPath(dir)}/**`) || []),
-    ...(excludeFiles || []),
+    ...(excludeFiles?.map((file) => file.replace(/\\/g, "/")) || []),
   ];
 
   // Handle file extensions
@@ -71,14 +73,15 @@ export async function collectFiles(
   // Handle include files
   if (includeFiles?.length) {
     patterns.length = 0; // Clear patterns if we have specific files
-    patterns.push(...includeFiles);
+    // Normalize path separators in include files for fast-glob
+    patterns.push(...includeFiles.map((file) => file.replace(/\\/g, "/")));
   }
 
   logVerbose(`Scanning with patterns: ${patterns.join(", ")}`, 2);
   logVerbose(`Ignoring: ${ignore.join(", ")}`, 2);
 
   const entries = await fg(patterns, {
-    cwd: baseDir,
+    cwd: baseDir.replace(/\\/g, "/"),
     dot: true,
     absolute: true,
     ignore,

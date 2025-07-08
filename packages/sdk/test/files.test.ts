@@ -1,13 +1,18 @@
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { collectFiles } from "../src/files";
 import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
+import { join, relative } from "node:path";
 import { mkdtemp, writeFile, rm, mkdir, symlink } from "node:fs/promises";
 import { normalizePathSeparators } from "../src/utils/path";
 
 describe("File Collection", () => {
   let tempDir: string;
   let ig: any;
+
+  // Helper to get relative paths consistently across platforms
+  const getRelativePath = (fullPath: string, basePath: string): string => {
+    return normalizePathSeparators(relative(basePath, fullPath));
+  };
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "codefetch-files-test-"));
@@ -42,8 +47,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(3);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual([
         "file1.js",
@@ -70,8 +74,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(2);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual(["file1.js", "file2.ts"]);
     });
@@ -98,8 +101,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(2);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual(["lib/utils.js", "src/index.js"]);
     });
@@ -124,9 +126,7 @@ describe("File Collection", () => {
       });
 
       expect(files).toHaveLength(1);
-      const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p));
+      const relativePaths = files.map((f) => getRelativePath(f, tempDir));
       expect(relativePaths).toEqual(["src/index.js"]);
     });
 
@@ -149,8 +149,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(4);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual([
         "README.md",
@@ -178,8 +177,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(2);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual(["file1.js", "file4.js"]);
     });
@@ -207,9 +205,7 @@ describe("File Collection", () => {
       });
 
       expect(files).toHaveLength(1);
-      const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p));
+      const relativePaths = files.map((f) => getRelativePath(f, tempDir));
       expect(relativePaths).toEqual(["file1.js"]);
     });
 
@@ -230,8 +226,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(3);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual([".env", ".gitignore", "normal.js"]);
     });
@@ -259,8 +254,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(2);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toContain("real-dir/file.js");
       expect(relativePaths).toContain("link-dir/file.js");
@@ -294,8 +288,7 @@ describe("File Collection", () => {
 
       expect(files).toHaveLength(4);
       const relativePaths = files
-        .map((f) => f.replace(tempDir + sep, ""))
-        .map((p) => normalizePathSeparators(p))
+        .map((f) => getRelativePath(f, tempDir))
         .sort();
       expect(relativePaths).toEqual([
         "src/components/App.jsx",

@@ -69,7 +69,14 @@ jobs:
         shell: bash
 
       - name: Run linting
+        if: runner.os != 'Windows'
         run: pnpm --filter codefetch-sdk lint
+        
+      - name: Run linting (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pnpm --filter codefetch-sdk lint:eslint
+          pnpm --filter codefetch-sdk lint:prettier
 
       - name: Run type checking
         run: pnpm --filter codefetch-sdk test:types

@@ -43,8 +43,10 @@
     "test:integration": "vitest run test/demo-github.test.ts",
     "test:watch": "vitest watch",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "lint": "eslint --cache . && prettier -c 'src/**/*' 'test/**/*'",
-    "lint:fix": "eslint --cache . --fix && prettier -c 'src/**/*' 'test/**/*' -w",
+    "lint": "eslint --cache . && prettier -c \"src/**/*\" \"test/**/*\"",
+    "lint:eslint": "eslint --cache .",
+    "lint:prettier": "prettier -c src test",
+    "lint:fix": "eslint --cache . --fix && prettier -c \"src/**/*\" \"test/**/*\" -w",
     "prepublishOnly": "npm run build:all"
   },
   "dependencies": {

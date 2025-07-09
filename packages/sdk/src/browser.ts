@@ -31,6 +31,7 @@ export { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants.js";
 
 // Prompt templates (browser-safe)
 export * from "./prompts/index.js";
+export { prompts } from "./prompts/index.js";
 
 // Note: The following are NOT exported as they require Node.js APIs:
 // - Config loading (requires fs)

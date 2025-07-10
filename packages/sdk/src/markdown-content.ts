@@ -3,7 +3,7 @@
  */
 
 import { countTokens } from "./token-counter.js";
-import { detectLanguage } from "./utils.js";
+import { detectLanguage } from "./utils-browser.js";
 import type { TokenEncoder } from "./types.js";
 
 export interface FileContent {

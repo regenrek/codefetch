@@ -1,6 +1,6 @@
 {
   "name": "codefetch-sdk",
-  "version": "1.5.7-alpha.0",
+  "version": "1.5.8-alpha.0",
   "description": "Core SDK for codefetch functionality",
   "repository": {
     "type": "git",
@@ -13,8 +13,8 @@
     "./package.json": "./package.json",
     ".": {
       "browser": {
-        "types": "./dist/browser.d.mts",
-        "default": "./dist/browser.mjs"
+        "types": "./dist-browser/browser.d.mts",
+        "default": "./dist-browser/browser.mjs"
       },
       "import": {
         "types": "./dist/index.d.mts",
@@ -26,8 +26,8 @@
       }
     },
     "./browser": {
-      "types": "./dist/browser.d.mts",
-      "default": "./dist/browser.mjs"
+      "types": "./dist-browser/browser.d.mts",
+      "default": "./dist-browser/browser.mjs"
     },
     "./prompts": {
       "browser": {
@@ -54,12 +54,14 @@
   "types": "./dist/index.d.cts",
   "files": [
     "dist",
+    "dist-browser",
     "dist-worker"
   ],
   "scripts": {
     "build": "unbuild",
+    "build:browser": "unbuild --config build.browser.config.ts",
     "build:worker": "unbuild --config build.worker.config.ts",
-    "build:all": "npm run build && npm run build:worker",
+    "build:all": "npm run build && npm run build:browser && npm run build:worker",
     "test": "npm run lint && npm run test:types && vitest run --coverage",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run test/demo-github.test.ts",

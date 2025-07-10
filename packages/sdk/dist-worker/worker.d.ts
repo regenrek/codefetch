@@ -184,6 +184,13 @@ interface HtmlToMarkdownOptions {
  */
 declare function htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string;
 
+declare const prompts: {
+    codegen: string;
+    fix: string;
+    improve: string;
+    testgen: string;
+};
+
 /**
  * Runtime environment detection for Cloudflare Workers
  */
@@ -197,4 +204,4 @@ declare const isCloudflareWorker: boolean;
  */
 declare const getCacheSizeLimit: () => number;
 
-export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchResult, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, _default$2 as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, _default as testgenPrompt };
+export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchResult, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, _default$2 as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };

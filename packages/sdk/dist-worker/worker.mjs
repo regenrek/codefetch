@@ -1951,4 +1951,11 @@ function htmlToMarkdown(html, options = {}) {
   return markdown;
 }
 
-export { VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, fix_default as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, resolveCodefetchConfig, testgen_default as testgenPrompt };
+const prompts = {
+  codegen: codegen_default,
+  fix: fix_default,
+  improve: improve_default,
+  testgen: testgen_default
+};
+
+export { VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, fix_default as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, testgen_default as testgenPrompt };

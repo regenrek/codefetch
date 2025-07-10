@@ -9,6 +9,7 @@ export default unjs({
     "**/test/fixtures/**",
     "**/dist/**",
     "packages/*/dist/**",
+    "packages/*/dist-browser/**",
     "packages/*/dist-worker/**",
   ],
   rules: {

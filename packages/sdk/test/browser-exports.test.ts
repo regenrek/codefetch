@@ -54,7 +54,7 @@ describe("Browser Exports", () => {
     };
 
     const result = new browserExports.FetchResultImpl(fileNode, metadata);
-    
+
     expect(result.root).toEqual(fileNode);
     expect(result.metadata).toEqual(metadata);
     expect(result.getAllFiles()).toHaveLength(1);

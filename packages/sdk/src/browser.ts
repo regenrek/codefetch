@@ -9,7 +9,12 @@
 
 // Core types and result classes (browser-safe)
 export { FetchResultImpl } from "./fetch-result.js";
-export type { FileNode, FetchResult, FetchMetadata, TokenEncoder } from "./types.js";
+export type {
+  FileNode,
+  FetchResult,
+  FetchMetadata,
+  TokenEncoder,
+} from "./types.js";
 
 // Token counting (browser-safe)
 export { countTokens, SUPPORTED_MODELS } from "./token-counter.js";

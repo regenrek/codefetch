@@ -14,6 +14,29 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootPath = path.resolve(__dirname, "..");
 
+// ===== CONFIGURATION =====
+// Configure which packages should be published
+// Comment out or remove packages from this array to skip them
+const PACKAGES_TO_PUBLISH = [
+  {
+    name: "@codefetch/sdk",
+    directory: "sdk",
+    publish: true,
+  },
+  {
+    name: "codefetch",
+    directory: "cli",
+    publish: true,
+  },
+  // Uncomment when ready to publish MCP
+  // {
+  //   name: "@codefetch/mcp",
+  //   directory: "mcp",
+  //   publish: true
+  // }
+];
+// =========================
+
 // Parse command line arguments
 const args = process.argv.slice(2);
 const versionBumpArg = args.find((arg) => !arg.startsWith("--")) || "patch";
@@ -226,6 +249,15 @@ async function publishPackages() {
   console.log(`🚀 Starting ${isAlpha ? "alpha" : ""} release process...`);
   console.log(`📝 Version bump: ${versionBumpArg}`);
 
+  // Show which packages will be published
+  console.log(`📦 Packages to publish:`);
+  PACKAGES_TO_PUBLISH.forEach((pkg) => {
+    if (pkg.publish) {
+      console.log(`   ✓ ${pkg.name}`);
+    }
+  });
+  console.log("");
+
   // Get all workspace packages
   const workspacePackages = getWorkspacePackages();
   console.log(`Found ${workspacePackages.size} workspace packages`);
@@ -234,28 +266,24 @@ async function publishPackages() {
   console.log("🔨 Building all packages...");
   run("pnpm build", rootPath);
 
-  // Bump versions in all packages
+  // Bump versions in configured packages
   const newVersions = new Map<string, string>();
+  const packagePaths = new Map<string, string>();
 
-  // First bump SDK version
-  const sdkPath = path.join(rootPath, "packages", "sdk");
-  if (fs.existsSync(sdkPath)) {
-    const sdkVersion = bumpVersion(sdkPath, versionBumpArg, isAlpha);
-    newVersions.set("@codefetch/sdk", sdkVersion);
-  }
+  // Bump versions for each configured package
+  for (const pkg of PACKAGES_TO_PUBLISH) {
+    if (pkg.publish) {
+      const pkgPath = path.join(rootPath, "packages", pkg.directory);
+      packagePaths.set(pkg.name, pkgPath);
 
-  // Then bump CLI version
-  const cliPath = path.join(rootPath, "packages", "cli");
-  if (fs.existsSync(cliPath)) {
-    const cliVersion = bumpVersion(cliPath, versionBumpArg, isAlpha);
-    newVersions.set("codefetch", cliVersion);
-  }
-
-  // Update MCP version if exists
-  const mcpPath = path.join(rootPath, "packages", "mcp");
-  if (fs.existsSync(mcpPath)) {
-    const mcpVersion = bumpVersion(mcpPath, versionBumpArg, isAlpha);
-    newVersions.set("@codefetch/mcp", mcpVersion);
+      if (fs.existsSync(pkgPath)) {
+        const newVersion = bumpVersion(pkgPath, versionBumpArg, isAlpha);
+        newVersions.set(pkg.name, newVersion);
+        console.log(`✓ Bumped ${pkg.name} to ${newVersion}`);
+      } else {
+        console.warn(`⚠️  Package directory not found: ${pkgPath}`);
+      }
+    }
   }
 
   // Update workspace packages map with new versions
@@ -289,29 +317,23 @@ async function publishPackages() {
       run(`git tag -a v${mainVersion} -m "Release v${mainVersion}"`, rootPath);
     }
 
-    // Publish packages in order: SDK first, then others
+    // Publish packages in configured order
     console.log(`📤 Publishing packages to npm...`);
 
     const publishCmd = isAlpha
       ? "npm publish --tag alpha --access public"
       : "npm publish --access public";
 
-    // Publish SDK first
-    if (fs.existsSync(sdkPath)) {
-      console.log("Publishing @codefetch/sdk...");
-      run(publishCmd, sdkPath);
-    }
-
-    // Publish CLI
-    if (fs.existsSync(cliPath)) {
-      console.log("Publishing codefetch...");
-      run(publishCmd, cliPath);
-    }
-
-    // Publish MCP
-    if (fs.existsSync(mcpPath)) {
-      console.log("Publishing @codefetch/mcp...");
-      run(publishCmd, mcpPath);
+    // Publish each configured package
+    for (const pkg of PACKAGES_TO_PUBLISH) {
+      if (pkg.publish) {
+        const pkgPath = packagePaths.get(pkg.name);
+        if (pkgPath && fs.existsSync(pkgPath)) {
+          console.log(`Publishing ${pkg.name}...`);
+          run(publishCmd, pkgPath);
+          console.log(`✓ Published ${pkg.name}`);
+        }
+      }
     }
 
     // Push to git if not skipped

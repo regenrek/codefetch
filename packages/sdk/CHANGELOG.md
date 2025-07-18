@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.3
+
+- Optimize Worker bundle size and remove redundant implementations
+  - Remove redundant `github-tarball-worker.ts` implementation
+  - Remove `tar-stream` dependency saving ~24KB in bundle size
+  - Worker bundle reduced from 39.3KB to 35.4KB (~10% reduction)
+  - Use existing optimized `streamGitHubTarball` that already uses DecompressionStream
+- Fix TypeScript type issues in github-tarball.ts
+- Update documentation to reflect the optimized implementation
+
 ## 1.6.2
 
 - Add Cloudflare Worker support with worker-safe implementations (#cloudflare-support)

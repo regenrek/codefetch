@@ -1,0 +1,33 @@
+name: Publish PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  publish-preview:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.14.4
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build packages
+        run: pnpm run build
+        
+      - name: Publish Preview
+        run: npx pkg-pr-new publish ./packages/sdk 

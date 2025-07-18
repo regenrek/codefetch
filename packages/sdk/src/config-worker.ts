@@ -42,7 +42,7 @@ export function getDefaultConfig(): CodefetchConfig {
     verbose: 0,
     projectTree: 0,
     dryRun: false,
-    maxTokens: 50000,
+    maxTokens: 50_000,
     tokenEncoder: "cl100k",
     disableLineNumbers: false,
     defaultIgnore: true,

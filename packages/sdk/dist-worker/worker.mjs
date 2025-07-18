@@ -1,4 +1,5 @@
 import { Tiktoken } from 'js-tiktoken/lite';
+import { extract } from 'tar-stream';
 
 function getDefaultConfig() {
   return {
@@ -988,6 +989,141 @@ function htmlToMarkdown(html, options = {}) {
   return markdown;
 }
 
+function createNodeStreamAdapter(webStream) {
+  const reader = webStream.getReader();
+  let destroyed = false;
+  const nodeStream = {
+    readable: true,
+    destroyed: false,
+    async pipe(destination) {
+      try {
+        while (!destroyed) {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (destination.end) destination.end();
+            break;
+          }
+          if (destination.write) {
+            destination.write(value);
+          }
+        }
+      } catch (error) {
+        if (destination.destroy) {
+          destination.destroy(error);
+        }
+      }
+      return destination;
+    },
+    destroy(error) {
+      destroyed = true;
+      reader.cancel(error);
+    },
+    on(event, listener) {
+      if (event === "error" && !destroyed) {
+        reader.read().catch((error) => listener(error));
+      }
+      return this;
+    }
+  };
+  return nodeStream;
+}
+async function fetchGitHubTarball(config, onFile) {
+  const {
+    owner,
+    repo,
+    ref = "HEAD",
+    extensions = [],
+    maxFileSize = 512e3
+  } = config;
+  const tarGzResponse = await fetch(
+    `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`
+  );
+  if (!tarGzResponse.ok) {
+    throw new Error(
+      `GitHub fetch failed: ${tarGzResponse.status} ${tarGzResponse.statusText}`
+    );
+  }
+  if (!tarGzResponse.body) {
+    throw new Error("Response body is null");
+  }
+  const decompressed = tarGzResponse.body.pipeThrough(
+    new DecompressionStream("gzip")
+  );
+  const tarExtractor = extract();
+  tarExtractor.on(
+    "entry",
+    async (header, stream, next) => {
+      const shouldProcess = header.type === "file" && header.size !== null && header.size !== void 0 && header.size > 0 && header.size <= maxFileSize && (extensions.length === 0 || extensions.some((ext) => header.name.endsWith(ext)));
+      if (shouldProcess && header.size) {
+        const chunks = [];
+        stream.on("data", (chunk) => {
+          chunks.push(chunk instanceof Buffer ? new Uint8Array(chunk) : chunk);
+        });
+        stream.on("end", async () => {
+          try {
+            const buffer = new Uint8Array(
+              chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+            );
+            let offset = 0;
+            for (const chunk of chunks) {
+              buffer.set(chunk, offset);
+              offset += chunk.length;
+            }
+            const content = new TextDecoder().decode(buffer);
+            await onFile({
+              path: header.name,
+              content,
+              size: header.size
+            });
+          } catch (error) {
+            console.error(`Error processing ${header.name}:`, error);
+          }
+          next();
+        });
+      } else {
+        stream.on("end", next);
+        stream.resume();
+      }
+      stream.on("error", (error) => {
+        console.error(`Stream error for ${header.name}:`, error);
+        next();
+      });
+    }
+  );
+  const nodeStream = createNodeStreamAdapter(decompressed);
+  nodeStream.pipe(tarExtractor);
+  return new Promise((resolve, reject) => {
+    tarExtractor.on("finish", resolve);
+    tarExtractor.on("error", reject);
+    nodeStream.on("error", reject);
+  });
+}
+const workerExample = `
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { owner, repo, ref = 'main' } = await request.json();
+    
+    const files: Array<{ path: string; size: number }> = [];
+    
+    await fetchGitHubTarball({
+      owner,
+      repo,
+      ref,
+      extensions: ['.ts', '.js', '.py', '.md']
+    }, async (file) => {
+      files.push({ path: file.path, size: file.size });
+      // Process file: store in R2, convert to markdown, etc.
+    });
+    
+    return Response.json({ 
+      message: 'Extraction complete',
+      fileCount: files.length,
+      files: files.slice(0, 10) // First 10 files
+    });
+  }
+};
+`;
+
 var codegen_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
 
 Your task is to write code according to my instructions for the current codebase.
@@ -1140,4 +1276,4 @@ const prompts = {
   testgen: testgen_default
 };
 
-export { FetchResultImpl, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, fix_default as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, testgen_default as testgenPrompt };
+export { FetchResultImpl, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, fetchGitHubTarball, fix_default as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, workerExample as gitHubTarballExample, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, testgen_default as testgenPrompt };

@@ -88,7 +88,7 @@ class TarStreamParser {
     if (!name) return null;
 
     const sizeStr = this.readString(block, 124, 12);
-    const size = parseInt(sizeStr, 8); // Octal
+    const size = Number.parseInt(sizeStr, 8); // Octal
 
     const typeFlag = String.fromCharCode(block[156]);
 

@@ -195,6 +195,58 @@ interface HtmlToMarkdownOptions {
  */
 declare function htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string;
 
+/**
+ * GitHub Tarball extraction for Cloudflare Workers
+ * Uses native DecompressionStream (no nodejs_compat needed)
+ *
+ * This demonstrates the optimal pattern for extracting GitHub tarballs in Workers:
+ * - DecompressionStream for gzip (0 KB extra, native runtime support)
+ * - tar-stream for parsing (works with adapters)
+ * - Streaming processing (stays under 128 MB limit)
+ */
+/**
+ * Configuration for GitHub tarball fetching
+ */
+interface GitHubTarballConfig {
+    owner: string;
+    repo: string;
+    ref?: string;
+    /** File extensions to process */
+    extensions?: string[];
+    /** Maximum file size to process (default: 512KB) */
+    maxFileSize?: number;
+}
+/**
+ * File handler callback
+ */
+type FileHandler = (file: {
+    path: string;
+    content: string;
+    size: number;
+}) => Promise<void> | void;
+/**
+ * Fetch and extract files from a GitHub repository tarball
+ *
+ * @example
+ * ```ts
+ * const files = [];
+ * await fetchGitHubTarball({
+ *   owner: 'microsoft',
+ *   repo: 'vscode',
+ *   ref: 'main',
+ *   extensions: ['.ts', '.js', '.json', '.md']
+ * }, async (file) => {
+ *   files.push(file);
+ *   // Or store in R2, convert to markdown, etc.
+ * });
+ * ```
+ */
+declare function fetchGitHubTarball(config: GitHubTarballConfig, onFile: FileHandler): Promise<void>;
+/**
+ * Minimal Cloudflare Worker example
+ */
+declare const workerExample = "\nexport default {\n  async fetch(request: Request): Promise<Response> {\n    const { owner, repo, ref = 'main' } = await request.json();\n    \n    const files: Array<{ path: string; size: number }> = [];\n    \n    await fetchGitHubTarball({\n      owner,\n      repo,\n      ref,\n      extensions: ['.ts', '.js', '.py', '.md']\n    }, async (file) => {\n      files.push({ path: file.path, size: file.size });\n      // Process file: store in R2, convert to markdown, etc.\n    });\n    \n    return Response.json({ \n      message: 'Extraction complete',\n      fileCount: files.length,\n      files: files.slice(0, 10) // First 10 files\n    });\n  }\n};\n";
+
 declare const _default$3: "You are a senior developer. You produce optimized, maintainable code that follows best practices. \n\nYour task is to write code according to my instructions for the current codebase.\n\ninstructions:\n<message>\n{{MESSAGE}}\n</message>\n\nRules:\n- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. \n- Your output should be a series of specific, actionable changes.\n\nWhen approaching this task:\n1. Carefully review the provided code.\n2. Identify the area thats raising this issue or error and provide a fix.\n3. Consider best practices for the specific programming language used.\n\nFor each suggested change, provide:\n1. A short description of the change (one line maximum).\n2. The modified code block.\n\nUse the following format for your output:\n\n[Short Description]\n```[language]:[path/to/file]\n[code block]\n```\n\nBegin fixing the codebase provide your solutions.\n\nMy current codebase:\n<current_codebase>\n{{CURRENT_CODEBASE}}\n</current_codebase>\n";
 
 declare const _default$2: "You are a senior developer. You produce optimized, maintainable code that follows best practices. \n\nYour task is to review the current codebase and fix the current issues.\n\nCurrent Issue:\n<issue>\n{{MESSAGE}}\n</issue>\n\nRules:\n- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. \n- Your output should be a series of specific, actionable changes.\n\nWhen approaching this task:\n1. Carefully review the provided code.\n2. Identify the area thats raising this issue or error and provide a fix.\n3. Consider best practices for the specific programming language used.\n\nFor each suggested change, provide:\n1. A short description of the change (one line maximum).\n2. The modified code block.\n\nUse the following format for your output:\n\n[Short Description]\n```[language]:[path/to/file]\n[code block]\n```\n\nBegin fixing the codebase provide your solutions.\n\nMy current codebase:\n<current_codebase>\n{{CURRENT_CODEBASE}}\n</current_codebase>\n";
@@ -223,4 +275,4 @@ declare const isCloudflareWorker: boolean;
  */
 declare const getCacheSizeLimit: () => number;
 
-export { type CodefetchConfig$1 as CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };
+export { type CodefetchConfig$1 as CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileHandler, type FileNode, type GitHubTarballConfig, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, fetchGitHubTarball, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, workerExample as gitHubTarballExample, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };

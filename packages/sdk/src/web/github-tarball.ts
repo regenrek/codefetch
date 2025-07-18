@@ -231,8 +231,8 @@ export async function streamGitHubTarball(
 export async function streamGitHubTarballWithLibrary(
   owner: string,
   repo: string,
-  ref: string = "HEAD",
-  options: {
+  _ref: string = "HEAD",
+  _options: {
     token?: string;
     extensions?: string[];
     excludeDirs?: string[];

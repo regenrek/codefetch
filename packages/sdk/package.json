@@ -102,6 +102,7 @@
     "tar@latest": "link:jsr:@std/tar@latest"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250718.0",
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
     "eslint": "^9.18.0",

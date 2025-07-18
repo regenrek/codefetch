@@ -709,7 +709,7 @@ class WorkerWebCache {
   }
 }
 
-const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
+const isCloudflareWorker = globalThis.WebSocketPair !== undefined && !("__dirname" in globalThis);
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -764,7 +764,7 @@ class TarStreamParser {
     if (!name) return null;
     const sizeStr = this.readString(block, 124, 12);
     const size = Number.parseInt(sizeStr, 8);
-    const typeFlag = String.fromCharCode(block[156]);
+    const typeFlag = String.fromCodePoint(block[156]);
     return {
       name: name.replace(/\0+$/, ""),
       // Remove null padding

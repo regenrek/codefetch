@@ -248,7 +248,7 @@ function isIPv4(str) {
   if (parts.length !== 4) return false;
   return parts.every((part) => {
     const num = Number.parseInt(part, 10);
-    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
+    return !Number.isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
   });
 }
 function isIPv6(str) {
@@ -564,7 +564,7 @@ class TarStreamParser {
     if (!name) return null;
     const sizeStr = this.readString(block, 124, 12);
     const size = Number.parseInt(sizeStr, 8);
-    const typeFlag = String.fromCharCode(block[156]);
+    const typeFlag = String.fromCodePoint(block[156]);
     return {
       name: name.replace(/\0+$/, ""),
       // Remove null padding
@@ -648,6 +648,11 @@ async function streamGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
   }
   return files;
 }
+
+const githubTarball = {
+  __proto__: null,
+  streamGitHubTarball: streamGitHubTarball
+};
 
 class FetchResultImpl {
   constructor(root, metadata) {
@@ -919,74 +924,10 @@ function sortTreeChildren(node) {
   }
 }
 
-function htmlToMarkdown(html, options = {}) {
-  const {
-    includeUrls = true,
-    preserveWhitespace = false,
-    customReplacements = []
-  } = options;
-  let markdown = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
-  for (const { pattern, replacement } of customReplacements) {
-    markdown = markdown.replace(pattern, replacement);
-  }
-  markdown = markdown.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'");
-  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n");
-  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n");
-  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n");
-  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, "#### $1\n\n");
-  markdown = markdown.replace(/<h5[^>]*>(.*?)<\/h5>/gi, "##### $1\n\n");
-  markdown = markdown.replace(/<h6[^>]*>(.*?)<\/h6>/gi, "###### $1\n\n");
-  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**");
-  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**");
-  markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*");
-  markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*");
-  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`");
-  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, (match, content) => {
-    const cleanContent = content.replace(/<[^>]+>/g, "").replace(/^\n+|\n+$/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-    return "\n```\n" + cleanContent + "\n```\n\n";
-  });
-  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
-    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
-    return "\n" + items.map((item) => {
-      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
-      return "- " + text;
-    }).join("\n") + "\n\n";
-  });
-  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
-    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
-    return "\n" + items.map((item, index) => {
-      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
-      return `${index + 1}. ${text}`;
-    }).join("\n") + "\n\n";
-  });
-  markdown = includeUrls ? markdown.replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)") : markdown.replace(/<a[^>]+href="[^"]*"[^>]*>(.*?)<\/a>/gi, "$1");
-  markdown = markdown.replace(
-    /<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi,
-    "![$1]($2)"
-  );
-  markdown = markdown.replace(
-    /<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi,
-    "![$2]($1)"
-  );
-  markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, "![]($1)");
-  markdown = markdown.replace(
-    /<blockquote[^>]*>(.*?)<\/blockquote>/gis,
-    (match, content) => {
-      const lines = content.trim().split("\n");
-      return "\n" + lines.map((line) => "> " + line.trim()).join("\n") + "\n\n";
-    }
-  );
-  markdown = markdown.replace(/<hr[^>]*>/gi, "\n---\n\n");
-  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, "$1\n\n");
-  markdown = markdown.replace(/<br[^>]*>/gi, "\n");
-  markdown = markdown.replace(/<[^>]+>/g, "");
-  if (!preserveWhitespace) {
-    markdown = markdown.replace(/\r\n/g, "\n");
-    markdown = markdown.replace(/\n{3,}/g, "\n\n");
-    markdown = markdown.trim();
-  }
-  return markdown;
-}
+const sdkWebFetchWorker = {
+  __proto__: null,
+  fetchFromWebWorker: fetchFromWebWorker
+};
 
 var codegen_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
 
@@ -1140,4 +1081,939 @@ const prompts = {
   testgen: testgen_default
 };
 
-export { FetchResultImpl, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, fix_default as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, streamGitHubTarball, testgen_default as testgenPrompt };
+function filesToTree(files) {
+  const root = {
+    name: "root",
+    path: "",
+    type: "directory",
+    children: []
+  };
+  for (const file of files) {
+    const parts = file.path.split("/");
+    let currentNode = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const dirName = parts[i];
+      let childNode = currentNode.children?.find(
+        (child) => child.name === dirName && child.type === "directory"
+      );
+      if (!childNode) {
+        childNode = {
+          name: dirName,
+          path: parts.slice(0, i + 1).join("/"),
+          type: "directory",
+          children: []
+        };
+        if (!currentNode.children) currentNode.children = [];
+        currentNode.children.push(childNode);
+      }
+      currentNode = childNode;
+    }
+    const fileName = parts.at(-1) || "";
+    const fileNode = {
+      name: fileName,
+      path: file.path,
+      type: "file",
+      content: file.content,
+      size: file.content.length,
+      language: file.language,
+      // Will be added when we update FileContent type
+      tokens: file.tokens
+    };
+    if (!currentNode.children) currentNode.children = [];
+    currentNode.children.push(fileNode);
+  }
+  return root;
+}
+function treeToFiles(root) {
+  const files = [];
+  function traverse(node) {
+    if (node.type === "file" && node.content !== void 0) {
+      files.push({
+        path: node.path,
+        content: node.content
+      });
+    } else if (node.type === "directory" && node.children) {
+      for (const child of node.children) {
+        traverse(child);
+      }
+    }
+  }
+  traverse(root);
+  return files;
+}
+function findNodeByPath(root, path) {
+  if (path === "" || path === root.path) return root;
+  const parts = path.split("/");
+  let currentNode = root;
+  for (const part of parts) {
+    if (!currentNode.children) return null;
+    const childNode = currentNode.children.find((child) => child.name === part);
+    if (!childNode) return null;
+    currentNode = childNode;
+  }
+  return currentNode;
+}
+function walkTree(root, callback, depth = 0) {
+  callback(root, depth);
+  if (root.children) {
+    for (const child of root.children) {
+      walkTree(child, callback, depth + 1);
+    }
+  }
+}
+function calculateTreeMetrics(root) {
+  let totalFiles = 0;
+  let totalSize = 0;
+  let totalTokens = 0;
+  walkTree(root, (node) => {
+    if (node.type === "file") {
+      totalFiles++;
+      totalSize += node.size || 0;
+      totalTokens += node.tokens || 0;
+    }
+  });
+  return { totalFiles, totalSize, totalTokens };
+}
+function sortTree(root) {
+  const sortedRoot = { ...root };
+  if (sortedRoot.children) {
+    sortedRoot.children = [...sortedRoot.children].sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === "directory" ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    sortedRoot.children = sortedRoot.children.map(
+      (child) => child.type === "directory" ? sortTree(child) : child
+    );
+  }
+  return sortedRoot;
+}
+function filterTree(root, predicate) {
+  if (!predicate(root)) return null;
+  const filteredRoot = { ...root };
+  if (filteredRoot.children) {
+    filteredRoot.children = filteredRoot.children.map((child) => filterTree(child, predicate)).filter((child) => child !== null);
+    if (filteredRoot.type === "directory" && filteredRoot.children.length === 0) {
+      return null;
+    }
+  }
+  return filteredRoot;
+}
+
+class CodefetchError extends Error {
+  constructor(message, code) {
+    super(message);
+    this.code = code;
+    this.name = "CodefetchError";
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
+class GitHubError extends CodefetchError {
+  constructor(message, status, rateLimitRemaining, rateLimitReset) {
+    super(message, "GITHUB_ERROR");
+    this.status = status;
+    this.rateLimitRemaining = rateLimitRemaining;
+    this.rateLimitReset = rateLimitReset;
+    this.name = "GitHubError";
+  }
+}
+class TokenLimitError extends CodefetchError {
+  constructor(limit, used, files) {
+    super(`Token limit exceeded: ${used}/${limit} tokens used`, "TOKEN_LIMIT");
+    this.limit = limit;
+    this.used = used;
+    this.files = files;
+    this.name = "TokenLimitError";
+  }
+}
+class ParseError extends CodefetchError {
+  constructor(message, filePath, line, column) {
+    super(message, "PARSE_ERROR");
+    this.filePath = filePath;
+    this.line = line;
+    this.column = column;
+    this.name = "ParseError";
+  }
+}
+class NetworkError extends CodefetchError {
+  constructor(message, url, cause) {
+    super(message, "NETWORK_ERROR");
+    this.url = url;
+    this.cause = cause;
+    this.name = "NetworkError";
+  }
+}
+class ConfigError extends CodefetchError {
+  constructor(message, configPath, invalidField) {
+    super(message, "CONFIG_ERROR");
+    this.configPath = configPath;
+    this.invalidField = invalidField;
+    this.name = "ConfigError";
+  }
+}
+class CacheError extends CodefetchError {
+  constructor(message, operation, key) {
+    super(message, "CACHE_ERROR");
+    this.operation = operation;
+    this.key = key;
+    this.name = "CacheError";
+  }
+}
+class URLValidationError extends CodefetchError {
+  constructor(message, url, reason) {
+    super(message, "URL_VALIDATION_ERROR");
+    this.url = url;
+    this.reason = reason;
+    this.name = "URLValidationError";
+  }
+}
+function isCodefetchError(error) {
+  return error instanceof CodefetchError;
+}
+function isGitHubError(error) {
+  return error instanceof GitHubError;
+}
+function isTokenLimitError(error) {
+  return error instanceof TokenLimitError;
+}
+function wrapError(error, code = "UNKNOWN_ERROR") {
+  if (error instanceof CodefetchError) {
+    return error;
+  }
+  if (error instanceof Error) {
+    const wrappedError = new CodefetchError(error.message, code);
+    wrappedError.stack = error.stack;
+    return wrappedError;
+  }
+  return new CodefetchError(String(error), code);
+}
+
+async function* streamGitHubFiles(owner, repo, options) {
+  const { streamGitHubTarball } = await Promise.resolve().then(function () { return githubTarball; });
+  const branch = options?.branch || "main";
+  const extensions = options?.extensions || [];
+  const excludeDirs = options?.excludeDirs || [];
+  const files = await streamGitHubTarball(owner, repo, branch, {
+    token: options?.token,
+    extensions,
+    excludeDirs
+  });
+  let totalTokens = 0;
+  const maxTokens = options?.maxTokens || Infinity;
+  const tokenEncoder = options?.tokenEncoder || "cl100k";
+  for (const file of files) {
+    const fileTokens = await countTokens(file.content || "", tokenEncoder);
+    if (totalTokens + fileTokens > maxTokens) {
+      break;
+    }
+    totalTokens += fileTokens;
+    yield {
+      path: file.path,
+      content: file.content || "",
+      language: detectLanguage(file.path),
+      size: file.content?.length || 0,
+      tokens: fileTokens
+    };
+  }
+}
+function createMarkdownStream(files, options) {
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        const header = `# Code Repository
+
+`;
+        controller.enqueue(header);
+        if (options?.includeTreeStructure) {
+          const treeHeader = `## Project Structure
+
+\`\`\`
+`;
+          controller.enqueue(treeHeader);
+          const paths = [];
+          const fileArray = [];
+          for await (const file of files) {
+            paths.push(file.path);
+            fileArray.push(file);
+          }
+          const tree = generateTreeStructure(paths);
+          controller.enqueue(tree);
+          controller.enqueue("\n```\n\n");
+          files = async function* () {
+            for (const file of fileArray) {
+              yield file;
+            }
+          }();
+        }
+        const filesHeader = `## Files
+
+`;
+        controller.enqueue(filesHeader);
+        for await (const file of files) {
+          const fileHeader = `### ${file.path}
+
+`;
+          controller.enqueue(fileHeader);
+          const language = file.language || "text";
+          const codeBlock = `\`\`\`${language}
+${options?.disableLineNumbers ? file.content : addLineNumbers(file.content)}
+\`\`\`
+
+`;
+          controller.enqueue(codeBlock);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    }
+  });
+}
+function createTransformStream(transform) {
+  return new TransformStream({
+    async transform(file, controller) {
+      try {
+        const result = await transform(file);
+        controller.enqueue(result);
+      } catch (error) {
+        controller.error(error);
+      }
+    }
+  });
+}
+async function collectStream(stream) {
+  const results = [];
+  for await (const item of stream) {
+    results.push(item);
+  }
+  return results;
+}
+async function* filterStream(stream, predicate) {
+  for await (const item of stream) {
+    if (await predicate(item)) {
+      yield item;
+    }
+  }
+}
+async function* mapStream(stream, mapper) {
+  for await (const item of stream) {
+    yield await mapper(item);
+  }
+}
+function generateTreeStructure(paths) {
+  const tree = {};
+  for (const path of paths) {
+    const parts = path.split("/");
+    let current = tree;
+    for (const part of parts) {
+      if (!current[part]) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+  }
+  function renderTree(node, prefix = "", _isLast = true) {
+    let result = "";
+    const entries = Object.entries(node);
+    for (const [index, [name, children]] of entries.entries()) {
+      const isLastEntry = index === entries.length - 1;
+      const hasChildren = Object.keys(children).length > 0;
+      result += prefix;
+      result += isLastEntry ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
+      result += name;
+      result += hasChildren ? "/\n" : "\n";
+      if (hasChildren) {
+        const newPrefix = prefix + (isLastEntry ? "    " : "\u2502   ");
+        result += renderTree(children, newPrefix, isLastEntry);
+      }
+    }
+    return result;
+  }
+  return renderTree(tree);
+}
+function addLineNumbers(content) {
+  const lines = content.split("\n");
+  const padLength = String(lines.length).length;
+  return lines.map((line, index) => {
+    const lineNum = String(index + 1).padStart(padLength, " ");
+    return `${lineNum} | ${line}`;
+  }).join("\n");
+}
+
+function htmlToMarkdown(html, options = {}) {
+  const {
+    includeUrls = true,
+    preserveWhitespace = false,
+    customReplacements = []
+  } = options;
+  let markdown = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "").replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  for (const { pattern, replacement } of customReplacements) {
+    markdown = markdown.replace(pattern, replacement);
+  }
+  markdown = markdown.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'");
+  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n");
+  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n");
+  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n");
+  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, "#### $1\n\n");
+  markdown = markdown.replace(/<h5[^>]*>(.*?)<\/h5>/gi, "##### $1\n\n");
+  markdown = markdown.replace(/<h6[^>]*>(.*?)<\/h6>/gi, "###### $1\n\n");
+  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**");
+  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**");
+  markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*");
+  markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*");
+  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`");
+  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, (match, content) => {
+    const cleanContent = content.replace(/<[^>]+>/g, "").replace(/^\n+|\n+$/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+    return "\n```\n" + cleanContent + "\n```\n\n";
+  });
+  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
+    return "\n" + items.map((item) => {
+      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
+      return "- " + text;
+    }).join("\n") + "\n\n";
+  });
+  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+    const items = content.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
+    return "\n" + items.map((item, index) => {
+      const text = item.replace(/<\/?li[^>]*>/gi, "").trim();
+      return `${index + 1}. ${text}`;
+    }).join("\n") + "\n\n";
+  });
+  markdown = includeUrls ? markdown.replace(/<a[^>]+href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)") : markdown.replace(/<a[^>]+href="[^"]*"[^>]*>(.*?)<\/a>/gi, "$1");
+  markdown = markdown.replace(
+    /<img[^>]+alt="([^"]*)"[^>]+src="([^"]*)"[^>]*>/gi,
+    "![$1]($2)"
+  );
+  markdown = markdown.replace(
+    /<img[^>]+src="([^"]*)"[^>]+alt="([^"]*)"[^>]*>/gi,
+    "![$2]($1)"
+  );
+  markdown = markdown.replace(/<img[^>]+src="([^"]*)"[^>]*>/gi, "![]($1)");
+  markdown = markdown.replace(
+    /<blockquote[^>]*>(.*?)<\/blockquote>/gis,
+    (match, content) => {
+      const lines = content.trim().split("\n");
+      return "\n" + lines.map((line) => "> " + line.trim()).join("\n") + "\n\n";
+    }
+  );
+  markdown = markdown.replace(/<hr[^>]*>/gi, "\n---\n\n");
+  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, "$1\n\n");
+  markdown = markdown.replace(/<br[^>]*>/gi, "\n");
+  markdown = markdown.replace(/<[^>]+>/g, "");
+  if (!preserveWhitespace) {
+    markdown = markdown.replace(/\r\n/g, "\n");
+    markdown = markdown.replace(/\n{3,}/g, "\n\n");
+    markdown = markdown.trim();
+  }
+  return markdown;
+}
+
+async function fetchFromWebCached(source, options, cacheStorage) {
+  const cacheOptions = options?.cache;
+  if (!cacheStorage || cacheOptions?.cacheBehavior === "no-cache") {
+    return fetchFromWebWorker(source, options);
+  }
+  const cacheKey = cacheOptions?.cacheKey || generateCacheKey(source, options);
+  if (cacheOptions?.cacheBehavior !== "force-cache") {
+    try {
+      const cached = await getFromCache(cacheStorage, cacheKey);
+      if (cached) {
+        return cached;
+      }
+    } catch (error) {
+      console.warn("Cache read error:", error);
+    }
+  }
+  try {
+    const result = await fetchFromWebWorker(source, options);
+    if (cacheStorage) {
+      try {
+        await storeInCache(
+          cacheStorage,
+          cacheKey,
+          result,
+          cacheOptions?.ttl || 3600
+        );
+      } catch (error) {
+        console.warn("Cache write error:", error);
+      }
+    }
+    return result;
+  } catch (error) {
+    if (cacheOptions?.cacheBehavior === "force-cache" && cacheStorage) {
+      const cached = await getFromCache(cacheStorage, cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+    throw error;
+  }
+}
+async function getFromCache(cacheStorage, key) {
+  if (cacheStorage.type === "cache-api") {
+    const cache = cacheStorage.instance;
+    const response = await cache.match(key);
+    if (!response) return null;
+    const expiresHeader = response.headers.get("expires");
+    if (expiresHeader) {
+      const expires = new Date(expiresHeader);
+      if (expires < /* @__PURE__ */ new Date()) {
+        await cache.delete(key);
+        return null;
+      }
+    }
+    const contentType = response.headers.get("content-type");
+    return contentType?.includes("application/json") ? response.json() : response.text();
+  } else {
+    const kv = cacheStorage.instance;
+    const data = await kv.get(key, "json");
+    if (!data) return null;
+    const metadata = await kv.getWithMetadata(key);
+    if (metadata.metadata && typeof metadata.metadata === "object" && "expires" in metadata.metadata) {
+      const expires = new Date(metadata.metadata.expires);
+      if (expires < /* @__PURE__ */ new Date()) {
+        await kv.delete(key);
+        return null;
+      }
+    }
+    return data;
+  }
+}
+async function storeInCache(cacheStorage, key, data, ttl) {
+  const expires = new Date(Date.now() + ttl * 1e3);
+  if (cacheStorage.type === "cache-api") {
+    const cache = cacheStorage.instance;
+    const headers = new Headers({
+      "content-type": typeof data === "string" ? "text/plain" : "application/json",
+      expires: expires.toUTCString(),
+      "cache-control": `public, max-age=${ttl}`
+    });
+    const response = new Response(
+      typeof data === "string" ? data : JSON.stringify(data),
+      { headers }
+    );
+    await cache.put(key, response);
+  } else {
+    const kv = cacheStorage.instance;
+    await kv.put(key, JSON.stringify(data), {
+      expirationTtl: ttl,
+      metadata: { expires: expires.toISOString() }
+    });
+  }
+}
+async function deleteFromCache(cacheStorage, key) {
+  try {
+    if (cacheStorage.type === "cache-api") {
+      const cache = cacheStorage.instance;
+      return cache.delete(key);
+    } else {
+      const kv = cacheStorage.instance;
+      await kv.delete(key);
+      return true;
+    }
+  } catch (error) {
+    throw new CacheError(
+      `Failed to delete from cache: ${error}`,
+      "delete",
+      key
+    );
+  }
+}
+async function clearCache(cacheStorage, pattern) {
+  let cleared = 0;
+  try {
+    if (cacheStorage.type === "cache-api") {
+      const _cache = cacheStorage.instance;
+      throw new Error("Pattern-based clearing not supported for Cache API");
+    } else {
+      const kv = cacheStorage.instance;
+      const list = await kv.list({ prefix: pattern });
+      for (const key of list.keys) {
+        await kv.delete(key.name);
+        cleared++;
+      }
+    }
+    return cleared;
+  } catch (error) {
+    throw new CacheError(`Failed to clear cache: ${error}`, "delete");
+  }
+}
+function generateCacheKey(url, options) {
+  const parts = [url];
+  if (options) {
+    if (options.format) parts.push(`format:${options.format}`);
+    if (options.maxTokens) parts.push(`tokens:${options.maxTokens}`);
+    if (options.tokenEncoder) parts.push(`encoder:${options.tokenEncoder}`);
+    if (options.extensions?.length) {
+      parts.push(`ext:${options.extensions.sort().join(",")}`);
+    }
+    if (options.excludeDirs?.length) {
+      parts.push(`exclude:${options.excludeDirs.sort().join(",")}`);
+    }
+  }
+  return `codefetch:${hashString(parts.join("|"))}`;
+}
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.codePointAt(i) || 0;
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+function createCacheStorage(cacheOrKV) {
+  if ("get" in cacheOrKV && "put" in cacheOrKV) {
+    return {
+      type: "kv",
+      instance: cacheOrKV
+    };
+  }
+  return {
+    type: "cache-api",
+    instance: cacheOrKV
+  };
+}
+function withCache(fn, getCacheKey, ttl = 3600) {
+  return async (...args) => {
+    const cacheKey = getCacheKey(...args);
+    if (globalThis.caches) {
+      const cache = await globalThis.caches.open("codefetch");
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        return cached.json();
+      }
+    }
+    const result = await fn(...args);
+    if (globalThis.caches) {
+      const cache = await globalThis.caches.open("codefetch");
+      const response = new Response(JSON.stringify(result), {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": `public, max-age=${ttl}`
+        }
+      });
+      await cache.put(cacheKey, response);
+    }
+    return result;
+  };
+}
+
+function migrateFromV1(oldResult) {
+  const convertNode = (node) => {
+    return node.type === "file" ? {
+      name: node.name || node.path?.split("/").pop() || "",
+      path: node.path || "",
+      type: "file",
+      content: node.content || "",
+      language: node.language,
+      size: node.size ?? node.content?.length ?? 0,
+      tokens: node.tokens
+    } : {
+      name: node.name || "root",
+      path: node.path || "",
+      type: "directory",
+      children: node.children?.map(convertNode) || []
+    };
+  };
+  const root = convertNode(oldResult.root);
+  let metadata = oldResult.metadata;
+  if (!metadata) {
+    let totalFiles = 0;
+    let totalSize = 0;
+    let totalTokens = 0;
+    const countFiles = (node) => {
+      if (node.type === "file") {
+        totalFiles++;
+        totalSize += node.size || 0;
+        totalTokens += node.tokens || 0;
+      } else if (node.children) {
+        for (const child of node.children) {
+          countFiles(child);
+        }
+      }
+    };
+    countFiles(root);
+    metadata = {
+      totalFiles,
+      totalSize,
+      totalTokens,
+      fetchedAt: /* @__PURE__ */ new Date(),
+      source: oldResult.url || "unknown"
+    };
+  }
+  return {
+    root,
+    metadata
+  };
+}
+const compat = {
+  /**
+   * Legacy FetchResultImpl that maintains backward compatibility
+   */
+  FetchResultImpl: class LegacyFetchResultImpl {
+    root;
+    url;
+    result;
+    constructor(root, urlOrMetadata) {
+      if (typeof urlOrMetadata === "string") {
+        this.root = root;
+        this.url = urlOrMetadata;
+        this.result = {
+          root,
+          metadata: {
+            totalFiles: 0,
+            totalSize: 0,
+            totalTokens: 0,
+            fetchedAt: /* @__PURE__ */ new Date(),
+            source: urlOrMetadata
+          }
+        };
+      } else {
+        this.root = root;
+        this.url = urlOrMetadata?.source || "unknown";
+        this.result = {
+          root,
+          metadata: urlOrMetadata
+        };
+      }
+    }
+    /**
+     * Legacy toMarkdown method
+     */
+    async toMarkdown() {
+      const files = treeToFiles(this.root);
+      return generateMarkdownFromContent(files, {
+        includeTreeStructure: true
+      });
+    }
+    /**
+     * Get the modern FetchResult
+     */
+    toFetchResult() {
+      return this.result;
+    }
+  },
+  /**
+   * Legacy function signatures
+   */
+  async fetchFromWeb(url, options) {
+    const { fetchFromWebWorker } = await Promise.resolve().then(function () { return sdkWebFetchWorker; });
+    const result = await fetchFromWebWorker(url, options);
+    if (options?.legacyFormat && typeof result !== "string") {
+      return new this.FetchResultImpl(result.root, result.metadata);
+    }
+    return result;
+  },
+  /**
+   * Convert between old and new file formats
+   */
+  convertFileFormat(oldFile) {
+    return {
+      path: oldFile.path || oldFile.filePath || "",
+      content: oldFile.content || oldFile.text || "",
+      language: oldFile.language || oldFile.lang,
+      size: oldFile.size ?? oldFile.length ?? void 0,
+      tokens: oldFile.tokens || oldFile.tokenCount
+    };
+  },
+  /**
+   * Convert old options to new format
+   */
+  convertOptions(oldOptions) {
+    const newOptions = {};
+    const optionMap = {
+      includeOnly: "extensions",
+      excludePaths: "excludeDirs",
+      tokenLimit: "maxTokens",
+      encoder: "tokenEncoder",
+      outputFormat: "format",
+      treeDepth: "projectTree"
+    };
+    for (const [oldKey, newKey] of Object.entries(optionMap)) {
+      if (oldOptions[oldKey] !== void 0) {
+        newOptions[newKey] = oldOptions[oldKey];
+      }
+    }
+    const unchangedOptions = [
+      "verbose",
+      "dryRun",
+      "disableLineNumbers",
+      "defaultIgnore",
+      "gitignore"
+    ];
+    for (const key of unchangedOptions) {
+      if (oldOptions[key] !== void 0) {
+        newOptions[key] = oldOptions[key];
+      }
+    }
+    return newOptions;
+  }
+};
+function generateMigrationGuide(fromVersion, toVersion) {
+  const guides = {
+    "1.0-to-2.0": `
+# Migration Guide: v1.0 to v2.0
+
+## Breaking Changes
+
+### 1. Import paths changed:
+\`\`\`javascript
+// Old
+import { FetchResultImpl } from 'codefetch-sdk';
+
+// New
+import { FetchResultImpl } from 'codefetch-sdk/worker';
+\`\`\`
+
+### 2. Constructor signature changed:
+\`\`\`javascript
+// Old
+const result = new FetchResultImpl(root, url);
+
+// New
+const result = new FetchResultImpl(root, metadata);
+\`\`\`
+
+### 3. Options renamed:
+- \`includeOnly\` \u2192 \`extensions\`
+- \`excludePaths\` \u2192 \`excludeDirs\`
+- \`tokenLimit\` \u2192 \`maxTokens\`
+
+## Using the compatibility layer:
+
+\`\`\`javascript
+import { compat } from 'codefetch-sdk/migration';
+
+// Use old API with compatibility layer
+const result = new compat.FetchResultImpl(root, url);
+const markdown = result.toMarkdown();
+\`\`\`
+`
+  };
+  const key = `${fromVersion}-to-${toVersion}`;
+  return guides[key] || `No migration guide available for ${fromVersion} to ${toVersion}`;
+}
+function needsMigration(code) {
+  const issues = [];
+  const suggestions = [];
+  if (code.includes("from 'codefetch-sdk'") && !code.includes("/worker")) {
+    issues.push("Using old import path");
+    suggestions.push("Change imports to 'codefetch-sdk/worker'");
+  }
+  if (code.includes("new FetchResultImpl") && code.includes(", url")) {
+    issues.push("Using old FetchResultImpl constructor");
+    suggestions.push("Update to new constructor with metadata object");
+  }
+  const oldOptions = ["includeOnly", "excludePaths", "tokenLimit"];
+  for (const option of oldOptions) {
+    if (code.includes(option)) {
+      issues.push(`Using deprecated option: ${option}`);
+      suggestions.push(`Rename according to migration guide`);
+    }
+  }
+  return {
+    needsMigration: issues.length > 0,
+    issues,
+    suggestions
+  };
+}
+function autoMigrateCode(code) {
+  let migrated = code;
+  migrated = migrated.replace(
+    /from ['"]codefetch-sdk['"]/g,
+    "from 'codefetch-sdk/worker'"
+  );
+  const replacements = {
+    includeOnly: "extensions",
+    excludePaths: "excludeDirs",
+    tokenLimit: "maxTokens",
+    encoder: "tokenEncoder",
+    outputFormat: "format"
+  };
+  for (const [old, newName] of Object.entries(replacements)) {
+    const regex = new RegExp(`\\b${old}\\b`, "g");
+    migrated = migrated.replace(regex, newName);
+  }
+  return migrated;
+}
+
+function isValidGitHubUrl(url) {
+  const pattern = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(?:\/.*)?$/;
+  return pattern.test(url);
+}
+function isValidRepoPath(path) {
+  const pattern = /^[\w-]+\/[\w.-]+$/;
+  return pattern.test(path);
+}
+function isValidGitHubToken(token) {
+  const patterns = [
+    /^[a-f0-9]{40}$/,
+    // Classic token
+    /^ghp_[a-zA-Z0-9]{36}$/,
+    // Fine-grained personal access token
+    /^ghs_[a-zA-Z0-9]{36}$/,
+    // GitHub App installation access token
+    /^gho_[a-zA-Z0-9]{36}$/
+    // OAuth access token
+  ];
+  return patterns.some((pattern) => pattern.test(token));
+}
+function isValidSemVer(version) {
+  const pattern = /^\d+\.\d+\.\d+$/;
+  return pattern.test(version);
+}
+function createGitHubToken(token) {
+  if (!isValidGitHubToken(token)) {
+    throw new Error(`Invalid GitHub token format`);
+  }
+  return token;
+}
+function createRepoPath(owner, repo) {
+  const path = `${owner}/${repo}`;
+  if (!isValidRepoPath(path)) {
+    throw new Error(`Invalid repository path: ${path}`);
+  }
+  return path;
+}
+function createGitHubUrl(owner, repo) {
+  const url = `https://github.com/${owner}/${repo}`;
+  if (!isValidGitHubUrl(url)) {
+    throw new Error(`Invalid GitHub URL: ${url}`);
+  }
+  return url;
+}
+function isNotNull(value) {
+  return value !== null && value !== void 0;
+}
+function isArray(value) {
+  return Array.isArray(value);
+}
+function isObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isString(value) {
+  return typeof value === "string";
+}
+function isNumber(value) {
+  return typeof value === "number" && !Number.isNaN(value);
+}
+function assertDefined(value, message) {
+  if (value === null || value === void 0) {
+    throw new Error(message || "Value is null or undefined");
+  }
+}
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message || "Assertion failed");
+  }
+}
+function exhaustiveCheck(value) {
+  throw new Error(`Unhandled case: ${value}`);
+}
+
+export { CacheError, CodefetchError, ConfigError, FetchResultImpl, GitHubError, NetworkError, ParseError, TokenLimitError, URLValidationError, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, assert, assertDefined, autoMigrateCode, calculateTreeMetrics, clearCache, codegen_default as codegenPrompt, collectStream, compat, countTokens, createCacheStorage, createGitHubToken, createGitHubUrl, createMarkdownStream, createRepoPath, createTransformStream, deleteFromCache, detectLanguage, exhaustiveCheck, fetchFromWebWorker as fetchFromWeb, fetchFromWebCached, filesToTree, filterStream, filterTree, findNodeByPath, fix_default as fixPrompt, generateMarkdownFromContent, generateMigrationGuide, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isArray, isCloudflareWorker, isCodefetchError, isGitHubError, isNotNull, isNumber, isObject, isString, isTokenLimitError, isValidGitHubToken, isValidGitHubUrl, isValidRepoPath, isValidSemVer, mapStream, mergeWithCliArgs, migrateFromV1, needsMigration, prompts, resolveCodefetchConfig, sortTree, streamGitHubFiles, streamGitHubTarball, testgen_default as testgenPrompt, treeToFiles, walkTree, withCache, wrapError };

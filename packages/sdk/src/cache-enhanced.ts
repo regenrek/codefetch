@@ -3,6 +3,8 @@
  * Supports both Cache API and KV namespaces
  */
 
+/// <reference types="@cloudflare/workers-types" />
+
 import type { FetchResult } from "./types.js";
 import { fetchFromWebWorker } from "./web/sdk-web-fetch-worker.js";
 import type { FetchOptions } from "./fetch.js";
@@ -119,7 +121,11 @@ async function getFromCache(
 
     // Check if expired
     const metadata = await kv.getWithMetadata(key);
-    if (metadata.metadata?.expires) {
+    if (
+      metadata.metadata &&
+      typeof metadata.metadata === "object" &&
+      "expires" in metadata.metadata
+    ) {
       const expires = new Date(metadata.metadata.expires as string);
       if (expires < new Date()) {
         await kv.delete(key);
@@ -203,7 +209,7 @@ export async function clearCache(
 
   try {
     if (cacheStorage.type === "cache-api") {
-      const cache = cacheStorage.instance as Cache;
+      const _cache = cacheStorage.instance as Cache;
       // Cache API doesn't support listing, so we can't clear by pattern
       // This would need to be tracked separately
       throw new Error("Pattern-based clearing not supported for Cache API");

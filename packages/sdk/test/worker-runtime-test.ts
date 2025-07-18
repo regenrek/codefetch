@@ -3,6 +3,7 @@
  * Deploy this with: wrangler deploy test/worker-runtime-test.ts
  */
 
+// @ts-ignore - importing from built file
 import {
   fetchFromWeb,
   isCloudflareWorker,

@@ -121,6 +121,9 @@ importers:
         specifier: link:jsr:@std/tar@latest
         version: link:jsr:@std/tar@latest
     devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250718.0
+        version: 4.20250718.0
       '@types/adm-zip':
         specifier: ^0.5.7
         version: 0.5.7
@@ -224,6 +227,9 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@cloudflare/workers-types@4.20250718.0':
+    resolution: {integrity: sha512-RpYLgb81veUGtlLQINwGldsXQDcaK2/Z6QGeSq88yyd9o4tZYw7dzMu34sHgoCeb0QiPQWtetXiPf99PrIj+YQ==}
 
   '@csstools/color-helpers@5.0.2':
     resolution: {integrity: sha512-JqWH1vsgdGcw2RR6VliXXdA0/59LttzlU8UlRT/iUUsEeWfYq8I+K0yhihEUTTHLRm1EXvpsCx3083EU15ecsA==}
@@ -3507,6 +3513,8 @@ snapshots:
       '@babel/helper-validator-identifier': 7.25.9
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@cloudflare/workers-types@4.20250718.0': {}
 
   '@csstools/color-helpers@5.0.2':
     optional: true

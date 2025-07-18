@@ -148,7 +148,7 @@ async function fetchGitHubStreaming(
     `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch}...`
   );
 
-  let processed = 0;
+  let _processed = 0;
   const files = await streamGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
@@ -159,7 +159,7 @@ async function fetchGitHubStreaming(
       excludeDirs: options.excludeDirs,
       maxFiles: (options as any).maxFiles || 1000,
       onProgress: (count) => {
-        processed = count;
+        _processed = count;
         if (count % 50 === 0) {
           logger.info(`Processed ${count} files...`);
         }

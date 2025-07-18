@@ -24,9 +24,7 @@ export function migrateFromV1(oldResult: {
           type: "file",
           content: node.content || "",
           language: node.language,
-          size:
-            node.size ||
-            (node.content && node.content.length > 0 ? node.content.length : 0),
+          size: node.size ?? node.content?.length ?? 0,
           tokens: node.tokens,
         }
       : {
@@ -83,9 +81,9 @@ export const compat = {
    * Legacy FetchResultImpl that maintains backward compatibility
    */
   FetchResultImpl: class LegacyFetchResultImpl {
-    private root: FileNode;
-    private url: string;
-    private result: FetchResult;
+    root: FileNode;
+    url: string;
+    result: FetchResult;
 
     constructor(root: FileNode | any, urlOrMetadata: string | any) {
       if (typeof urlOrMetadata === "string") {
@@ -116,10 +114,9 @@ export const compat = {
     /**
      * Legacy toMarkdown method
      */
-    toMarkdown(): string {
+    async toMarkdown(): Promise<string> {
       const files = treeToFiles(this.root);
       return generateMarkdownFromContent(files, {
-        projectName: this.url,
         includeTreeStructure: true,
       });
     }
@@ -136,8 +133,10 @@ export const compat = {
    * Legacy function signatures
    */
   async fetchFromWeb(url: string, options?: any): Promise<any> {
-    const { fetchFromWeb } = await import("./web/sdk-web-fetch-worker.js");
-    const result = await fetchFromWeb(url, options);
+    const { fetchFromWebWorker } = await import(
+      "./web/sdk-web-fetch-worker.js"
+    );
+    const result = await fetchFromWebWorker(url, options);
 
     // Convert to legacy format if needed
     if (options?.legacyFormat && typeof result !== "string") {
@@ -155,7 +154,7 @@ export const compat = {
       path: oldFile.path || oldFile.filePath || "",
       content: oldFile.content || oldFile.text || "",
       language: oldFile.language || oldFile.lang,
-      size: oldFile.size || oldFile.length,
+      size: oldFile.size ?? oldFile.length ?? undefined,
       tokens: oldFile.tokens || oldFile.tokenCount,
     };
   },

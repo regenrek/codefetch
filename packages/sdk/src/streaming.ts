@@ -31,49 +31,34 @@ export async function* streamGitHubFiles(
   const extensions = options?.extensions || [];
   const excludeDirs = options?.excludeDirs || [];
 
-  // Stream the tarball
-  const fileStream = streamGitHubTarball(owner, repo, {
-    branch,
+  // Get the files from tarball
+  const files = await streamGitHubTarball(owner, repo, branch, {
     token: options?.token,
+    extensions,
+    excludeDirs,
   });
 
   let totalTokens = 0;
   const maxTokens = options?.maxTokens || Infinity;
   const tokenEncoder = options?.tokenEncoder || "cl100k";
 
-  for await (const file of fileStream) {
-    // Skip if directory
-    if (file.type === "directory") continue;
-
-    // Apply filters
-    if (extensions.length > 0) {
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!ext || !extensions.includes(ext)) continue;
-    }
-
-    if (excludeDirs.length > 0) {
-      const shouldExclude = excludeDirs.some((dir) =>
-        file.name.startsWith(dir + "/")
-      );
-      if (shouldExclude) continue;
-    }
-
+  for (const file of files) {
     // Count tokens
-    const tokens = countTokens(file.content || "", tokenEncoder);
-    if (totalTokens + tokens > maxTokens) {
+    const fileTokens = await countTokens(file.content || "", tokenEncoder);
+    if (totalTokens + fileTokens > maxTokens) {
       // Stop if we would exceed token limit
       break;
     }
 
-    totalTokens += tokens;
+    totalTokens += fileTokens;
 
     // Yield the file
     yield {
-      path: file.name,
+      path: file.path,
       content: file.content || "",
-      language: detectLanguage(file.name),
-      size: file.size,
-      tokens,
+      language: detectLanguage(file.path),
+      size: file.content?.length || 0,
+      tokens: fileTokens,
     };
   }
 }
@@ -86,19 +71,17 @@ export function createMarkdownStream(
   files: AsyncIterable<FileContent>,
   options?: MarkdownFromContentOptions
 ): ReadableStream<string> {
-  const encoder = new TextEncoder();
-
   return new ReadableStream({
     async start(controller) {
       try {
         // Write header
         const header = `# Code Repository\n\n`;
-        controller.enqueue(encoder.encode(header));
+        controller.enqueue(header);
 
         // Optionally include tree structure
         if (options?.includeTreeStructure) {
           const treeHeader = `## Project Structure\n\n\`\`\`\n`;
-          controller.enqueue(encoder.encode(treeHeader));
+          controller.enqueue(treeHeader);
 
           // Collect file paths for tree
           const paths: string[] = [];
@@ -111,20 +94,24 @@ export function createMarkdownStream(
 
           // Generate tree structure
           const tree = generateTreeStructure(paths);
-          controller.enqueue(encoder.encode(tree));
-          controller.enqueue(encoder.encode("\n```\n\n"));
+          controller.enqueue(tree);
+          controller.enqueue("\n```\n\n");
 
           // Now process the collected files
-          files = fileArray;
+          files = (async function* () {
+            for (const file of fileArray) {
+              yield file;
+            }
+          })();
         }
 
         // Stream file contents
         const filesHeader = `## Files\n\n`;
-        controller.enqueue(encoder.encode(filesHeader));
+        controller.enqueue(filesHeader);
 
         for await (const file of files) {
           const fileHeader = `### ${file.path}\n\n`;
-          controller.enqueue(encoder.encode(fileHeader));
+          controller.enqueue(fileHeader);
 
           const language = file.language || "text";
           const codeBlock = `\`\`\`${language}\n${
@@ -133,7 +120,7 @@ export function createMarkdownStream(
               : addLineNumbers(file.content)
           }\n\`\`\`\n\n`;
 
-          controller.enqueue(encoder.encode(codeBlock));
+          controller.enqueue(codeBlock);
         }
 
         controller.close();

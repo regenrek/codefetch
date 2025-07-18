@@ -11,12 +11,24 @@ interface FileNode {
     lastModified?: Date;
     children?: FileNode[];
 }
+interface PerformanceMetrics {
+    fetchDuration: number;
+    parseFiles: number;
+    tokenCountDuration: number;
+    totalDuration: number;
+    memoryUsed?: number;
+}
 interface FetchMetadata {
     totalFiles: number;
     totalSize: number;
     totalTokens: number;
     fetchedAt: Date;
     source: string;
+    gitProvider?: string;
+    gitOwner?: string;
+    gitRepo?: string;
+    gitRef?: string;
+    metrics?: PerformanceMetrics;
 }
 interface FetchResult {
     root: FileNode;
@@ -61,6 +73,11 @@ declare const SUPPORTED_MODELS: {
 interface FileContent {
     path: string;
     content: string;
+    language?: string;
+    mimeType?: string;
+    size?: number;
+    tokens?: number;
+    encoding?: string;
 }
 interface MarkdownFromContentOptions {
     maxTokens?: number;

@@ -7,7 +7,9 @@ function isIPv4(str: string): boolean {
 
   return parts.every((part) => {
     const num = Number.parseInt(part, 10);
-    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
+    return (
+      !Number.isNaN(num) && num >= 0 && num <= 255 && part === num.toString()
+    );
   });
 }
 

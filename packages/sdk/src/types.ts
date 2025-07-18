@@ -13,12 +13,25 @@ export interface FileNode {
   children?: FileNode[]; // Only for directories
 }
 
+export interface PerformanceMetrics {
+  fetchDuration: number;
+  parseFiles: number;
+  tokenCountDuration: number;
+  totalDuration: number;
+  memoryUsed?: number;
+}
+
 export interface FetchMetadata {
   totalFiles: number;
   totalSize: number;
   totalTokens: number;
   fetchedAt: Date;
   source: string; // URL or local path
+  gitProvider?: string;
+  gitOwner?: string;
+  gitRepo?: string;
+  gitRef?: string;
+  metrics?: PerformanceMetrics;
 }
 
 export interface FetchResult {

@@ -28,21 +28,116 @@ export {
 export { fetchFromWebWorker as fetchFromWeb } from "./web/sdk-web-fetch-worker.js";
 export type { WebFetchConfig, CrawlOptions, CrawlResult } from "./web/types.js";
 
+// Re-export FetchOptions from fetch.ts
+export type { FetchOptions } from "./fetch.js";
+
+// Types (Worker-safe) - Export all types that were missing
+export type {
+  FileNode,
+  FetchResult,
+  FetchMetadata,
+  PerformanceMetrics,
+  TokenEncoder,
+  TokenLimiter,
+  OutputFormat,
+} from "./types.js";
+export { FetchResultImpl } from "./fetch-result.js";
+
+// Prompt templates (Worker-safe)
+export * from "./prompts/index.js";
+
+// Tree utilities (Worker-safe)
+export {
+  filesToTree,
+  treeToFiles,
+  findNodeByPath,
+  walkTree,
+  calculateTreeMetrics,
+  sortTree,
+  filterTree,
+} from "./tree-utils.js";
+
+// Environment detection
+export { isCloudflareWorker, getCacheSizeLimit } from "./env.js";
+
+// Utility functions (Worker-safe)
+export { detectLanguage } from "./utils-browser.js";
+
+// Error classes (Worker-safe)
+export {
+  CodefetchError,
+  GitHubError,
+  TokenLimitError,
+  ParseError,
+  NetworkError,
+  ConfigError,
+  CacheError,
+  URLValidationError,
+  isCodefetchError,
+  isGitHubError,
+  isTokenLimitError,
+  wrapError,
+} from "./errors.js";
+
+// Streaming APIs (Worker-safe)
+export {
+  streamGitHubFiles,
+  createMarkdownStream,
+  createTransformStream,
+  collectStream,
+  filterStream,
+  mapStream,
+  type StreamOptions,
+} from "./streaming.js";
+
 // HTML to Markdown conversion (Worker-safe)
 export { htmlToMarkdown } from "./web/html-to-markdown.js";
 
 // GitHub tarball extraction (uses native DecompressionStream)
 export { streamGitHubTarball } from "./web/github-tarball.js";
 
-// Types (Worker-safe)
-export type { FileNode, FetchResult, FetchMetadata } from "./types.js";
-export { FetchResultImpl } from "./fetch-result.js";
+// Enhanced cache integration (Worker-safe)
+export {
+  fetchFromWebCached,
+  deleteFromCache,
+  clearCache,
+  createCacheStorage,
+  withCache,
+  type CacheOptions,
+  type CacheStorage,
+} from "./cache-enhanced.js";
 
-// Prompt templates (Worker-safe)
-export * from "./prompts/index.js";
+// Migration helpers (Worker-safe)
+export {
+  migrateFromV1,
+  compat,
+  generateMigrationGuide,
+  needsMigration,
+  autoMigrateCode,
+} from "./migration.js";
 
-// Environment detection
-export { isCloudflareWorker, getCacheSizeLimit } from "./env.js";
+// Type guards and branded types (Worker-safe)
+export {
+  isValidGitHubUrl,
+  isValidRepoPath,
+  isValidGitHubToken,
+  isValidSemVer,
+  createGitHubToken,
+  createRepoPath,
+  createGitHubUrl,
+  isNotNull,
+  isArray,
+  isObject,
+  isString,
+  isNumber,
+  assertDefined,
+  assert,
+  exhaustiveCheck,
+  type GitHubToken,
+  type RepoPath,
+  type GitHubUrl,
+  type SemVer,
+} from "./type-guards.js";
 
 // Note: The following are NOT exported as they require Node.js APIs:
 // - collectFiles (requires fs)

@@ -9,6 +9,11 @@ import type { TokenEncoder } from "./types.js";
 export interface FileContent {
   path: string;
   content: string;
+  language?: string;
+  mimeType?: string;
+  size?: number;
+  tokens?: number;
+  encoding?: string;
 }
 
 export interface MarkdownFromContentOptions {

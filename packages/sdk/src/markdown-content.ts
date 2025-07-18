@@ -117,3 +117,74 @@ export async function generateMarkdownFromContent(
 
   return markdown.trim();
 }
+
+export function createMarkdownStream(
+  files: AsyncIterable<FileContent>,
+  options: MarkdownFromContentOptions = {}
+): ReadableStream<string> {
+  const {
+    maxTokens,
+    // Note: includeTreeStructure is ignored in stream mode
+    tokenEncoder = "cl100k",
+    disableLineNumbers = false,
+  } = options;
+
+  let totalTokens = 0;
+
+  return new ReadableStream({
+    async start(controller) {
+      const enqueue = (str: string) => controller.enqueue(str);
+
+      enqueue("# File Contents\n\n");
+
+      for await (const file of files) {
+        if (maxTokens && totalTokens >= maxTokens) {
+          enqueue(
+            `\n... Remaining files truncated due to token limit (${maxTokens}) ...\n`
+          );
+          break;
+        }
+
+        const language = detectLanguage(file.path);
+        const lines = file.content.split("\n");
+        let fileMarkdown = "";
+
+        fileMarkdown += `## ${file.path}\n\n`;
+        fileMarkdown += `\`\`\`${language || ""}\n`;
+
+        if (disableLineNumbers) {
+          fileMarkdown += file.content;
+        } else {
+          const paddingWidth = Math.max(4, lines.length.toString().length + 1);
+          for (const [i, line] of lines.entries()) {
+            const lineNumber = (i + 1).toString().padStart(paddingWidth, " ");
+            fileMarkdown += `${lineNumber} ${line}\n`;
+          }
+        }
+
+        fileMarkdown += "\n```\n\n";
+
+        const fileTokens = await countTokens(fileMarkdown, tokenEncoder);
+
+        if (maxTokens && totalTokens + fileTokens > maxTokens) {
+          const excess = totalTokens + fileTokens - maxTokens;
+          const approximateCharsPerToken = 4;
+          let charsToKeep =
+            fileMarkdown.length - excess * approximateCharsPerToken;
+          charsToKeep = Math.max(0, charsToKeep);
+
+          let truncatedMarkdown = fileMarkdown.slice(0, charsToKeep);
+          truncatedMarkdown +=
+            "\n... File truncated due to token limit ...\n```\n\n";
+          enqueue(truncatedMarkdown);
+          break;
+        } else {
+          enqueue(fileMarkdown);
+          totalTokens += fileTokens;
+        }
+      }
+
+      controller.close();
+    },
+  });
+}

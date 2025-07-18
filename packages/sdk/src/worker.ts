@@ -94,7 +94,7 @@ export {
 export { htmlToMarkdown } from "./web/html-to-markdown.js";
 
 // GitHub tarball extraction (uses native DecompressionStream)
-export { streamGitHubTarball } from "./web/github-tarball.js";
+export { fetchGitHubTarball } from "./web/github-tarball.js";
 
 // Enhanced cache integration (Worker-safe)
 export {

@@ -113,13 +113,13 @@ console.log("code");
       expect(p50kCount).toBeGreaterThan(0);
     });
 
-    test("should handle invalid encoder gracefully", async () => {
-      // Test with an invalid encoder
+    test("should throw an error for invalid encoder", async () => {
       const text = "Test text";
-      const count = await countTokens(text, "invalid" as TokenEncoder);
+      const invalidEncoder = "invalid" as TokenEncoder;
 
-      // Should still work, likely using the tokenizer
-      expect(count).toBeGreaterThan(0);
+      await expect(countTokens(text, invalidEncoder)).rejects.toThrow(
+        /Unsupported token encoder/
+      );
     });
 
     test("should be consistent for repeated calls", async () => {

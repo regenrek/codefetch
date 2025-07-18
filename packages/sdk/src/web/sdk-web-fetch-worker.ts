@@ -6,7 +6,7 @@
 import { parseURL, validateURL } from "./url-handler.js";
 import { WorkerWebCache } from "./cache-worker.js";
 import { isCloudflareWorker } from "../env.js";
-import { streamGitHubTarball } from "./github-tarball.js";
+import { fetchGitHubTarball } from "./github-tarball.js";
 import type { FetchOptions } from "../fetch.js";
 import { FetchResultImpl } from "../fetch-result.js";
 import {
@@ -149,7 +149,7 @@ async function fetchGitHubStreaming(
   );
 
   let _processed = 0;
-  const files = await streamGitHubTarball(
+  const files = await fetchGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
     branch,

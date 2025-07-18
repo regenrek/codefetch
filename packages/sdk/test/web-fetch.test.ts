@@ -2,9 +2,8 @@ import { describe, test, expect, beforeEach, vi } from "vitest";
 import { fetchFromWeb } from "../src/web/sdk-web-fetch";
 import { validateURL, parseURL } from "../src/web/url-handler";
 import { htmlToMarkdown } from "../src/web/html-to-markdown";
-
-// Mock fetch globally
-globalThis.fetch = vi.fn();
+import { http, HttpResponse } from "msw";
+import { server } from "./mocks/server.js";
 
 describe("Web Fetching", () => {
   beforeEach(() => {
@@ -229,8 +228,10 @@ describe("Web Fetching", () => {
     });
 
     test("should handle fetch errors", async () => {
-      vi.mocked(globalThis.fetch).mockRejectedValueOnce(
-        new Error("Network error")
+      server.use(
+        http.get("https://example.com/*", () => {
+          return new HttpResponse(null, { status: 500 });
+        })
       );
 
       await expect(

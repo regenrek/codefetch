@@ -13,30 +13,35 @@ import {
 } from "../index.js";
 import ignore from "ignore";
 import { parseURL, validateURL, type ParsedURL } from "./url-handler.js";
-import { WebCache } from "./cache.js";
 
 import { isCloudflareWorker } from "../env.js";
 
 import { fetchGitHubViaApi } from "./github-api.js";
 import type { FetchOptions } from "../fetch.js";
+// Import new cache system
+import {
+  createCache,
+  CacheInterface,
+  generateCacheKey,
+  validateCachedContent,
+} from "../cache/index.js";
 
 export async function fetchFromWeb(
   url: string,
   options: FetchOptions = {}
 ): Promise<string | FetchResultImpl> {
-  // If running in Cloudflare Worker, use the Worker-safe implementation
+  // Early redirect for Cloudflare Workers - use optimized implementation
   if (isCloudflareWorker) {
     const { fetchFromWebWorker } = await import("./sdk-web-fetch-worker.js");
     return fetchFromWebWorker(url, options);
   }
 
+  // Create simple logger
   const logger = {
-    info: (msg: string) =>
-      options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
-    debug: (msg: string) =>
-      options.verbose &&
-      options.verbose >= 2 &&
-      console.error(`[DEBUG] ${msg}`),
+    info: (msg: string) => console.error(`[INFO] ${msg}`),
+    debug: (msg: string) => {
+      if (options.verbose) console.error(`[DEBUG] ${msg}`);
+    },
     error: (msg: string) => console.error(`[ERROR] ${msg}`),
     success: (msg: string) => console.error(`[SUCCESS] ${msg}`),
     warn: (msg: string) => console.error(`[WARN] ${msg}`),
@@ -59,38 +64,60 @@ export async function fetchFromWeb(
     `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
   );
 
-  // Initialize cache based on environment
-  let cache: any;
-  if (isCloudflareWorker) {
-    // This should not happen as we redirect to Worker implementation above
-    // But keeping for safety
-    const { WorkerWebCache } = await import("./cache-worker.js");
-    cache = new WorkerWebCache({
-      ttlHours: (options as any).cacheTTL || 1,
-    });
-  } else {
-    cache = new WebCache({
-      ttlHours: (options as any).cacheTTL || 1,
-    });
-  }
-  await cache.init();
+  // Initialize new cache system based on options
+  let cache: CacheInterface | null = null;
 
-  // Check cache unless --no-cache is specified
+  if (!options.noCache && options.cache !== "bypass") {
+    try {
+      cache = createCache({
+        namespace: options.cacheNamespace || "codefetch",
+        baseUrl: options.cacheBaseUrl,
+        ttl: options.cacheTTL || 3600,
+      });
+    } catch (error) {
+      logger.warn(`Failed to initialize cache: ${error}`);
+      // Continue without cache
+    }
+  }
+
+  // Generate cache key
+  const cacheKey = options.cacheKey || generateCacheKey(url, options);
+
+  // Try to get from cache first
   let contentPath: string | null = null;
-  if ((options as any).noCache) {
-    logger.debug("Cache disabled");
-  } else {
-    const cached = await cache.get(parsedUrl);
-    if (cached) {
-      logger.info("Using cached content");
-      contentPath = cached.content;
+  if (cache && options.cache !== "refresh") {
+    try {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        // Validate cached content still exists
+        if (await validateCachedContent(cached)) {
+          logger.info("Using cached content");
+          contentPath = cached.content;
+        } else {
+          // Invalid cache entry, delete it
+          await cache.delete(cacheKey);
+          logger.debug("Cached content invalid, fetching fresh");
+        }
+      }
+    } catch (error) {
+      logger.warn(`Cache retrieval failed: ${error}`);
+      // Continue to fetch fresh data
     }
   }
 
   // Fetch content if not cached
   if (!contentPath) {
     contentPath = await fetchGitRepository(parsedUrl, options, logger);
-    await cache.set(parsedUrl, contentPath);
+
+    // Store in cache if successful
+    if (cache && contentPath && options.cache !== "bypass") {
+      try {
+        await cache.set(cacheKey, contentPath, options.cacheTTL);
+      } catch (error) {
+        logger.warn(`Cache storage failed: ${error}`);
+        // Non-critical, continue
+      }
+    }
   }
 
   // Now use the existing codefetch pipeline

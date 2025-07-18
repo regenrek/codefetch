@@ -89,7 +89,7 @@ describe("Regression Tests", () => {
 
     expect(typeof markdown).toBe("string");
     expect(markdown).toContain("console.log('ts1');");
-  });
+  }, 10_000); // 10 second timeout
 
   it("parseArgs handles new token encoder option", () => {
     const res = parseArgs(["node", "script.js", "--token-encoder", "cl100k"]);

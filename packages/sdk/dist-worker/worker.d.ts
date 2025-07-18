@@ -130,9 +130,17 @@ interface CodefetchConfig {
     format?: OutputFormat;
 }
 
+type CacheStrategy = "auto" | "force" | "bypass" | "refresh" | "validate";
+
 interface FetchOptions extends Partial<CodefetchConfig> {
     source?: string;
     format?: OutputFormat;
+    cache?: boolean | CacheStrategy;
+    cacheKey?: string;
+    cacheTTL?: number;
+    cacheNamespace?: string;
+    cacheBaseUrl?: string;
+    noCache?: boolean;
 }
 
 declare class FetchResultImpl {
@@ -416,9 +424,10 @@ declare function htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): 
  */
 
 /**
- * Stream and process GitHub tarball
+ * Fetch all files from a GitHub tarball at once.
+ * @deprecated Use streamGitHubFiles for better memory management.
  */
-declare function streamGitHubTarball(owner: string, repo: string, ref?: string, options?: {
+declare function fetchGitHubTarball(owner: string, repo: string, ref?: string, options?: {
     token?: string;
     extensions?: string[];
     excludeDirs?: string[];
@@ -604,4 +613,4 @@ declare function assert(condition: unknown, message?: string): asserts condition
  */
 declare function exhaustiveCheck(value: never): never;
 
-export { CacheError, type CacheOptions, type CacheStorage, type CodefetchConfig$1 as CodefetchConfig, CodefetchError, ConfigError, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchOptions, type FetchResult, FetchResultImpl, type FileContent, type FileNode, GitHubError, type GitHubToken, type GitHubUrl, type MarkdownFromContentOptions, NetworkError, type OutputFormat, ParseError, type PerformanceMetrics, type RepoPath, type SemVer, type StreamOptions, type TokenEncoder, TokenLimitError, type TokenLimiter, URLValidationError, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, assert, assertDefined, autoMigrateCode, calculateTreeMetrics, clearCache, _default$3 as codegenPrompt, collectStream, compat, countTokens, createCacheStorage, createGitHubToken, createGitHubUrl, createMarkdownStream, createRepoPath, createTransformStream, deleteFromCache, detectLanguage, exhaustiveCheck, fetchFromWebWorker as fetchFromWeb, fetchFromWebCached, filesToTree, filterStream, filterTree, findNodeByPath, _default$2 as fixPrompt, generateMarkdownFromContent, generateMigrationGuide, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isArray, isCloudflareWorker, isCodefetchError, isGitHubError, isNotNull, isNumber, isObject, isString, isTokenLimitError, isValidGitHubToken, isValidGitHubUrl, isValidRepoPath, isValidSemVer, mapStream, mergeWithCliArgs, migrateFromV1, needsMigration, prompts, resolveCodefetchConfig, sortTree, streamGitHubFiles, streamGitHubTarball, _default as testgenPrompt, treeToFiles, walkTree, withCache, wrapError };
+export { CacheError, type CacheOptions, type CacheStorage, type CodefetchConfig$1 as CodefetchConfig, CodefetchError, ConfigError, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchOptions, type FetchResult, FetchResultImpl, type FileContent, type FileNode, GitHubError, type GitHubToken, type GitHubUrl, type MarkdownFromContentOptions, NetworkError, type OutputFormat, ParseError, type PerformanceMetrics, type RepoPath, type SemVer, type StreamOptions, type TokenEncoder, TokenLimitError, type TokenLimiter, URLValidationError, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, assert, assertDefined, autoMigrateCode, calculateTreeMetrics, clearCache, _default$3 as codegenPrompt, collectStream, compat, countTokens, createCacheStorage, createGitHubToken, createGitHubUrl, createMarkdownStream, createRepoPath, createTransformStream, deleteFromCache, detectLanguage, exhaustiveCheck, fetchFromWebWorker as fetchFromWeb, fetchFromWebCached, fetchGitHubTarball, filesToTree, filterStream, filterTree, findNodeByPath, _default$2 as fixPrompt, generateMarkdownFromContent, generateMigrationGuide, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isArray, isCloudflareWorker, isCodefetchError, isGitHubError, isNotNull, isNumber, isObject, isString, isTokenLimitError, isValidGitHubToken, isValidGitHubUrl, isValidRepoPath, isValidSemVer, mapStream, mergeWithCliArgs, migrateFromV1, needsMigration, prompts, resolveCodefetchConfig, sortTree, streamGitHubFiles, _default as testgenPrompt, treeToFiles, walkTree, withCache, wrapError };

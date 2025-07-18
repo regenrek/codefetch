@@ -92,3 +92,19 @@ export const detectLanguage = (fileName: string): string => {
 
   return languageMap[ext || ""] || "text";
 };
+
+/**
+ * Create a simple hash from a string
+ * Uses a basic hashing algorithm suitable for cache keys
+ */
+export function createHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.codePointAt(i) || 0;
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+
+  // Convert to hexadecimal string
+  return Math.abs(hash).toString(16);
+}

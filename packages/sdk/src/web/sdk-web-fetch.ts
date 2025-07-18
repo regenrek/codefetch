@@ -24,6 +24,12 @@ export async function fetchFromWeb(
   url: string,
   options: FetchOptions = {}
 ): Promise<string | FetchResultImpl> {
+  // If running in Cloudflare Worker, use the Worker-safe implementation
+  if (isCloudflareWorker) {
+    const { fetchFromWebWorker } = await import("./sdk-web-fetch-worker.js");
+    return fetchFromWebWorker(url, options);
+  }
+
   const logger = {
     info: (msg: string) =>
       options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
@@ -53,10 +59,20 @@ export async function fetchFromWeb(
     `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
   );
 
-  // Initialize cache
-  const cache = new WebCache({
-    ttlHours: (options as any).cacheTTL || 1,
-  });
+  // Initialize cache based on environment
+  let cache: any;
+  if (isCloudflareWorker) {
+    // This should not happen as we redirect to Worker implementation above
+    // But keeping for safety
+    const { WorkerWebCache } = await import("./cache-worker.js");
+    cache = new WorkerWebCache({
+      ttlHours: (options as any).cacheTTL || 1,
+    });
+  } else {
+    cache = new WebCache({
+      ttlHours: (options as any).cacheTTL || 1,
+    });
+  }
   await cache.init();
 
   // Check cache unless --no-cache is specified
@@ -82,11 +98,13 @@ export async function fetchFromWeb(
 
   let output: string | FetchResultImpl;
   let totalTokens = 0;
-  const originalCwd = process.cwd();
+  const originalCwd = isCloudflareWorker ? "." : process.cwd();
 
   // For git repositories, use the existing pipeline
   // Change to the fetched content directory for proper relative path handling
-  process.chdir(contentPath);
+  if (!isCloudflareWorker) {
+    process.chdir(contentPath);
+  }
 
   // Set up ignore patterns
   const ig = ignore().add(
@@ -96,6 +114,13 @@ export async function fetchFromWeb(
   );
 
   // Collect files from the fetched content
+  if (isCloudflareWorker) {
+    throw new Error(
+      "This code path should not be reached in Cloudflare Workers. " +
+        "The Worker-safe implementation should have been used."
+    );
+  }
+
   const files = await collectFiles(".", {
     ig,
     extensionSet: options.extensions ? new Set(options.extensions) : null,
@@ -152,7 +177,9 @@ export async function fetchFromWeb(
   }
 
   // Restore original working directory
-  process.chdir(originalCwd);
+  if (!isCloudflareWorker) {
+    process.chdir(originalCwd);
+  }
 
   return output;
 }

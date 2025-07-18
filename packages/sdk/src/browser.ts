@@ -36,6 +36,9 @@ export { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants.js";
 export * from "./prompts/index.js";
 export { prompts } from "./prompts/index.js";
 
+// Browser-safe fetch function that only works with URLs
+export { fetchFromWebWorker as fetch } from "./web/sdk-web-fetch-worker.js";
+
 // Note: The following are NOT exported as they require Node.js APIs:
 // - Config loading (requires fs)
 // - File collection (requires fs)

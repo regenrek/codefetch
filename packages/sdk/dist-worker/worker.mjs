@@ -1,17 +1,12 @@
-import path, { resolve, basename, join, relative } from 'pathe';
+import { resolve } from 'pathe';
 import 'defu';
 import { Tiktoken } from 'js-tiktoken/lite';
-import fs, { existsSync, createReadStream } from 'node:fs';
-import { readFile, mkdir, stat, writeFile, rm, readdir, mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join as join$1 } from 'node:path';
-import { execSync } from 'node:child_process';
-import ignore from 'ignore';
 import { URL } from 'node:url';
 import { isIPv4, isIPv6 } from 'node:net';
-import { createHash } from 'node:crypto';
+import { join } from 'node:path';
+import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import AdmZip from 'adm-zip';
-import fg from 'fast-glob';
 
 const defaultOutput = "codebase.md";
 const getDefaultConfig = () => ({
@@ -115,243 +110,7 @@ const VALID_PROMPTS = /* @__PURE__ */ new Set([
 const VALID_ENCODERS = /* @__PURE__ */ new Set(["simple", "p50k", "o200k", "cl100k"]);
 const VALID_LIMITERS = /* @__PURE__ */ new Set(["sequential", "truncated"]);
 
-function generateTree(dir, level, prefix = "", isLast = true, maxLevel = 2, currentLevel = 0) {
-  if (currentLevel >= maxLevel) return "";
-  let tree = currentLevel === 0 ? "" : `${prefix}${isLast ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 "}${basename(dir)}
-`;
-  const files = fs.readdirSync(dir);
-  const filteredFiles = files.filter(
-    (file) => !file.startsWith(".") && file !== "node_modules"
-  );
-  for (const [index, file] of filteredFiles.entries()) {
-    const filePath = join(dir, file);
-    const isDirectory = fs.statSync(filePath).isDirectory();
-    const newPrefix = currentLevel === 0 ? "" : prefix + (isLast ? "    " : "\u2502   ");
-    const isLastItem = index === filteredFiles.length - 1;
-    if (isDirectory) {
-      tree += generateTree(
-        filePath,
-        level + 1,
-        newPrefix,
-        isLastItem,
-        maxLevel,
-        currentLevel + 1
-      );
-    } else if (currentLevel < maxLevel) {
-      tree += `${newPrefix}${isLastItem ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 "}${file}
-`;
-    }
-  }
-  return tree;
-}
-function generateProjectTree(baseDir, maxLevel = 2) {
-  return "Project Structure:\n" + generateTree(baseDir, 1, "", true, maxLevel, 0);
-}
-
-const builtInPrompts = {
-  fix: () => Promise.resolve().then(function () { return fix; }),
-  improve: () => Promise.resolve().then(function () { return improve; }),
-  codegen: () => Promise.resolve().then(function () { return codegen; }),
-  testgen: () => Promise.resolve().then(function () { return testgen; })
-};
-async function processPromptTemplate(template, codebase, vars) {
-  let result = template;
-  for (const [key, value] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`{{${key}}}`, "g"), value);
-  }
-  result = result.replace(/{{CURRENT_CODEBASE}}/g, codebase);
-  console.log("result", result);
-  return result;
-}
-async function resolvePrompt(promptFile) {
-  console.log("promptFile", promptFile);
-  if (VALID_PROMPTS.has(promptFile)) {
-    try {
-      const mod = await builtInPrompts[promptFile]?.();
-      return mod?.default;
-    } catch {
-      console.error(`Built-in prompt "${promptFile}" not found`);
-      return "";
-    }
-  }
-  if (promptFile.endsWith(".md") || promptFile.endsWith(".txt")) {
-    const defaultPath = resolve(promptFile);
-    if (!existsSync(defaultPath)) {
-      return "";
-    }
-    return await readFile(defaultPath, "utf8");
-  }
-}
-
-const CHUNK_SIZE = 64 * 1024;
-async function readFileWithTokenLimit(file, tokenEncoder, remainingTokensRef, disableLineNumbers, onVerbose) {
-  const initialTokens = remainingTokensRef.value;
-  const stream = createReadStream(file, {
-    encoding: "utf8",
-    highWaterMark: CHUNK_SIZE
-  });
-  const outputLines = [];
-  let buffer = "";
-  let currentLineNo = 1;
-  let isTruncated = false;
-  const relativeFilePath = relative(process.cwd(), file);
-  const metadataTokens = await countTokens(
-    `${relativeFilePath}
-\`\`\`
-\`\`\`
-`,
-    tokenEncoder
-  );
-  const truncatedMarkerTokens = await countTokens(
-    "[TRUNCATED]\n",
-    tokenEncoder
-  );
-  remainingTokensRef.value -= metadataTokens;
-  outputLines.push(relativeFilePath);
-  outputLines.push("```");
-  for await (const chunk of stream) {
-    buffer += chunk;
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      const prefixedLine = disableLineNumbers ? line : `${currentLineNo} | ${line}`;
-      const neededTokens = await countTokens(prefixedLine, tokenEncoder);
-      if (neededTokens > remainingTokensRef.value - truncatedMarkerTokens) {
-        isTruncated = true;
-        break;
-      }
-      outputLines.push(prefixedLine);
-      remainingTokensRef.value -= neededTokens;
-      currentLineNo++;
-    }
-    if (isTruncated) break;
-  }
-  if (!isTruncated && buffer) {
-    const prefixedLine = disableLineNumbers ? buffer : `${currentLineNo} | ${buffer}`;
-    const neededTokens = await countTokens(prefixedLine, tokenEncoder);
-    if (neededTokens <= remainingTokensRef.value - truncatedMarkerTokens) {
-      outputLines.push(prefixedLine);
-      remainingTokensRef.value -= neededTokens;
-    } else {
-      isTruncated = true;
-    }
-  }
-  if (isTruncated) {
-    outputLines.push("[TRUNCATED]");
-    remainingTokensRef.value -= truncatedMarkerTokens;
-  }
-  outputLines.push("```\n");
-  const tokensUsed = initialTokens - remainingTokensRef.value;
-  onVerbose?.(
-    `File ${file}: ${tokensUsed} tokens used, ${remainingTokensRef.value} remaining`,
-    3
-  );
-  return { lines: outputLines, finalLineNumber: currentLineNo };
-}
-async function generateMarkdown(files, options) {
-  const {
-    maxTokens,
-    verbose: _verbose = 0,
-    projectTree = 0,
-    tokenEncoder,
-    disableLineNumbers = false,
-    tokenLimiter = "truncated",
-    promptFile,
-    templateVars,
-    onVerbose
-  } = options;
-  let promptTemplate = "";
-  const markdownContent = [];
-  const tokenCounter = {
-    remaining: maxTokens ?? Number.MAX_SAFE_INTEGER,
-    total: 0
-  };
-  if (promptFile) {
-    onVerbose?.("Writing prompt template...", 2);
-    const resolvedPrompt = await resolvePrompt(promptFile);
-    if (resolvedPrompt) {
-      promptTemplate = resolvedPrompt;
-      const promptTokens = await countTokens(promptTemplate, tokenEncoder);
-      if (maxTokens && promptTokens > tokenCounter.remaining) {
-        onVerbose?.(`Prompt exceeds token limit, skipping`, 3);
-        return "";
-      }
-      const templateTokens = await countTokens(promptTemplate, tokenEncoder);
-      tokenCounter.remaining -= templateTokens;
-      tokenCounter.total += templateTokens;
-      onVerbose?.(`Token used for prompt: ${templateTokens}`, 3);
-    } else {
-      onVerbose?.(`No prompt template found, skipping`, 1);
-    }
-  }
-  onVerbose?.(`Initial token limit: ${tokenCounter.remaining}`, 3);
-  if (projectTree > 0) {
-    onVerbose?.("Writing project tree...", 2);
-    const tree = generateProjectTree(process.cwd(), projectTree);
-    const treeTokens = await countTokens(tree, tokenEncoder);
-    if (maxTokens && treeTokens > tokenCounter.remaining) {
-      onVerbose?.(`Tree exceeds token limit, skipping`, 3);
-      return "";
-    }
-    markdownContent.push(tree, "");
-    tokenCounter.remaining -= treeTokens;
-    tokenCounter.total += treeTokens;
-    onVerbose?.(`Tokens used for tree: ${treeTokens}`, 3);
-  }
-  if (tokenLimiter === "truncated" && maxTokens) {
-    const tokensPerFile = Math.floor(tokenCounter.remaining / files.length);
-    onVerbose?.(`Distributing ${tokensPerFile} tokens per file`, 3);
-    for (const file of files) {
-      const { lines: fileLines } = await readFileWithTokenLimit(
-        file,
-        tokenEncoder,
-        { value: tokensPerFile },
-        disableLineNumbers,
-        onVerbose
-      );
-      markdownContent.push(...fileLines);
-      const fileTokens = await countTokens(fileLines.join("\n"), tokenEncoder);
-      tokenCounter.total += fileTokens;
-      tokenCounter.remaining = Math.max(0, tokenCounter.remaining - fileTokens);
-    }
-  } else {
-    for (const file of files) {
-      if (maxTokens && tokenCounter.total >= maxTokens) {
-        onVerbose?.(
-          `Total token limit reached (${tokenCounter.total}/${maxTokens})`,
-          2
-        );
-        break;
-      }
-      const { lines: fileLines } = await readFileWithTokenLimit(
-        file,
-        tokenEncoder,
-        {
-          value: maxTokens ? maxTokens - tokenCounter.total : Number.MAX_SAFE_INTEGER
-        },
-        disableLineNumbers,
-        onVerbose
-      );
-      const fileContent = fileLines.join("\n");
-      const fileTokens = await countTokens(fileContent, tokenEncoder);
-      if (maxTokens && tokenCounter.total + fileTokens > maxTokens) {
-        onVerbose?.(
-          `Adding file would exceed token limit, skipping: ${file}`,
-          2
-        );
-        continue;
-      }
-      markdownContent.push(...fileLines);
-      tokenCounter.total += fileTokens;
-      tokenCounter.remaining = maxTokens ? maxTokens - tokenCounter.total : Number.MAX_SAFE_INTEGER;
-    }
-  }
-  onVerbose?.(`Final token count: ${tokenCounter.total}`, 2);
-  const content = markdownContent.join("\n");
-  return !promptFile || promptTemplate === "" ? content : processPromptTemplate(promptTemplate, content, templateVars ?? {});
-}
-
-const detectLanguage$1 = (fileName) => {
+const detectLanguage = (fileName) => {
   const ext = fileName.split(".").pop()?.toLowerCase();
   const languageMap = {
     // JavaScript/TypeScript
@@ -465,7 +224,7 @@ async function generateMarkdownFromContent(files, options = {}) {
 `;
       break;
     }
-    const language = detectLanguage$1(file.path);
+    const language = detectLanguage(file.path);
     const lines = file.content.split("\n");
     markdown += `## ${file.path}
 
@@ -627,93 +386,69 @@ function extractCacheKey(parsedUrl) {
   return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
 }
 
-const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
-const getCacheSizeLimit = () => {
-  if (isCloudflareWorker) {
-    return 8 * 1024 * 1024;
-  }
-  return 100 * 1024 * 1024;
-};
-
-class WebCache {
-  cacheDir;
+class WorkerWebCache {
   ttlHours;
-  maxSizeMB;
+  cachePrefix = "codefetch-v1";
   constructor(options) {
-    this.cacheDir = options?.cacheDir || join$1(tmpdir(), ".codefetch-cache");
     this.ttlHours = options?.ttlHours ?? 1;
-    const defaultMaxSize = getCacheSizeLimit() / (1024 * 1024);
-    this.maxSizeMB = options?.maxSizeMB ?? defaultMaxSize;
   }
   /**
-   * Initialize cache directory
+   * Generate cache key for a parsed URL using Web Crypto API
+   */
+  async getCacheKey(parsedUrl) {
+    const key = extractCacheKey(parsedUrl);
+    const encoder = new TextEncoder();
+    const data = encoder.encode(key);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const shortHash = hashHex.slice(0, 8);
+    return `${this.cachePrefix}:${parsedUrl.type}:${key}-${shortHash}`;
+  }
+  /**
+   * Initialize cache (no-op for Workers)
    */
   async init() {
-    await mkdir(this.cacheDir, { recursive: true });
-    await mkdir(join$1(this.cacheDir, "websites"), { recursive: true });
-    await mkdir(join$1(this.cacheDir, "repos"), { recursive: true });
-    await this.cleanupIfNeeded();
-  }
-  /**
-   * Get cache directory for a parsed URL
-   */
-  getCacheDir(parsedUrl) {
-    const type = parsedUrl.type === "git-repository" ? "repos" : "websites";
-    const key = extractCacheKey(parsedUrl);
-    const hash = createHash("md5").update(key).digest("hex").slice(0, 8);
-    return join$1(this.cacheDir, type, `${key}-${hash}`);
   }
   /**
    * Check if cache entry exists and is valid
    */
   async has(parsedUrl) {
-    try {
-      const dir = this.getCacheDir(parsedUrl);
-      const metadataPath = join$1(dir, "metadata.json");
-      const metadataContent = await readFile(metadataPath, "utf8");
-      const metadata = JSON.parse(metadataContent);
-      const expiresAt = new Date(metadata.expiresAt);
-      return expiresAt > /* @__PURE__ */ new Date();
-    } catch {
-      return false;
+    const cache = await caches.open(this.cachePrefix);
+    const cacheKey = await this.getCacheKey(parsedUrl);
+    const response = await cache.match(cacheKey);
+    if (!response) return false;
+    const expiresHeader = response.headers.get("expires");
+    if (expiresHeader) {
+      const expiresAt = new Date(expiresHeader);
+      if (expiresAt <= /* @__PURE__ */ new Date()) {
+        await cache.delete(cacheKey);
+        return false;
+      }
     }
+    return true;
   }
   /**
    * Get cached content
    */
   async get(parsedUrl) {
-    try {
-      const dir = this.getCacheDir(parsedUrl);
-      const metadataPath = join$1(dir, "metadata.json");
-      const metadataContent = await readFile(metadataPath, "utf8");
-      const metadata = JSON.parse(metadataContent);
-      const expiresAt = new Date(metadata.expiresAt);
+    const cache = await caches.open(this.cachePrefix);
+    const cacheKey = await this.getCacheKey(parsedUrl);
+    const response = await cache.match(cacheKey);
+    if (!response) return null;
+    const expiresHeader = response.headers.get("expires");
+    if (expiresHeader) {
+      const expiresAt = new Date(expiresHeader);
       if (expiresAt <= /* @__PURE__ */ new Date()) {
-        await this.delete(parsedUrl);
+        await cache.delete(cacheKey);
         return null;
       }
-      if (parsedUrl.type === "git-repository") {
-        const content = await readFile(join$1(dir, "repo-path.txt"), "utf8");
-        try {
-          await stat(content);
-        } catch {
-          await this.delete(parsedUrl);
-          return null;
-        }
-        return { metadata, content };
-      }
-      const contentPath = join$1(dir, "content");
-      try {
-        await stat(contentPath);
-      } catch {
-        await this.delete(parsedUrl);
-        return null;
-      }
-      return {
-        metadata,
-        content: contentPath
-      };
+    }
+    try {
+      const data = await response.json();
+      return data;
     } catch {
+      await cache.delete(cacheKey);
       return null;
     }
   }
@@ -721,8 +456,8 @@ class WebCache {
    * Store content in cache
    */
   async set(parsedUrl, content, options) {
-    const dir = this.getCacheDir(parsedUrl);
-    await mkdir(dir, { recursive: true });
+    const cache = await caches.open(this.cachePrefix);
+    const cacheKey = await this.getCacheKey(parsedUrl);
     const now = /* @__PURE__ */ new Date();
     const expiresAt = new Date(now.getTime() + this.ttlHours * 60 * 60 * 1e3);
     const metadata = {
@@ -732,605 +467,211 @@ class WebCache {
       contentType: options?.contentType,
       headers: options?.headers
     };
-    await writeFile(
-      join$1(dir, "metadata.json"),
-      JSON.stringify(metadata, null, 2)
-    );
-    if (parsedUrl.type === "git-repository") {
-      await writeFile(join$1(dir, "repo-path.txt"), content.toString());
-    } else {
-      const contentDir = join$1(dir, "content");
-      await mkdir(contentDir, { recursive: true });
-    }
+    const cacheEntry = {
+      metadata,
+      content: content.toString()
+    };
+    const response = new Response(JSON.stringify(cacheEntry), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": `public, max-age=${this.ttlHours * 3600}`,
+        Expires: expiresAt.toUTCString()
+      }
+    });
+    await cache.put(cacheKey, response);
   }
   /**
    * Delete cache entry
    */
   async delete(parsedUrl) {
-    const dir = this.getCacheDir(parsedUrl);
-    try {
-      await rm(dir, { recursive: true, force: true });
-    } catch {
-    }
+    const cache = await caches.open(this.cachePrefix);
+    const cacheKey = await this.getCacheKey(parsedUrl);
+    await cache.delete(cacheKey);
   }
   /**
    * Clear entire cache
    */
   async clear() {
-    try {
-      await rm(this.cacheDir, { recursive: true, force: true });
-      await this.init();
-    } catch {
-    }
+    console.warn("Cache clear not fully supported in Workers");
   }
   /**
-   * Get cache size in MB
-   */
-  async getCacheSize() {
-    let totalSize = 0;
-    async function getDirectorySize2(dir) {
-      let size = 0;
-      try {
-        const entries = await readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const fullPath = join$1(dir, entry.name);
-          if (entry.isDirectory()) {
-            size += await getDirectorySize2(fullPath);
-          } else {
-            const stats = await stat(fullPath);
-            size += stats.size;
-          }
-        }
-      } catch {
-      }
-      return size;
-    }
-    totalSize = await getDirectorySize2(this.cacheDir);
-    return totalSize / (1024 * 1024);
-  }
-  /**
-   * Cleanup cache if it exceeds size limit
-   */
-  async cleanupIfNeeded() {
-    const sizeMB = await this.getCacheSize();
-    if (sizeMB > this.maxSizeMB) {
-      const entries = [];
-      for (const type of ["websites", "repos"]) {
-        const typeDir = join$1(this.cacheDir, type);
-        try {
-          const dirs = await readdir(typeDir);
-          for (const dir of dirs) {
-            const fullDir = join$1(typeDir, dir);
-            const metadataPath = join$1(fullDir, "metadata.json");
-            try {
-              const metadataContent = await readFile(metadataPath, "utf8");
-              const metadata = JSON.parse(metadataContent);
-              const stats = await stat(fullDir);
-              entries.push({ dir: fullDir, metadata, stats });
-            } catch {
-              await rm(fullDir, { recursive: true, force: true }).catch(() => {
-              });
-            }
-          }
-        } catch {
-        }
-      }
-      entries.sort((a, b) => a.stats.atime.getTime() - b.stats.atime.getTime());
-      let currentSizeMB = sizeMB;
-      for (const entry of entries) {
-        if (currentSizeMB <= this.maxSizeMB * 0.8) break;
-        const entrySize = await getDirectorySize(entry.dir);
-        await rm(entry.dir, { recursive: true, force: true });
-        currentSizeMB -= entrySize / (1024 * 1024);
-      }
-    }
-  }
-  /**
-   * Get cache statistics
+   * Get cache statistics (limited in Workers)
    */
   async getStats() {
-    const sizeMB = await this.getCacheSize();
-    let websiteCount = 0;
-    let repoCount = 0;
-    try {
-      websiteCount = (await readdir(join$1(this.cacheDir, "websites"))).length;
-    } catch {
-    }
-    try {
-      repoCount = (await readdir(join$1(this.cacheDir, "repos"))).length;
-    } catch {
-    }
     return {
-      sizeMB,
-      entryCount: websiteCount + repoCount,
-      websiteCount,
-      repoCount
+      sizeMB: 0,
+      entryCount: 0,
+      websiteCount: 0,
+      repoCount: 0
     };
   }
 }
-async function getDirectorySize(dir) {
-  let size = 0;
-  try {
-    const entries = await readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join$1(dir, entry.name);
-      if (entry.isDirectory()) {
-        size += await getDirectorySize(fullPath);
-      } else {
-        const stats = await stat(fullPath);
-        size += stats.size;
-      }
-    }
-  } catch {
-  }
-  return size;
-}
 
-function escapeGlobPath(str) {
-  const normalized = str.replace(/\\/g, "/");
-  return normalized.replace(/[*?[\]{}()!@+|]/g, (match) => "\\" + match);
-}
-async function collectFiles(baseDir, options) {
-  const {
-    ig,
-    extensionSet,
-    excludeFiles,
-    includeFiles,
-    excludeDirs,
-    includeDirs,
-    verbose
-  } = options;
-  function logVerbose(message, level) {
-    if (verbose >= level) {
-      console.log(message);
-    }
+const isCloudflareWorker = globalThis.WebSocketPair !== undefined && !("__dirname" in globalThis);
+const getCacheSizeLimit = () => {
+  if (isCloudflareWorker) {
+    return 8 * 1024 * 1024;
   }
-  const patterns = [];
-  if (includeDirs?.length) {
-    patterns.push(...includeDirs.map((dir) => `${escapeGlobPath(dir)}/**/*`));
-  } else {
-    patterns.push("**/*");
-  }
-  const ignore = [
-    ...excludeDirs?.map((dir) => `${escapeGlobPath(dir)}/**`) || [],
-    ...excludeFiles?.map((file) => file.replace(/\\/g, "/")) || []
-  ];
-  if (extensionSet) {
-    const exts = [...extensionSet];
-    patterns.length = 0;
-    if (includeDirs?.length) {
-      for (const dir of includeDirs) {
-        for (const ext of exts) {
-          patterns.push(`${escapeGlobPath(dir)}/**/*${ext}`);
-        }
-      }
-    } else {
-      for (const ext of exts) {
-        patterns.push(`**/*${ext}`);
-      }
-    }
-  }
-  if (includeFiles?.length) {
-    patterns.length = 0;
-    patterns.push(...includeFiles.map((file) => file.replace(/\\/g, "/")));
-  }
-  logVerbose(`Scanning with patterns: ${patterns.join(", ")}`, 2);
-  logVerbose(`Ignoring: ${ignore.join(", ")}`, 2);
-  const entries = await fg(patterns, {
-    cwd: baseDir.replace(/\\/g, "/"),
-    dot: true,
-    absolute: true,
-    ignore,
-    onlyFiles: true,
-    suppressErrors: true,
-    followSymbolicLinks: true,
-    caseSensitiveMatch: true
-  });
-  return entries.filter((entry) => {
-    const relativePath = path.relative(process.cwd(), entry);
-    return !ig.ignores(relativePath);
-  });
-}
-
-const detectLanguage = (fileName) => {
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  const languageMap = {
-    // JavaScript/TypeScript
-    js: "javascript",
-    jsx: "javascript",
-    ts: "typescript",
-    tsx: "typescript",
-    mjs: "javascript",
-    cjs: "javascript",
-    mts: "typescript",
-    cts: "typescript",
-    // Web
-    html: "html",
-    htm: "html",
-    css: "css",
-    scss: "scss",
-    sass: "sass",
-    less: "less",
-    // Config
-    json: "json",
-    yaml: "yaml",
-    yml: "yaml",
-    toml: "toml",
-    xml: "xml",
-    ini: "ini",
-    conf: "conf",
-    // Programming languages
-    py: "python",
-    java: "java",
-    c: "c",
-    cpp: "cpp",
-    cs: "csharp",
-    go: "go",
-    rs: "rust",
-    php: "php",
-    rb: "ruby",
-    swift: "swift",
-    kt: "kotlin",
-    scala: "scala",
-    r: "r",
-    lua: "lua",
-    dart: "dart",
-    // Shell
-    sh: "bash",
-    bash: "bash",
-    zsh: "bash",
-    fish: "fish",
-    ps1: "powershell",
-    // Documentation
-    md: "markdown",
-    mdx: "markdown",
-    rst: "restructuredtext",
-    tex: "latex",
-    // Other
-    sql: "sql",
-    dockerfile: "dockerfile",
-    makefile: "makefile",
-    cmake: "cmake",
-    gradle: "gradle",
-    vim: "vim",
-    vue: "vue",
-    svelte: "svelte"
-  };
-  const fileNameLower = fileName.toLowerCase();
-  if (fileNameLower === "dockerfile") return "dockerfile";
-  if (fileNameLower === "makefile") return "makefile";
-  if (fileNameLower === "cmakelists.txt") return "cmake";
-  return languageMap[ext || ""] || "text";
+  return 100 * 1024 * 1024;
 };
 
-async function collectFilesAsTree(baseDir, files, options = {}) {
-  const root = {
-    name: path.basename(baseDir),
-    path: "",
-    type: "directory",
-    children: []
-  };
-  let totalSize = 0;
-  let totalTokens = 0;
-  files.sort();
-  for (const filePath of files) {
-    const relativePath = path.relative(baseDir, filePath);
-    const pathParts = relativePath.split(path.sep);
-    let currentNode = root;
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      const dirName = pathParts[i];
-      if (!currentNode.children) {
-        currentNode.children = [];
-      }
-      let dirNode = currentNode.children.find(
-        (child) => child.type === "directory" && child.name === dirName
-      );
-      if (!dirNode) {
-        dirNode = {
-          name: dirName,
-          path: pathParts.slice(0, i + 1).join("/"),
-          type: "directory",
-          children: []
-        };
-        currentNode.children.push(dirNode);
-      }
-      currentNode = dirNode;
+class GitHubApiClient {
+  constructor(owner, repo, logger, options = {}) {
+    this.owner = owner;
+    this.repo = repo;
+    this.logger = logger;
+    this.options = options;
+    this.headers = {
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "Codefetch/1.0"
+    };
+    if (options.token) {
+      this.headers.Authorization = `token ${options.token}`;
     }
+  }
+  baseUrl = "https://api.github.com";
+  headers;
+  /**
+   * Check if the repository is accessible via API
+   */
+  async checkAccess() {
     try {
-      const fileName = pathParts.at(-1);
-      const content = await readFile(filePath, "utf8");
-      const stats = await stat(filePath);
-      const encoder = options.tokenEncoder || "simple";
-      const tokens = await countTokens(content, encoder);
-      const fileNode = {
-        name: fileName,
-        path: relativePath,
-        type: "file",
-        content,
-        language: detectLanguage(fileName),
-        size: stats.size,
-        tokens,
-        lastModified: stats.mtime
+      const response = await fetch(
+        `${this.baseUrl}/repos/${this.owner}/${this.repo}`,
+        { headers: this.headers }
+      );
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { accessible: false, isPrivate: true, defaultBranch: "main" };
+        }
+        throw new Error(`GitHub API error: ${response.status}`);
+      }
+      const data = await response.json();
+      return {
+        accessible: true,
+        isPrivate: data.private,
+        defaultBranch: data.default_branch
       };
-      if (!currentNode.children) {
-        currentNode.children = [];
-      }
-      currentNode.children.push(fileNode);
-      totalSize += stats.size;
-      totalTokens += tokens;
     } catch (error) {
-      console.warn(`Failed to read file ${filePath}:`, error);
+      this.logger.debug(`Failed to check repository access: ${error}`);
+      return { accessible: false, isPrivate: true, defaultBranch: "main" };
     }
   }
-  sortTreeChildren(root);
-  return { root, totalSize, totalTokens };
-}
-function sortTreeChildren(node) {
-  if (node.children) {
-    node.children.sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === "directory" ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
+  /**
+   * Download repository as ZIP archive
+   */
+  async downloadZipArchive(ref = "HEAD") {
+    const branch = this.options.branch || ref;
+    const url = `${this.baseUrl}/repos/${this.owner}/${this.repo}/zipball/${branch}`;
+    this.logger.info(`Downloading repository archive...`);
+    const response = await fetch(url, {
+      headers: this.headers,
+      redirect: "follow"
     });
-    for (const child of node.children) {
-      if (child.type === "directory") {
-        sortTreeChildren(child);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download archive: ${response.status} ${response.statusText}`
+      );
+    }
+    const contentLength = response.headers.get("content-length");
+    if (contentLength) {
+      const sizeBytes = Number.parseInt(contentLength);
+      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
+      this.logger.info(`Archive size: ${sizeMB} MB`);
+      if (isCloudflareWorker && sizeBytes > getCacheSizeLimit()) {
+        throw new Error(
+          `Archive size (${sizeMB} MB) exceeds Worker storage limit (${getCacheSizeLimit() / 1024 / 1024} MB). Please use a smaller repository or filter files more aggressively.`
+        );
+      }
+    } else {
+      this.logger.warn(
+        "GitHub API did not provide Content-Length header. Archive size cannot be determined in advance."
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+  /**
+   * Download and extract repository to a directory
+   */
+  async downloadToDirectory(targetDir, options = {}) {
+    const zipBuffer = await this.downloadZipArchive(this.options.branch);
+    const tempDir = await mkdtemp(join(tmpdir(), "codefetch-zip-"));
+    const zipPath = join(tempDir, "repo.zip");
+    await writeFile(zipPath, zipBuffer);
+    this.logger.info("Extracting repository archive...");
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    let rootPrefix = "";
+    if (entries.length > 0) {
+      const firstEntry = entries[0].entryName;
+      const match = firstEntry.match(/^[^/]+\//);
+      if (match) {
+        rootPrefix = match[0];
       }
     }
+    await mkdir(targetDir, { recursive: true });
+    let extracted = 0;
+    let skipped = 0;
+    const defaultExcludeDirs = [
+      ".git",
+      "node_modules",
+      "dist",
+      "build",
+      ".next",
+      "coverage"
+    ];
+    const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      const relativePath = entry.entryName.startsWith(rootPrefix) ? entry.entryName.slice(rootPrefix.length) : entry.entryName;
+      if (!relativePath) continue;
+      const pathParts = relativePath.split("/");
+      const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
+      if (isExcluded) {
+        skipped++;
+        continue;
+      }
+      if (options.extensions && options.extensions.length > 0) {
+        const hasValidExt = options.extensions.some(
+          (ext) => relativePath.endsWith(ext)
+        );
+        if (!hasValidExt) {
+          skipped++;
+          continue;
+        }
+      }
+      if (options.maxFiles && extracted >= options.maxFiles) {
+        this.logger.warn(
+          `Reached file limit (${options.maxFiles}), stopping extraction`
+        );
+        break;
+      }
+      try {
+        const targetPath = join(targetDir, relativePath);
+        const targetDirPath = join(
+          targetDir,
+          relativePath.slice(0, Math.max(0, relativePath.lastIndexOf("/")))
+        );
+        await mkdir(targetDirPath, { recursive: true });
+        const buffer = zip.readFile(entry);
+        if (!buffer) {
+          throw new Error("Failed to read file from ZIP");
+        }
+        await writeFile(targetPath, buffer);
+        extracted++;
+        if (extracted % 50 === 0) {
+          this.logger.info(`Extracted ${extracted} files...`);
+        }
+      } catch (error) {
+        this.logger.debug(`Failed to extract ${relativePath}: ${error}`);
+        skipped++;
+      }
+    }
+    await rm(tempDir, { recursive: true, force: true });
+    this.logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
   }
 }
-
-const DEFAULT_IGNORE_PATTERNS = `
-# avoid recursion
-codefetch/
-
-# Git
-.git/**
-**/.git/**
-.gitignore
-.gitattributes
-
-# Version Control
-.git/
-.gitignore
-.gitattributes
-.svn/
-.hg/
-
-# Package Manager Files
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-bun.lockb
-.npmrc
-.yarnrc
-.pnpmrc
-.npmignore
-
-# Project Config
-.codefetchignore
-.editorconfig
-.eslintrc*
-.eslintcache
-.prettierrc*
-.stylelintrc*
-.tsbuildinfo
-.prettierignore
-
-# Binary and Image Files
-# Images
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.ico
-*.webp
-*.bmp
-*.tiff
-*.tif
-*.raw
-*.cr2
-*.nef
-*.heic
-*.heif
-*.avif
-*.svg
-*.eps
-*.ai
-*.psd
-*.xcf
-
-# Videos
-*.mp4
-*.mov
-*.avi
-*.wmv
-*.flv
-*.mkv
-*.webm
-*.m4v
-*.mpg
-*.mpeg
-*.3gp
-*.3g2
-*.ogv
-*.vob
-
-# Audio
-*.mp3
-*.wav
-*.ogg
-*.m4a
-*.flac
-*.aac
-*.wma
-*.aiff
-*.mid
-*.midi
-
-# Documents and PDFs
-*.pdf
-*.doc
-*.docx
-*.xls
-*.xlsx
-*.ppt
-*.pptx
-*.odt
-*.ods
-*.odp
-*.pages
-*.numbers
-*.key
-
-# Archives and Compressed
-*.zip
-*.tar
-*.gz
-*.tgz
-*.rar
-*.7z
-*.bz2
-*.xz
-*.lz
-*.lzma
-*.lzo
-*.rz
-*.lz4
-*.zst
-*.br
-*.cab
-*.iso
-*.dmg
-*.img
-
-# Binary and Executable
-*.exe
-*.dll
-*.so
-*.dylib
-*.bin
-*.o
-*.obj
-*.lib
-*.a
-*.class
-*.pyc
-*.pyo
-*.pyd
-*.deb
-*.rpm
-*.pkg
-*.app
-*.sys
-*.ko
-
-# Database and Data Files
-*.dat
-*.db
-*.sqlite
-*.sqlite3
-*.mdb
-*.accdb
-*.dbf
-*.mdf
-*.ldf
-*.frm
-*.ibd
-*.idx
-*.dmp
-*.bak
-*.bson
-
-# Font Files
-*.ttf
-*.otf
-*.woff
-*.woff2
-*.eot
-
-# Model and 3D Files
-*.fbx
-*.obj
-*.max
-*.blend
-*.dae
-*.mb
-*.ma
-*.3ds
-*.c4d
-*.stl
-*.glb
-*.gltf
-
-# IDE and Editor Files
-.idea/
-.vscode/
-*.swp
-*.swo
-*.swn
-*.bak
-
-# Build and Cache
-dist/
-build/
-out/
-workspace-data/
-.cache/
-.temp/
-tmp/
-*.min.js
-*.min.css
-
-# NXT Files
-*.nxt
-.nxt/
-.nxt-cache/
-nxt-env.d.ts
-nxt.config.*
-.nxtrc
-.nxt-workspace/
-
-# Logs and Debug
-*.log
-debug.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment and Secrets
-.env
-.env.*
-.env-*
-*.env
-env.*
-*.pem
-*.key
-*.cert
-*.secret
-*.secrets
-*secret*
-*secrets*
-*credential*
-*credentials*
-*password*
-*passwords*
-*token*
-*tokens*
-
-# Documentation
-LICENSE*
-LICENCE*
-README*
-CHANGELOG*
-CONTRIBUTING*
-
-# OS Files
-.DS_Store
-Thumbs.db
-desktop.ini
-`.trim();
 
 class FetchResultImpl {
   constructor(root, metadata) {
@@ -1427,385 +768,15 @@ class FetchResultImpl {
   }
 }
 
-var codegen_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
-
-Your task is to write code according to my instructions for the current codebase.
-
-instructions:
-<message>
-{{MESSAGE}}
-</message>
-
-Rules:
-- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
-- Your output should be a series of specific, actionable changes.
-
-When approaching this task:
-1. Carefully review the provided code.
-2. Identify the area thats raising this issue or error and provide a fix.
-3. Consider best practices for the specific programming language used.
-
-For each suggested change, provide:
-1. A short description of the change (one line maximum).
-2. The modified code block.
-
-Use the following format for your output:
-
-[Short Description]
-\`\`\`[language]:[path/to/file]
-[code block]
-\`\`\`
-
-Begin fixing the codebase provide your solutions.
-
-My current codebase:
-<current_codebase>
-{{CURRENT_CODEBASE}}
-</current_codebase>
-`;
-
-const codegen = {
-  __proto__: null,
-  default: codegen_default
-};
-
-var fix_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
-
-Your task is to review the current codebase and fix the current issues.
-
-Current Issue:
-<issue>
-{{MESSAGE}}
-</issue>
-
-Rules:
-- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
-- Your output should be a series of specific, actionable changes.
-
-When approaching this task:
-1. Carefully review the provided code.
-2. Identify the area thats raising this issue or error and provide a fix.
-3. Consider best practices for the specific programming language used.
-
-For each suggested change, provide:
-1. A short description of the change (one line maximum).
-2. The modified code block.
-
-Use the following format for your output:
-
-[Short Description]
-\`\`\`[language]:[path/to/file]
-[code block]
-\`\`\`
-
-Begin fixing the codebase provide your solutions.
-
-My current codebase:
-<current_codebase>
-{{CURRENT_CODEBASE}}
-</current_codebase>
-`;
-
-const fix = {
-  __proto__: null,
-  default: fix_default
-};
-
-var improve_default = `You are a senior software architect. You produce optimized, maintainable code that follows best practices. 
-
-Your task is to review the current codebase and suggest improvements or optimizations.
-
-Rules:
-- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
-- Your output should be a series of specific, actionable changes.
-
-When approaching this task:
-1. Carefully review the provided code.
-2. Identify areas that could be improved in terms of efficiency, readability, or maintainability.
-3. Consider best practices for the specific programming language used.
-4. Think about potential optimizations that could enhance performance.
-5. Look for opportunities to refactor or restructure the code for better organization.
-
-For each suggested change, provide:
-1. A short description of the change (one line maximum).
-2. The modified code block.
-
-Use the following format for your output:
-
-[Short Description]
-\`\`\`[language]:[path/to/file]
-[code block]
-\`\`\`
-
-Begin your analysis and provide your suggestions now.
-
-My current codebase:
-<current_codebase>
-{{CURRENT_CODEBASE}}
-</current_codebase>
-`;
-
-const improve = {
-  __proto__: null,
-  default: improve_default
-};
-
-var testgen_default = `You are a senior test developer. You produce optimized, maintainable code that follows best practices. 
-
-Your task is to review the current codebase and create and improve missing tests for the codebase.
-
-Additional instructions:
-<message>
-{{MESSAGE}}
-</message>
-
-Rules:
-- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
-- Your output should be a series of specific, actionable changes.
-
-When approaching this task:
-1. Carefully review the provided code.
-2. Identify the area thats raising this issue or error and provide a fix.
-3. Consider best practices for the specific programming language used.
-
-For each suggested change, provide:
-1. A short description of the change (one line maximum).
-2. The modified code block.
-
-Use the following format for your output:
-
-[Short Description]
-\`\`\`[language]:[path/to/file]
-[code block]
-\`\`\`
-
-Begin fixing the codebase provide your solutions.
-
-My current codebase:
-<current_codebase>
-{{CURRENT_CODEBASE}}
-</current_codebase>
-`;
-
-const testgen = {
-  __proto__: null,
-  default: testgen_default
-};
-
-class GitHubApiClient {
-  constructor(owner, repo, logger, options = {}) {
-    this.owner = owner;
-    this.repo = repo;
-    this.logger = logger;
-    this.options = options;
-    this.headers = {
-      Accept: "application/vnd.github.v3+json",
-      "User-Agent": "Codefetch/1.0"
-    };
-    if (options.token) {
-      this.headers.Authorization = `token ${options.token}`;
-    }
-  }
-  baseUrl = "https://api.github.com";
-  headers;
-  /**
-   * Check if the repository is accessible via API
-   */
-  async checkAccess() {
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/repos/${this.owner}/${this.repo}`,
-        { headers: this.headers }
-      );
-      if (!response.ok) {
-        if (response.status === 404) {
-          return { accessible: false, isPrivate: true, defaultBranch: "main" };
-        }
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
-      const data = await response.json();
-      return {
-        accessible: true,
-        isPrivate: data.private,
-        defaultBranch: data.default_branch
-      };
-    } catch (error) {
-      this.logger.debug(`Failed to check repository access: ${error}`);
-      return { accessible: false, isPrivate: true, defaultBranch: "main" };
-    }
-  }
-  /**
-   * Download repository as ZIP archive
-   */
-  async downloadZipArchive(ref = "HEAD") {
-    const branch = this.options.branch || ref;
-    const url = `${this.baseUrl}/repos/${this.owner}/${this.repo}/zipball/${branch}`;
-    this.logger.info(`Downloading repository archive...`);
-    const response = await fetch(url, {
-      headers: this.headers,
-      redirect: "follow"
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Failed to download archive: ${response.status} ${response.statusText}`
-      );
-    }
-    const contentLength = response.headers.get("content-length");
-    if (contentLength) {
-      const sizeBytes = Number.parseInt(contentLength);
-      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
-      this.logger.info(`Archive size: ${sizeMB} MB`);
-      if (isCloudflareWorker && sizeBytes > getCacheSizeLimit()) {
-        throw new Error(
-          `Archive size (${sizeMB} MB) exceeds Worker storage limit (${getCacheSizeLimit() / 1024 / 1024} MB). Please use a smaller repository or filter files more aggressively.`
-        );
-      }
-    } else {
-      this.logger.warn(
-        "GitHub API did not provide Content-Length header. Archive size cannot be determined in advance."
-      );
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  }
-  /**
-   * Download and extract repository to a directory
-   */
-  async downloadToDirectory(targetDir, options = {}) {
-    const zipBuffer = await this.downloadZipArchive(this.options.branch);
-    const tempDir = await mkdtemp(join$1(tmpdir(), "codefetch-zip-"));
-    const zipPath = join$1(tempDir, "repo.zip");
-    await writeFile(zipPath, zipBuffer);
-    this.logger.info("Extracting repository archive...");
-    const zip = new AdmZip(zipPath);
-    const entries = zip.getEntries();
-    let rootPrefix = "";
-    if (entries.length > 0) {
-      const firstEntry = entries[0].entryName;
-      const match = firstEntry.match(/^[^/]+\//);
-      if (match) {
-        rootPrefix = match[0];
-      }
-    }
-    await mkdir(targetDir, { recursive: true });
-    let extracted = 0;
-    let skipped = 0;
-    const defaultExcludeDirs = [
-      ".git",
-      "node_modules",
-      "dist",
-      "build",
-      ".next",
-      "coverage"
-    ];
-    const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
-    for (const entry of entries) {
-      if (entry.isDirectory) continue;
-      const relativePath = entry.entryName.startsWith(rootPrefix) ? entry.entryName.slice(rootPrefix.length) : entry.entryName;
-      if (!relativePath) continue;
-      const pathParts = relativePath.split("/");
-      const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
-      if (isExcluded) {
-        skipped++;
-        continue;
-      }
-      if (options.extensions && options.extensions.length > 0) {
-        const hasValidExt = options.extensions.some(
-          (ext) => relativePath.endsWith(ext)
-        );
-        if (!hasValidExt) {
-          skipped++;
-          continue;
-        }
-      }
-      if (options.maxFiles && extracted >= options.maxFiles) {
-        this.logger.warn(
-          `Reached file limit (${options.maxFiles}), stopping extraction`
-        );
-        break;
-      }
-      try {
-        const targetPath = join$1(targetDir, relativePath);
-        const targetDirPath = join$1(
-          targetDir,
-          relativePath.slice(0, Math.max(0, relativePath.lastIndexOf("/")))
-        );
-        await mkdir(targetDirPath, { recursive: true });
-        const buffer = zip.readFile(entry);
-        if (!buffer) {
-          throw new Error("Failed to read file from ZIP");
-        }
-        await writeFile(targetPath, buffer);
-        extracted++;
-        if (extracted % 50 === 0) {
-          this.logger.info(`Extracted ${extracted} files...`);
-        }
-      } catch (error) {
-        this.logger.debug(`Failed to extract ${relativePath}: ${error}`);
-        skipped++;
-      }
-    }
-    await rm(tempDir, { recursive: true, force: true });
-    this.logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
-  }
-}
-async function fetchGitHubViaApi(parsedUrl, targetDir, logger, options = {}) {
-  if (!parsedUrl.gitOwner || !parsedUrl.gitRepo) {
-    logger.debug("Invalid GitHub URL - missing owner or repo");
-    return false;
-  }
-  const client = new GitHubApiClient(
-    parsedUrl.gitOwner,
-    parsedUrl.gitRepo,
-    logger,
-    {
-      token: options.token || process.env.GITHUB_TOKEN,
-      branch: options.branch || parsedUrl.gitRef
-    }
-  );
-  const { accessible, isPrivate, defaultBranch } = await client.checkAccess();
-  if (!accessible) {
-    logger.debug(
-      "Repository not accessible via API, falling back to git clone"
-    );
-    return false;
-  }
-  if (isPrivate && !options.token && !process.env.GITHUB_TOKEN) {
-    logger.debug(
-      "Private repository requires authentication, falling back to git clone"
-    );
-    return false;
-  }
-  try {
-    const branch = options.branch || parsedUrl.gitRef || defaultBranch;
-    client.options.branch = branch;
-    await client.downloadToDirectory(targetDir, {
-      extensions: options.extensions,
-      excludeDirs: options.excludeDirs || [
-        "node_modules",
-        ".git",
-        "dist",
-        "build"
-      ],
-      maxFiles: options.maxFiles || 1e3
-    });
-    return true;
-  } catch (error) {
-    console.error("GitHub API error:", error);
-    logger.warn(`GitHub API fetch failed: ${error}`);
-    logger.debug(`Full error:`, error);
-    return false;
-  }
-}
-
-async function fetchFromWeb(url, options = {}) {
-  const logger = {
-    info: (msg) => options.verbose && options.verbose >= 1 && console.error(`[INFO] ${msg}`),
-    debug: (msg) => options.verbose && options.verbose >= 2 && console.error(`[DEBUG] ${msg}`),
-    error: (msg) => console.error(`[ERROR] ${msg}`),
-    success: (msg) => console.error(`[SUCCESS] ${msg}`),
-    warn: (msg) => console.error(`[WARN] ${msg}`)
-  };
+const createLogger = (verbose) => ({
+  info: (msg) => verbose && verbose >= 1 && console.log(`[INFO] ${msg}`),
+  debug: (msg) => verbose && verbose >= 2 && console.log(`[DEBUG] ${msg}`),
+  error: (msg) => console.error(`[ERROR] ${msg}`),
+  success: (msg) => console.log(`[SUCCESS] ${msg}`),
+  warn: (msg) => console.warn(`[WARN] ${msg}`)
+});
+async function fetchFromWebWorker(url, options = {}) {
+  const logger = createLogger(options.verbose);
   const validation = validateURL(url);
   if (!validation.valid) {
     throw new Error(`Invalid URL: ${validation.error}`);
@@ -1815,60 +786,48 @@ async function fetchFromWeb(url, options = {}) {
     throw new Error("Failed to parse URL");
   }
   logger.info(`Fetching from: ${parsedUrl.url}`);
-  logger.info(
-    `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
-  );
-  const cache = new WebCache({
-    ttlHours: options.cacheTTL || 1
-  });
-  await cache.init();
-  let contentPath = null;
-  if (options.noCache) {
-    logger.debug("Cache disabled");
-  } else {
-    const cached = await cache.get(parsedUrl);
-    if (cached) {
-      logger.info("Using cached content");
-      contentPath = cached.content;
+  let cache = null;
+  let cachedContent = null;
+  if (!options.noCache) {
+    if (isCloudflareWorker) {
+      cache = new WorkerWebCache({
+        ttlHours: options.cacheTTL || 1
+      });
+      await cache.init();
+      const cached = await cache.get(parsedUrl);
+      if (cached) {
+        logger.info("Using cached content");
+        cachedContent = JSON.parse(cached.content);
+      }
     }
+  } else {
+    logger.debug("Cache disabled");
   }
-  if (!contentPath) {
-    contentPath = await fetchGitRepository(parsedUrl, options, logger);
-    await cache.set(parsedUrl, contentPath);
+  let files = [];
+  if (!cachedContent) {
+    if (parsedUrl.gitProvider === "github") {
+      files = await fetchGitHubInMemory(parsedUrl, logger, options);
+    } else {
+      throw new Error(
+        "Only GitHub repositories are supported in Cloudflare Workers. Please use a GitHub URL (e.g., https://github.com/owner/repo)"
+      );
+    }
+    if (cache) {
+      await cache.set(parsedUrl, JSON.stringify(files));
+    }
+  } else {
+    files = cachedContent;
   }
-  logger.info("Analyzing fetched content...");
-  let output;
-  let totalTokens = 0;
-  const originalCwd = process.cwd();
-  process.chdir(contentPath);
-  const ig = ignore().add(
-    DEFAULT_IGNORE_PATTERNS.split("\n").filter(
-      (line) => line && !line.startsWith("#")
-    )
-  );
-  const files = await collectFiles(".", {
-    ig,
-    extensionSet: options.extensions ? new Set(options.extensions) : null,
-    excludeFiles: options.excludeFiles || null,
-    includeFiles: options.includeFiles || null,
-    excludeDirs: options.excludeDirs || null,
-    includeDirs: options.includeDirs || null,
-    verbose: options.verbose || 0
-  });
+  logger.info(`Analyzing ${files.length} files...`);
   if (options.format === "json") {
-    const {
-      root,
-      totalSize,
-      totalTokens: tokens
-    } = await collectFilesAsTree(".", files, {
+    const root = await buildTreeFromFiles(files, {
       tokenEncoder: options.tokenEncoder,
       tokenLimit: options.maxTokens
     });
-    totalTokens = tokens;
     const metadata = {
       totalFiles: files.length,
-      totalSize,
-      totalTokens,
+      totalSize: files.reduce((sum, f) => sum + f.content.length, 0),
+      totalTokens: root.totalTokens || 0,
       fetchedAt: /* @__PURE__ */ new Date(),
       source: parsedUrl.url,
       gitProvider: parsedUrl.gitProvider,
@@ -1876,80 +835,180 @@ async function fetchFromWeb(url, options = {}) {
       gitRepo: parsedUrl.gitRepo,
       gitRef: parsedUrl.gitRef || options.branch || "main"
     };
-    output = new FetchResultImpl(root, metadata);
+    return new FetchResultImpl(root.node, metadata);
   } else {
-    const markdown = await generateMarkdown(files, {
-      maxTokens: options.maxTokens ? Number(options.maxTokens) : null,
-      verbose: Number(options.verbose || 0),
-      projectTree: Number(options.projectTree || 0),
+    const markdown = await generateMarkdownFromContent(files, {
+      maxTokens: options.maxTokens,
+      includeTreeStructure: options.projectTree !== 0,
       tokenEncoder: options.tokenEncoder || "cl100k",
-      disableLineNumbers: Boolean(options.disableLineNumbers),
-      tokenLimiter: options.tokenLimiter || "truncated",
-      templateVars: {
-        ...options.templateVars,
-        SOURCE_URL: parsedUrl.url,
-        FETCHED_FROM: `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
-      }
+      disableLineNumbers: options.disableLineNumbers
     });
-    output = markdown;
+    return markdown;
   }
-  process.chdir(originalCwd);
-  return output;
 }
-async function fetchGitRepository(parsedUrl, options, logger) {
-  const tempDir = await mkdtemp(join$1(tmpdir(), "codefetch-git-"));
-  const repoPath = join$1(tempDir, "repo");
-  try {
-    if (parsedUrl.gitProvider === "github" && !options.noApi) {
-      logger.info("Attempting to fetch via GitHub API...");
-      const apiSuccess = await fetchGitHubViaApi(parsedUrl, repoPath, logger, {
-        branch: options.branch || parsedUrl.gitRef,
-        token: options.githubToken || process.env.GITHUB_TOKEN,
-        extensions: options.extensions,
-        excludeDirs: options.excludeDirs,
-        maxFiles: 1e3
-      });
-      if (apiSuccess) {
-        logger.success("Repository fetched successfully via API");
-        return repoPath;
-      }
-      logger.info("Falling back to git clone...");
+async function fetchGitHubInMemory(parsedUrl, logger, options) {
+  if (!parsedUrl.gitOwner || !parsedUrl.gitRepo) {
+    throw new Error("Invalid GitHub URL - missing owner or repo");
+  }
+  const client = new GitHubApiClient(
+    parsedUrl.gitOwner,
+    parsedUrl.gitRepo,
+    logger,
+    {
+      token: options.githubToken || globalThis.GITHUB_TOKEN,
+      branch: options.branch || parsedUrl.gitRef
     }
-    if (isCloudflareWorker) {
-      throw new Error(
-        "git clone is not supported in Cloudflare Workers. Use a public GitHub repo or provide GITHUB_TOKEN for ZIP mode."
-      );
-    }
-    logger.info("Cloning repository...");
-    const cloneArgs = ["clone"];
-    if (!options.branch || options.branch === "HEAD") {
-      cloneArgs.push("--depth", "1");
-    }
-    cloneArgs.push(parsedUrl.normalizedUrl);
-    cloneArgs.push(repoPath);
-    if (options.branch && options.branch !== "HEAD") {
-      cloneArgs.push("--branch", options.branch);
-      cloneArgs.push("--single-branch");
-    }
-    const gitCommand = `git ${cloneArgs.join(" ")}`;
-    logger.debug(`Running: ${gitCommand}`);
-    execSync(gitCommand, {
-      stdio: options.verbose && options.verbose >= 3 ? "inherit" : "pipe"
-    });
-    if (parsedUrl.gitRef && !options.branch) {
-      logger.info(`Checking out ref: ${parsedUrl.gitRef}`);
-      execSync(`git checkout ${parsedUrl.gitRef}`, {
-        cwd: repoPath,
-        stdio: "pipe"
-      });
-    }
-    logger.success("Repository cloned successfully");
-    return repoPath;
-  } catch (error) {
-    await rm(tempDir, { recursive: true, force: true });
+  );
+  const { accessible, isPrivate, defaultBranch } = await client.checkAccess();
+  if (!accessible) {
     throw new Error(
-      `Failed to fetch repository: ${error instanceof Error ? error.message : String(error)}`
+      "Repository not accessible. If it's a private repository, please provide a GitHub token via the githubToken option."
     );
+  }
+  if (isPrivate && !options.githubToken && !globalThis.GITHUB_TOKEN) {
+    throw new Error(
+      "Private repository requires authentication. Please provide a GitHub token via the githubToken option."
+    );
+  }
+  logger.info("Fetching repository via GitHub API...");
+  const branch = options.branch || parsedUrl.gitRef || defaultBranch;
+  const zipBuffer = await client.downloadZipArchive(branch);
+  logger.info("Extracting repository content...");
+  const { default: AdmZip } = await import('adm-zip');
+  const zip = new AdmZip(zipBuffer);
+  const entries = zip.getEntries();
+  const files = [];
+  let rootPrefix = "";
+  if (entries.length > 0) {
+    const firstEntry = entries[0].entryName;
+    const match = firstEntry.match(/^[^/]+\//);
+    if (match) {
+      rootPrefix = match[0];
+    }
+  }
+  const defaultExcludeDirs = [
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "coverage"
+  ];
+  const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
+  let extracted = 0;
+  let skipped = 0;
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+    const relativePath = entry.entryName.startsWith(rootPrefix) ? entry.entryName.slice(rootPrefix.length) : entry.entryName;
+    if (!relativePath) continue;
+    const pathParts = relativePath.split("/");
+    const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
+    if (isExcluded) {
+      skipped++;
+      continue;
+    }
+    if (options.extensions && options.extensions.length > 0) {
+      const hasValidExt = options.extensions.some(
+        (ext) => relativePath.endsWith(ext)
+      );
+      if (!hasValidExt) {
+        skipped++;
+        continue;
+      }
+    }
+    const maxFiles = options.maxFiles;
+    if (maxFiles && extracted >= maxFiles) {
+      logger.warn(`Reached file limit (${maxFiles}), stopping extraction`);
+      break;
+    }
+    try {
+      const buffer = zip.readFile(entry);
+      if (!buffer) {
+        throw new Error("Failed to read file from ZIP");
+      }
+      files.push({
+        path: relativePath,
+        content: buffer.toString("utf8")
+      });
+      extracted++;
+      if (extracted % 50 === 0) {
+        logger.info(`Extracted ${extracted} files...`);
+      }
+    } catch (error) {
+      logger.debug(`Failed to extract ${relativePath}: ${error}`);
+      skipped++;
+    }
+  }
+  logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
+  return files;
+}
+async function buildTreeFromFiles(files, options) {
+  const root = {
+    name: "",
+    path: "",
+    type: "directory",
+    children: []
+  };
+  let totalTokens = 0;
+  files.sort((a, b) => a.path.localeCompare(b.path));
+  for (const file of files) {
+    const pathParts = file.path.split("/");
+    let currentNode = root;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const dirName = pathParts[i];
+      if (!currentNode.children) {
+        currentNode.children = [];
+      }
+      let dirNode = currentNode.children.find(
+        (child) => child.type === "directory" && child.name === dirName
+      );
+      if (!dirNode) {
+        dirNode = {
+          name: dirName,
+          path: pathParts.slice(0, i + 1).join("/"),
+          type: "directory",
+          children: []
+        };
+        currentNode.children.push(dirNode);
+      }
+      currentNode = dirNode;
+    }
+    const fileName = pathParts[pathParts.length - 1];
+    const tokens = await countTokens(
+      file.content,
+      options.tokenEncoder || "simple"
+    );
+    const fileNode = {
+      name: fileName,
+      path: file.path,
+      type: "file",
+      content: file.content,
+      language: detectLanguage(fileName),
+      size: file.content.length,
+      tokens
+    };
+    if (!currentNode.children) {
+      currentNode.children = [];
+    }
+    currentNode.children.push(fileNode);
+    totalTokens += tokens;
+  }
+  sortTreeChildren(root);
+  return { node: root, totalTokens };
+}
+function sortTreeChildren(node) {
+  if (node.children) {
+    node.children.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === "directory" ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    for (const child of node.children) {
+      if (child.type === "directory") {
+        sortTreeChildren(child);
+      }
+    }
   }
 }
 
@@ -2022,6 +1081,151 @@ function htmlToMarkdown(html, options = {}) {
   return markdown;
 }
 
+var codegen_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
+
+Your task is to write code according to my instructions for the current codebase.
+
+instructions:
+<message>
+{{MESSAGE}}
+</message>
+
+Rules:
+- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
+- Your output should be a series of specific, actionable changes.
+
+When approaching this task:
+1. Carefully review the provided code.
+2. Identify the area thats raising this issue or error and provide a fix.
+3. Consider best practices for the specific programming language used.
+
+For each suggested change, provide:
+1. A short description of the change (one line maximum).
+2. The modified code block.
+
+Use the following format for your output:
+
+[Short Description]
+\`\`\`[language]:[path/to/file]
+[code block]
+\`\`\`
+
+Begin fixing the codebase provide your solutions.
+
+My current codebase:
+<current_codebase>
+{{CURRENT_CODEBASE}}
+</current_codebase>
+`;
+
+var fix_default = `You are a senior developer. You produce optimized, maintainable code that follows best practices. 
+
+Your task is to review the current codebase and fix the current issues.
+
+Current Issue:
+<issue>
+{{MESSAGE}}
+</issue>
+
+Rules:
+- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
+- Your output should be a series of specific, actionable changes.
+
+When approaching this task:
+1. Carefully review the provided code.
+2. Identify the area thats raising this issue or error and provide a fix.
+3. Consider best practices for the specific programming language used.
+
+For each suggested change, provide:
+1. A short description of the change (one line maximum).
+2. The modified code block.
+
+Use the following format for your output:
+
+[Short Description]
+\`\`\`[language]:[path/to/file]
+[code block]
+\`\`\`
+
+Begin fixing the codebase provide your solutions.
+
+My current codebase:
+<current_codebase>
+{{CURRENT_CODEBASE}}
+</current_codebase>
+`;
+
+var improve_default = `You are a senior software architect. You produce optimized, maintainable code that follows best practices. 
+
+Your task is to review the current codebase and suggest improvements or optimizations.
+
+Rules:
+- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
+- Your output should be a series of specific, actionable changes.
+
+When approaching this task:
+1. Carefully review the provided code.
+2. Identify areas that could be improved in terms of efficiency, readability, or maintainability.
+3. Consider best practices for the specific programming language used.
+4. Think about potential optimizations that could enhance performance.
+5. Look for opportunities to refactor or restructure the code for better organization.
+
+For each suggested change, provide:
+1. A short description of the change (one line maximum).
+2. The modified code block.
+
+Use the following format for your output:
+
+[Short Description]
+\`\`\`[language]:[path/to/file]
+[code block]
+\`\`\`
+
+Begin your analysis and provide your suggestions now.
+
+My current codebase:
+<current_codebase>
+{{CURRENT_CODEBASE}}
+</current_codebase>
+`;
+
+var testgen_default = `You are a senior test developer. You produce optimized, maintainable code that follows best practices. 
+
+Your task is to review the current codebase and create and improve missing tests for the codebase.
+
+Additional instructions:
+<message>
+{{MESSAGE}}
+</message>
+
+Rules:
+- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. 
+- Your output should be a series of specific, actionable changes.
+
+When approaching this task:
+1. Carefully review the provided code.
+2. Identify the area thats raising this issue or error and provide a fix.
+3. Consider best practices for the specific programming language used.
+
+For each suggested change, provide:
+1. A short description of the change (one line maximum).
+2. The modified code block.
+
+Use the following format for your output:
+
+[Short Description]
+\`\`\`[language]:[path/to/file]
+[code block]
+\`\`\`
+
+Begin fixing the codebase provide your solutions.
+
+My current codebase:
+<current_codebase>
+{{CURRENT_CODEBASE}}
+</current_codebase>
+`;
+
 const prompts = {
   codegen: codegen_default,
   fix: fix_default,
@@ -2029,4 +1233,4 @@ const prompts = {
   testgen: testgen_default
 };
 
-export { VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, collectFilesAsTree, countTokens, fetchFromWeb, fix_default as fixPrompt, generateMarkdown, generateMarkdownFromContent, generateProjectTree, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, testgen_default as testgenPrompt };
+export { FetchResultImpl, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegen_default as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, fix_default as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, improve_default as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, testgen_default as testgenPrompt };

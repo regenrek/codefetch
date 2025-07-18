@@ -13,7 +13,7 @@ export {
   resolveCodefetchConfig,
   mergeWithCliArgs,
   type CodefetchConfig,
-} from "./config.js";
+} from "./config-worker.js";
 export { countTokens } from "./token-counter.js";
 export { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants.js";
 

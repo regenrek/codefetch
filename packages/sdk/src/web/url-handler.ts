@@ -1,5 +1,25 @@
-import { URL } from "node:url";
-import { isIPv4, isIPv6 } from "node:net";
+// URL is globally available in browsers and Workers, no import needed
+// Simple IP validation functions to replace node:net
+
+function isIPv4(str: string): boolean {
+  const parts = str.split(".");
+  if (parts.length !== 4) return false;
+
+  return parts.every((part) => {
+    const num = parseInt(part, 10);
+    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
+  });
+}
+
+function isIPv6(str: string): boolean {
+  // Basic IPv6 validation
+  const parts = str.split(":");
+  if (parts.length < 3 || parts.length > 8) return false;
+
+  // Check for valid hex values
+  const hexPattern = /^[0-9a-fA-F]{0,4}$/;
+  return parts.every((part) => hexPattern.test(part));
+}
 
 // Git provider patterns
 const GIT_PROVIDERS = {

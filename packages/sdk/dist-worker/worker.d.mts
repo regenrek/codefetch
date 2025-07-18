@@ -1,3 +1,41 @@
+/**
+ * Worker-safe configuration utilities
+ * No file system operations, only in-memory config handling
+ */
+interface CodefetchConfig$1 {
+    format: "markdown" | "json";
+    extensions: string[];
+    excludeFiles: string[];
+    includeFiles: string[];
+    excludeDirs: string[];
+    includeDirs: string[];
+    verbose: number;
+    projectTree: number;
+    dryRun: boolean;
+    maxTokens: number;
+    tokenEncoder: string;
+    disableLineNumbers: boolean;
+    defaultIgnore: boolean;
+    gitignore: boolean;
+    tokenLimiter: string;
+    tokenCountOnly: boolean;
+    promptFile?: string;
+    prompt?: string;
+    templateVars: Record<string, string>;
+}
+/**
+ * Get default configuration for Workers
+ */
+declare function getDefaultConfig(): CodefetchConfig$1;
+/**
+ * Resolve configuration in Workers (no file system)
+ */
+declare function resolveCodefetchConfig(cwd?: string, overrides?: Partial<CodefetchConfig$1>): Promise<CodefetchConfig$1>;
+/**
+ * Merge configuration with CLI arguments
+ */
+declare function mergeWithCliArgs(config: CodefetchConfig$1, args: any): CodefetchConfig$1;
+
 type TokenEncoder = "simple" | "p50k" | "o200k" | "cl100k";
 type TokenLimiter = "sequential" | "truncated";
 interface FileNode {
@@ -24,34 +62,6 @@ interface FetchResult {
 }
 type OutputFormat = "markdown" | "json";
 
-interface CodefetchConfig {
-    outputFile: string;
-    outputPath: string;
-    maxTokens: number;
-    includeFiles?: string[];
-    excludeFiles?: string[];
-    includeDirs?: string[];
-    excludeDirs?: string[];
-    verbose: number;
-    extensions?: string[];
-    defaultIgnore: boolean;
-    gitignore: boolean;
-    projectTree: number;
-    tokenEncoder: TokenEncoder;
-    tokenLimiter: TokenLimiter;
-    trackedModels?: string[];
-    dryRun?: boolean;
-    disableLineNumbers?: boolean;
-    tokenCountOnly?: boolean;
-    defaultPromptFile: string;
-    defaultChat?: string;
-    templateVars?: Record<string, string>;
-    format?: OutputFormat;
-}
-declare const getDefaultConfig: () => CodefetchConfig;
-declare function resolveCodefetchConfig(config: CodefetchConfig, cwd: string): Promise<CodefetchConfig>;
-declare function mergeWithCliArgs(config: CodefetchConfig, cliArgs: Partial<CodefetchConfig>): CodefetchConfig;
-
 declare const countTokens: (text: string, encoder: TokenEncoder) => Promise<number>;
 
 declare const VALID_PROMPTS: Set<string>;
@@ -77,6 +87,31 @@ interface MarkdownFromContentOptions {
  * This function doesn't require filesystem access
  */
 declare function generateMarkdownFromContent(files: FileContent[], options?: MarkdownFromContentOptions): Promise<string>;
+
+interface CodefetchConfig {
+    outputFile: string;
+    outputPath: string;
+    maxTokens: number;
+    includeFiles?: string[];
+    excludeFiles?: string[];
+    includeDirs?: string[];
+    excludeDirs?: string[];
+    verbose: number;
+    extensions?: string[];
+    defaultIgnore: boolean;
+    gitignore: boolean;
+    projectTree: number;
+    tokenEncoder: TokenEncoder;
+    tokenLimiter: TokenLimiter;
+    trackedModels?: string[];
+    dryRun?: boolean;
+    disableLineNumbers?: boolean;
+    tokenCountOnly?: boolean;
+    defaultPromptFile: string;
+    defaultChat?: string;
+    templateVars?: Record<string, string>;
+    format?: OutputFormat;
+}
 
 interface FetchOptions extends Partial<CodefetchConfig> {
     source?: string;
@@ -188,4 +223,4 @@ declare const isCloudflareWorker: boolean;
  */
 declare const getCacheSizeLimit: () => number;
 
-export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };
+export { type CodefetchConfig$1 as CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };

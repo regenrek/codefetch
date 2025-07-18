@@ -6,7 +6,7 @@
 import { parseURL, validateURL } from "./url-handler.js";
 import { WorkerWebCache } from "./cache-worker.js";
 import { isCloudflareWorker } from "../env.js";
-import { GitHubApiClient } from "./github-api.js";
+import { streamGitHubTarball } from "./github-tarball.js";
 import type { FetchOptions } from "../fetch.js";
 import { FetchResultImpl } from "../fetch-result.js";
 import {
@@ -80,7 +80,7 @@ export async function fetchFromWebWorker(
     files = cachedContent;
   } else {
     if (parsedUrl.gitProvider === "github") {
-      files = await fetchGitHubInMemory(parsedUrl, logger, options);
+      files = await fetchGitHubStreaming(parsedUrl, logger, options);
     } else {
       throw new Error(
         "Only GitHub repositories are supported in Cloudflare Workers. " +
@@ -131,9 +131,9 @@ export async function fetchFromWebWorker(
 }
 
 /**
- * Fetch GitHub repository content into memory
+ * Fetch GitHub repository content using streaming tarball
  */
-async function fetchGitHubInMemory(
+async function fetchGitHubStreaming(
   parsedUrl: any,
   logger: any,
   options: FetchOptions
@@ -142,131 +142,32 @@ async function fetchGitHubInMemory(
     throw new Error("Invalid GitHub URL - missing owner or repo");
   }
 
-  const client = new GitHubApiClient(
+  const branch = (options as any).branch || parsedUrl.gitRef || "main";
+
+  logger.info(
+    `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch}...`
+  );
+
+  let processed = 0;
+  const files = await streamGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
-    logger,
+    branch,
     {
       token: (options as any).githubToken || (globalThis as any).GITHUB_TOKEN,
-      branch: (options as any).branch || parsedUrl.gitRef,
+      extensions: options.extensions,
+      excludeDirs: options.excludeDirs,
+      maxFiles: (options as any).maxFiles || 1000,
+      onProgress: (count) => {
+        processed = count;
+        if (count % 50 === 0) {
+          logger.info(`Processed ${count} files...`);
+        }
+      },
     }
   );
 
-  const { accessible, isPrivate, defaultBranch } = await client.checkAccess();
-
-  if (!accessible) {
-    throw new Error(
-      "Repository not accessible. If it's a private repository, " +
-        "please provide a GitHub token via the githubToken option."
-    );
-  }
-
-  if (
-    isPrivate &&
-    !(options as any).githubToken &&
-    !(globalThis as any).GITHUB_TOKEN
-  ) {
-    throw new Error(
-      "Private repository requires authentication. " +
-        "Please provide a GitHub token via the githubToken option."
-    );
-  }
-
-  logger.info("Fetching repository via GitHub API...");
-
-  const branch = (options as any).branch || parsedUrl.gitRef || defaultBranch;
-  const zipBuffer = await client.downloadZipArchive(branch);
-
-  logger.info("Extracting repository content...");
-
-  // Import AdmZip dynamically for Workers compatibility
-  const { default: AdmZip } = await import("adm-zip");
-  const zip = new AdmZip(zipBuffer);
-  const entries = zip.getEntries();
-
-  const files: FileContent[] = [];
-  let rootPrefix = "";
-
-  // Detect root prefix
-  if (entries.length > 0) {
-    const firstEntry = entries[0].entryName;
-    const match = firstEntry.match(/^[^/]+\//);
-    if (match) {
-      rootPrefix = match[0];
-    }
-  }
-
-  // Default exclude directories
-  const defaultExcludeDirs = [
-    ".git",
-    "node_modules",
-    "dist",
-    "build",
-    ".next",
-    "coverage",
-  ];
-  const excludeDirs = [...(options.excludeDirs || []), ...defaultExcludeDirs];
-
-  let extracted = 0;
-  let skipped = 0;
-
-  for (const entry of entries) {
-    if (entry.isDirectory) continue;
-
-    const relativePath = entry.entryName.startsWith(rootPrefix)
-      ? entry.entryName.slice(rootPrefix.length)
-      : entry.entryName;
-
-    if (!relativePath) continue;
-
-    // Check exclusions
-    const pathParts = relativePath.split("/");
-    const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
-    if (isExcluded) {
-      skipped++;
-      continue;
-    }
-
-    // Check extensions
-    if (options.extensions && options.extensions.length > 0) {
-      const hasValidExt = options.extensions.some((ext) =>
-        relativePath.endsWith(ext)
-      );
-      if (!hasValidExt) {
-        skipped++;
-        continue;
-      }
-    }
-
-    // Check file limit
-    const maxFiles = (options as any).maxFiles;
-    if (maxFiles && extracted >= maxFiles) {
-      logger.warn(`Reached file limit (${maxFiles}), stopping extraction`);
-      break;
-    }
-
-    try {
-      const buffer = zip.readFile(entry);
-      if (!buffer) {
-        throw new Error("Failed to read file from ZIP");
-      }
-
-      files.push({
-        path: relativePath,
-        content: buffer.toString("utf8"),
-      });
-
-      extracted++;
-      if (extracted % 50 === 0) {
-        logger.info(`Extracted ${extracted} files...`);
-      }
-    } catch (error) {
-      logger.debug(`Failed to extract ${relativePath}: ${error}`);
-      skipped++;
-    }
-  }
-
-  logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
+  logger.success(`Streamed ${files.length} files from GitHub`);
   return files;
 }
 

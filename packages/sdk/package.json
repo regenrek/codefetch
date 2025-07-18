@@ -92,7 +92,6 @@
     "prepublishOnly": "npm run build:all"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
     "c12": "^2.0.1",
     "consola": "^3.3.3",
     "defu": "^6.1.4",
@@ -103,6 +102,7 @@
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
+    "adm-zip": "^0.5.16",
     "eslint": "^9.18.0",
     "eslint-config-unjs": "^0.4.2",
     "prettier": "^3.4.2",

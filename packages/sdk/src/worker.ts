@@ -32,12 +32,7 @@ export type { WebFetchConfig, CrawlOptions, CrawlResult } from "./web/types.js";
 export { htmlToMarkdown } from "./web/html-to-markdown.js";
 
 // GitHub tarball extraction (uses native DecompressionStream)
-export {
-  fetchGitHubTarball,
-  type GitHubTarballConfig,
-  type FileHandler,
-  workerExample as gitHubTarballExample,
-} from "./web/github-tarball-worker.js";
+export { streamGitHubTarball } from "./web/github-tarball.js";
 
 // Types (Worker-safe)
 export type { FileNode, FetchResult, FetchMetadata } from "./types.js";

@@ -1,10 +1,4 @@
 import { Tiktoken } from 'js-tiktoken/lite';
-import { URL } from 'node:url';
-import { isIPv4, isIPv6 } from 'node:net';
-import { join } from 'node:path';
-import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import AdmZip from 'adm-zip';
 
 class FetchResultImpl {
   constructor(root, metadata) {
@@ -447,6 +441,20 @@ const prompts = {
   testgen: testgenPrompt
 };
 
+function isIPv4(str) {
+  const parts = str.split(".");
+  if (parts.length !== 4) return false;
+  return parts.every((part) => {
+    const num = Number.parseInt(part, 10);
+    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
+  });
+}
+function isIPv6(str) {
+  const parts = str.split(":");
+  if (parts.length < 3 || parts.length > 8) return false;
+  const hexPattern = /^[0-9a-fA-F]{0,4}$/;
+  return parts.every((part) => hexPattern.test(part));
+}
 const GIT_PROVIDERS = {
   github: /^https:\/\/github\.com\/([\w-]+)\/([\w.-]+)/,
   gitlab: /^https:\/\/gitlab\.com\/([\w-]+)\/([\w.-]+)/,
@@ -702,172 +710,143 @@ class WorkerWebCache {
 }
 
 const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
-const getCacheSizeLimit = () => {
-  if (isCloudflareWorker) {
-    return 8 * 1024 * 1024;
-  }
-  return 100 * 1024 * 1024;
-};
 
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-class GitHubApiClient {
-  constructor(owner, repo, logger, options = {}) {
-    this.owner = owner;
-    this.repo = repo;
-    this.logger = logger;
-    this.options = options;
-    __publicField(this, "baseUrl", "https://api.github.com");
-    __publicField(this, "headers");
-    this.headers = {
-      Accept: "application/vnd.github.v3+json",
-      "User-Agent": "Codefetch/1.0"
-    };
-    if (options.token) {
-      this.headers.Authorization = `token ${options.token}`;
-    }
+class TarStreamParser {
+  constructor() {
+    __publicField(this, "buffer", new Uint8Array(0));
+    __publicField(this, "position", 0);
   }
-  /**
-   * Check if the repository is accessible via API
-   */
-  async checkAccess() {
+  async *parse(stream) {
+    const reader = stream.getReader();
     try {
-      const response = await fetch(
-        `${this.baseUrl}/repos/${this.owner}/${this.repo}`,
-        { headers: this.headers }
-      );
-      if (!response.ok) {
-        if (response.status === 404) {
-          return { accessible: false, isPrivate: true, defaultBranch: "main" };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const newBuffer = new Uint8Array(this.buffer.length + value.length);
+        newBuffer.set(this.buffer);
+        newBuffer.set(value, this.buffer.length);
+        this.buffer = newBuffer;
+        while (this.buffer.length >= 512) {
+          const block = this.buffer.slice(0, 512);
+          if (this.isEmptyBlock(block)) {
+            this.buffer = this.buffer.slice(512);
+            continue;
+          }
+          const header = this.parseHeader(block);
+          if (!header) {
+            this.buffer = this.buffer.slice(512);
+            continue;
+          }
+          const paddedSize = Math.ceil(header.size / 512) * 512;
+          const totalSize = 512 + paddedSize;
+          if (this.buffer.length < totalSize) {
+            break;
+          }
+          const body = this.buffer.slice(512, 512 + header.size);
+          if (header.type === "0" || header.type === "") {
+            yield { header, body };
+          }
+          this.buffer = this.buffer.slice(totalSize);
         }
-        throw new Error(`GitHub API error: ${response.status}`);
       }
-      const data = await response.json();
-      return {
-        accessible: true,
-        isPrivate: data.private,
-        defaultBranch: data.default_branch
-      };
-    } catch (error) {
-      this.logger.debug(`Failed to check repository access: ${error}`);
-      return { accessible: false, isPrivate: true, defaultBranch: "main" };
+    } finally {
+      reader.releaseLock();
     }
   }
-  /**
-   * Download repository as ZIP archive
-   */
-  async downloadZipArchive(ref = "HEAD") {
-    const branch = this.options.branch || ref;
-    const url = `${this.baseUrl}/repos/${this.owner}/${this.repo}/zipball/${branch}`;
-    this.logger.info(`Downloading repository archive...`);
-    const response = await fetch(url, {
-      headers: this.headers,
-      redirect: "follow"
+  isEmptyBlock(block) {
+    return block.every((byte) => byte === 0);
+  }
+  parseHeader(block) {
+    const name = this.readString(block, 0, 100);
+    if (!name) return null;
+    const sizeStr = this.readString(block, 124, 12);
+    const size = Number.parseInt(sizeStr, 8);
+    const typeFlag = String.fromCharCode(block[156]);
+    return {
+      name: name.replace(/\0+$/, ""),
+      // Remove null padding
+      size,
+      type: typeFlag
+    };
+  }
+  readString(block, offset, length) {
+    const bytes = block.slice(offset, offset + length);
+    const nullIndex = bytes.indexOf(0);
+    const effectiveLength = nullIndex === -1 ? length : nullIndex;
+    return new TextDecoder().decode(bytes.slice(0, effectiveLength));
+  }
+}
+async function streamGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
+  const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`;
+  const headers = {
+    Accept: "application/vnd.github.v3.tarball",
+    "User-Agent": "codefetch-worker"
+  };
+  if (options.token) {
+    headers["Authorization"] = `token ${options.token}`;
+  }
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`Repository not found: ${owner}/${repo}`);
+    } else if (response.status === 403) {
+      throw new Error("API rate limit exceeded or authentication required");
+    }
+    throw new Error(
+      `Failed to fetch tarball: ${response.status} ${response.statusText}`
+    );
+  }
+  if (!response.body) {
+    throw new Error("No response body");
+  }
+  const decompressedStream = response.body.pipeThrough(
+    new DecompressionStream("gzip")
+  );
+  const parser = new TarStreamParser();
+  const files = [];
+  const defaultExcludeDirs = [
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "coverage"
+  ];
+  const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
+  let processed = 0;
+  let rootPrefix = "";
+  for await (const { header, body } of parser.parse(decompressedStream)) {
+    if (!rootPrefix && header.name.includes("/")) {
+      rootPrefix = header.name.split("/")[0] + "/";
+    }
+    const relativePath = header.name.startsWith(rootPrefix) ? header.name.slice(rootPrefix.length) : header.name;
+    if (!relativePath) continue;
+    const pathParts = relativePath.split("/");
+    const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
+    if (isExcluded) continue;
+    if (options.extensions && options.extensions.length > 0) {
+      const hasValidExt = options.extensions.some(
+        (ext) => relativePath.endsWith(ext)
+      );
+      if (!hasValidExt) continue;
+    }
+    if (options.maxFiles && processed >= options.maxFiles) {
+      break;
+    }
+    const content = new TextDecoder().decode(body);
+    files.push({
+      path: relativePath,
+      content
     });
-    if (!response.ok) {
-      throw new Error(
-        `Failed to download archive: ${response.status} ${response.statusText}`
-      );
+    processed++;
+    if (options.onProgress) {
+      options.onProgress(processed);
     }
-    const contentLength = response.headers.get("content-length");
-    if (contentLength) {
-      const sizeBytes = Number.parseInt(contentLength);
-      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
-      this.logger.info(`Archive size: ${sizeMB} MB`);
-      if (isCloudflareWorker && sizeBytes > getCacheSizeLimit()) {
-        throw new Error(
-          `Archive size (${sizeMB} MB) exceeds Worker storage limit (${getCacheSizeLimit() / 1024 / 1024} MB). Please use a smaller repository or filter files more aggressively.`
-        );
-      }
-    } else {
-      this.logger.warn(
-        "GitHub API did not provide Content-Length header. Archive size cannot be determined in advance."
-      );
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
   }
-  /**
-   * Download and extract repository to a directory
-   */
-  async downloadToDirectory(targetDir, options = {}) {
-    const zipBuffer = await this.downloadZipArchive(this.options.branch);
-    const tempDir = await mkdtemp(join(tmpdir(), "codefetch-zip-"));
-    const zipPath = join(tempDir, "repo.zip");
-    await writeFile(zipPath, zipBuffer);
-    this.logger.info("Extracting repository archive...");
-    const zip = new AdmZip(zipPath);
-    const entries = zip.getEntries();
-    let rootPrefix = "";
-    if (entries.length > 0) {
-      const firstEntry = entries[0].entryName;
-      const match = firstEntry.match(/^[^/]+\//);
-      if (match) {
-        rootPrefix = match[0];
-      }
-    }
-    await mkdir(targetDir, { recursive: true });
-    let extracted = 0;
-    let skipped = 0;
-    const defaultExcludeDirs = [
-      ".git",
-      "node_modules",
-      "dist",
-      "build",
-      ".next",
-      "coverage"
-    ];
-    const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
-    for (const entry of entries) {
-      if (entry.isDirectory) continue;
-      const relativePath = entry.entryName.startsWith(rootPrefix) ? entry.entryName.slice(rootPrefix.length) : entry.entryName;
-      if (!relativePath) continue;
-      const pathParts = relativePath.split("/");
-      const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
-      if (isExcluded) {
-        skipped++;
-        continue;
-      }
-      if (options.extensions && options.extensions.length > 0) {
-        const hasValidExt = options.extensions.some(
-          (ext) => relativePath.endsWith(ext)
-        );
-        if (!hasValidExt) {
-          skipped++;
-          continue;
-        }
-      }
-      if (options.maxFiles && extracted >= options.maxFiles) {
-        this.logger.warn(
-          `Reached file limit (${options.maxFiles}), stopping extraction`
-        );
-        break;
-      }
-      try {
-        const targetPath = join(targetDir, relativePath);
-        const targetDirPath = join(
-          targetDir,
-          relativePath.slice(0, Math.max(0, relativePath.lastIndexOf("/")))
-        );
-        await mkdir(targetDirPath, { recursive: true });
-        const buffer = zip.readFile(entry);
-        if (!buffer) {
-          throw new Error("Failed to read file from ZIP");
-        }
-        await writeFile(targetPath, buffer);
-        extracted++;
-        if (extracted % 50 === 0) {
-          this.logger.info(`Extracted ${extracted} files...`);
-        }
-      } catch (error) {
-        this.logger.debug(`Failed to extract ${relativePath}: ${error}`);
-        skipped++;
-      }
-    }
-    await rm(tempDir, { recursive: true, force: true });
-    this.logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
-  }
+  return files;
 }
 
 const createLogger = (verbose) => ({
@@ -910,7 +889,7 @@ async function fetchFromWebWorker(url, options = {}) {
     files = cachedContent;
   } else {
     if (parsedUrl.gitProvider === "github") {
-      files = await fetchGitHubInMemory(parsedUrl, logger, options);
+      files = await fetchGitHubStreaming(parsedUrl, logger, options);
     } else {
       throw new Error(
         "Only GitHub repositories are supported in Cloudflare Workers. Please use a GitHub URL (e.g., https://github.com/owner/repo)"
@@ -948,100 +927,31 @@ async function fetchFromWebWorker(url, options = {}) {
     return markdown;
   }
 }
-async function fetchGitHubInMemory(parsedUrl, logger, options) {
+async function fetchGitHubStreaming(parsedUrl, logger, options) {
   if (!parsedUrl.gitOwner || !parsedUrl.gitRepo) {
     throw new Error("Invalid GitHub URL - missing owner or repo");
   }
-  const client = new GitHubApiClient(
+  const branch = options.branch || parsedUrl.gitRef || "main";
+  logger.info(
+    `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch}...`
+  );
+  const files = await streamGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
-    logger,
+    branch,
     {
       token: options.githubToken || globalThis.GITHUB_TOKEN,
-      branch: options.branch || parsedUrl.gitRef
+      extensions: options.extensions,
+      excludeDirs: options.excludeDirs,
+      maxFiles: options.maxFiles || 1e3,
+      onProgress: (count) => {
+        if (count % 50 === 0) {
+          logger.info(`Processed ${count} files...`);
+        }
+      }
     }
   );
-  const { accessible, isPrivate, defaultBranch } = await client.checkAccess();
-  if (!accessible) {
-    throw new Error(
-      "Repository not accessible. If it's a private repository, please provide a GitHub token via the githubToken option."
-    );
-  }
-  if (isPrivate && !options.githubToken && !globalThis.GITHUB_TOKEN) {
-    throw new Error(
-      "Private repository requires authentication. Please provide a GitHub token via the githubToken option."
-    );
-  }
-  logger.info("Fetching repository via GitHub API...");
-  const branch = options.branch || parsedUrl.gitRef || defaultBranch;
-  const zipBuffer = await client.downloadZipArchive(branch);
-  logger.info("Extracting repository content...");
-  const { default: AdmZip } = await import('adm-zip');
-  const zip = new AdmZip(zipBuffer);
-  const entries = zip.getEntries();
-  const files = [];
-  let rootPrefix = "";
-  if (entries.length > 0) {
-    const firstEntry = entries[0].entryName;
-    const match = firstEntry.match(/^[^/]+\//);
-    if (match) {
-      rootPrefix = match[0];
-    }
-  }
-  const defaultExcludeDirs = [
-    ".git",
-    "node_modules",
-    "dist",
-    "build",
-    ".next",
-    "coverage"
-  ];
-  const excludeDirs = [...options.excludeDirs || [], ...defaultExcludeDirs];
-  let extracted = 0;
-  let skipped = 0;
-  for (const entry of entries) {
-    if (entry.isDirectory) continue;
-    const relativePath = entry.entryName.startsWith(rootPrefix) ? entry.entryName.slice(rootPrefix.length) : entry.entryName;
-    if (!relativePath) continue;
-    const pathParts = relativePath.split("/");
-    const isExcluded = excludeDirs.some((dir) => pathParts.includes(dir));
-    if (isExcluded) {
-      skipped++;
-      continue;
-    }
-    if (options.extensions && options.extensions.length > 0) {
-      const hasValidExt = options.extensions.some(
-        (ext) => relativePath.endsWith(ext)
-      );
-      if (!hasValidExt) {
-        skipped++;
-        continue;
-      }
-    }
-    const maxFiles = options.maxFiles;
-    if (maxFiles && extracted >= maxFiles) {
-      logger.warn(`Reached file limit (${maxFiles}), stopping extraction`);
-      break;
-    }
-    try {
-      const buffer = zip.readFile(entry);
-      if (!buffer) {
-        throw new Error("Failed to read file from ZIP");
-      }
-      files.push({
-        path: relativePath,
-        content: buffer.toString("utf8")
-      });
-      extracted++;
-      if (extracted % 50 === 0) {
-        logger.info(`Extracted ${extracted} files...`);
-      }
-    } catch (error) {
-      logger.debug(`Failed to extract ${relativePath}: ${error}`);
-      skipped++;
-    }
-  }
-  logger.success(`Extracted ${extracted} files (skipped ${skipped})`);
+  logger.success(`Streamed ${files.length} files from GitHub`);
   return files;
 }
 async function buildTreeFromFiles(files, options) {

@@ -12,6 +12,11 @@
 - Add `fetchFromWeb` as Worker-safe alternative to file-based operations
 - Support for fetching private GitHub repositories with token authentication in Workers
 - Add proper TypeScript types for Worker environments
+- Optimized GitHub tarball extraction already uses native DecompressionStream
+  - Zero bundle overhead - no external dependencies
+  - Custom lightweight TAR parser (~100 lines)
+  - Native Web Streams throughout - no Node.js stream conversion needed
+  - `streamGitHubTarball` function available in worker exports
 
 ## 1.5.1
 

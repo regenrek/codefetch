@@ -90,7 +90,7 @@ class TarStreamParser {
     const sizeStr = this.readString(block, 124, 12);
     const size = Number.parseInt(sizeStr, 8); // Octal
 
-    const typeFlag = String.fromCharCode(block[156]);
+    const typeFlag = String.fromCodePoint(block[156]);
 
     return {
       name: name.replace(/\0+$/, ""), // Remove null padding
@@ -128,7 +128,7 @@ export async function streamGitHubTarball(
 ): Promise<FileContent[]> {
   const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3.tarball",
     "User-Agent": "codefetch-worker",
   };

@@ -3,8 +3,6 @@
  * No file system operations, only in-memory config handling
  */
 
-import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore.js";
-
 // Define CodefetchConfig interface for Workers
 export interface CodefetchConfig {
   format: "markdown" | "json";

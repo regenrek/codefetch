@@ -1,4 +1,5 @@
 type TokenEncoder = "simple" | "p50k" | "o200k" | "cl100k";
+type TokenLimiter = "sequential" | "truncated";
 interface FileNode {
     name: string;
     path: string;
@@ -21,6 +22,7 @@ interface FetchResult {
     root: FileNode;
     metadata: FetchMetadata;
 }
+type OutputFormat = "markdown" | "json";
 
 declare class FetchResultImpl {
     root: FileNode;
@@ -97,4 +99,44 @@ declare const prompts: {
     testgen: string;
 };
 
-export { type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, SUPPORTED_MODELS, type TokenEncoder, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, _default$3 as codegenPrompt, countTokens, detectLanguage, _default$2 as fixPrompt, generateMarkdownFromContent, _default$1 as improvePrompt, prompts, _default as testgenPrompt };
+interface CodefetchConfig {
+    outputFile: string;
+    outputPath: string;
+    maxTokens: number;
+    includeFiles?: string[];
+    excludeFiles?: string[];
+    includeDirs?: string[];
+    excludeDirs?: string[];
+    verbose: number;
+    extensions?: string[];
+    defaultIgnore: boolean;
+    gitignore: boolean;
+    projectTree: number;
+    tokenEncoder: TokenEncoder;
+    tokenLimiter: TokenLimiter;
+    trackedModels?: string[];
+    dryRun?: boolean;
+    disableLineNumbers?: boolean;
+    tokenCountOnly?: boolean;
+    defaultPromptFile: string;
+    defaultChat?: string;
+    templateVars?: Record<string, string>;
+    format?: OutputFormat;
+}
+
+interface FetchOptions extends Partial<CodefetchConfig> {
+    source?: string;
+    format?: OutputFormat;
+}
+
+/**
+ * Cloudflare Worker-compatible web fetch implementation
+ * Works with in-memory content instead of file system operations
+ */
+
+/**
+ * Fetch web content in a Worker-compatible way
+ */
+declare function fetchFromWebWorker(url: string, options?: FetchOptions): Promise<string | FetchResultImpl>;
+
+export { type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, SUPPORTED_MODELS, type TokenEncoder, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, _default$3 as codegenPrompt, countTokens, detectLanguage, fetchFromWebWorker as fetch, _default$2 as fixPrompt, generateMarkdownFromContent, _default$1 as improvePrompt, prompts, _default as testgenPrompt };

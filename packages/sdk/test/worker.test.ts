@@ -23,7 +23,7 @@ describe("Worker exports", () => {
     expect(workerModule.fetchFromWeb).toBeDefined();
     expect(workerModule.countTokens).toBeDefined();
     expect(workerModule.htmlToMarkdown).toBeDefined();
-    expect(workerModule.generateMarkdown).toBeDefined();
+    expect(workerModule.generateMarkdownFromContent).toBeDefined();
 
     // Check that Node-specific exports are NOT included
     expect((workerModule as any).collectFiles).toBeUndefined();

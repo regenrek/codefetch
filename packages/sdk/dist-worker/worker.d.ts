@@ -1,3 +1,41 @@
+/**
+ * Worker-safe configuration utilities
+ * No file system operations, only in-memory config handling
+ */
+interface CodefetchConfig$1 {
+    format: "markdown" | "json";
+    extensions: string[];
+    excludeFiles: string[];
+    includeFiles: string[];
+    excludeDirs: string[];
+    includeDirs: string[];
+    verbose: number;
+    projectTree: number;
+    dryRun: boolean;
+    maxTokens: number;
+    tokenEncoder: string;
+    disableLineNumbers: boolean;
+    defaultIgnore: boolean;
+    gitignore: boolean;
+    tokenLimiter: string;
+    tokenCountOnly: boolean;
+    promptFile?: string;
+    prompt?: string;
+    templateVars: Record<string, string>;
+}
+/**
+ * Get default configuration for Workers
+ */
+declare function getDefaultConfig(): CodefetchConfig$1;
+/**
+ * Resolve configuration in Workers (no file system)
+ */
+declare function resolveCodefetchConfig(cwd?: string, overrides?: Partial<CodefetchConfig$1>): Promise<CodefetchConfig$1>;
+/**
+ * Merge configuration with CLI arguments
+ */
+declare function mergeWithCliArgs(config: CodefetchConfig$1, args: any): CodefetchConfig$1;
+
 type TokenEncoder = "simple" | "p50k" | "o200k" | "cl100k";
 type TokenLimiter = "sequential" | "truncated";
 interface FileNode {
@@ -24,34 +62,6 @@ interface FetchResult {
 }
 type OutputFormat = "markdown" | "json";
 
-interface CodefetchConfig {
-    outputFile: string;
-    outputPath: string;
-    maxTokens: number;
-    includeFiles?: string[];
-    excludeFiles?: string[];
-    includeDirs?: string[];
-    excludeDirs?: string[];
-    verbose: number;
-    extensions?: string[];
-    defaultIgnore: boolean;
-    gitignore: boolean;
-    projectTree: number;
-    tokenEncoder: TokenEncoder;
-    tokenLimiter: TokenLimiter;
-    trackedModels?: string[];
-    dryRun?: boolean;
-    disableLineNumbers?: boolean;
-    tokenCountOnly?: boolean;
-    defaultPromptFile: string;
-    defaultChat?: string;
-    templateVars?: Record<string, string>;
-    format?: OutputFormat;
-}
-declare const getDefaultConfig: () => CodefetchConfig;
-declare function resolveCodefetchConfig(config: CodefetchConfig, cwd: string): Promise<CodefetchConfig>;
-declare function mergeWithCliArgs(config: CodefetchConfig, cliArgs: Partial<CodefetchConfig>): CodefetchConfig;
-
 declare const countTokens: (text: string, encoder: TokenEncoder) => Promise<number>;
 
 declare const VALID_PROMPTS: Set<string>;
@@ -77,6 +87,31 @@ interface MarkdownFromContentOptions {
  * This function doesn't require filesystem access
  */
 declare function generateMarkdownFromContent(files: FileContent[], options?: MarkdownFromContentOptions): Promise<string>;
+
+interface CodefetchConfig {
+    outputFile: string;
+    outputPath: string;
+    maxTokens: number;
+    includeFiles?: string[];
+    excludeFiles?: string[];
+    includeDirs?: string[];
+    excludeDirs?: string[];
+    verbose: number;
+    extensions?: string[];
+    defaultIgnore: boolean;
+    gitignore: boolean;
+    projectTree: number;
+    tokenEncoder: TokenEncoder;
+    tokenLimiter: TokenLimiter;
+    trackedModels?: string[];
+    dryRun?: boolean;
+    disableLineNumbers?: boolean;
+    tokenCountOnly?: boolean;
+    defaultPromptFile: string;
+    defaultChat?: string;
+    templateVars?: Record<string, string>;
+    format?: OutputFormat;
+}
 
 interface FetchOptions extends Partial<CodefetchConfig> {
     source?: string;
@@ -160,6 +195,22 @@ interface HtmlToMarkdownOptions {
  */
 declare function htmlToMarkdown(html: string, options?: HtmlToMarkdownOptions): string;
 
+/**
+ * GitHub tarball streaming for Cloudflare Workers
+ * Uses native DecompressionStream and lightweight tar parsing
+ */
+
+/**
+ * Stream and process GitHub tarball
+ */
+declare function streamGitHubTarball(owner: string, repo: string, ref?: string, options?: {
+    token?: string;
+    extensions?: string[];
+    excludeDirs?: string[];
+    maxFiles?: number;
+    onProgress?: (processed: number) => void;
+}): Promise<FileContent[]>;
+
 declare const _default$3: "You are a senior developer. You produce optimized, maintainable code that follows best practices. \n\nYour task is to write code according to my instructions for the current codebase.\n\ninstructions:\n<message>\n{{MESSAGE}}\n</message>\n\nRules:\n- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. \n- Your output should be a series of specific, actionable changes.\n\nWhen approaching this task:\n1. Carefully review the provided code.\n2. Identify the area thats raising this issue or error and provide a fix.\n3. Consider best practices for the specific programming language used.\n\nFor each suggested change, provide:\n1. A short description of the change (one line maximum).\n2. The modified code block.\n\nUse the following format for your output:\n\n[Short Description]\n```[language]:[path/to/file]\n[code block]\n```\n\nBegin fixing the codebase provide your solutions.\n\nMy current codebase:\n<current_codebase>\n{{CURRENT_CODEBASE}}\n</current_codebase>\n";
 
 declare const _default$2: "You are a senior developer. You produce optimized, maintainable code that follows best practices. \n\nYour task is to review the current codebase and fix the current issues.\n\nCurrent Issue:\n<issue>\n{{MESSAGE}}\n</issue>\n\nRules:\n- Keep your suggestions concise and focused. Avoid unnecessary explanations or fluff. \n- Your output should be a series of specific, actionable changes.\n\nWhen approaching this task:\n1. Carefully review the provided code.\n2. Identify the area thats raising this issue or error and provide a fix.\n3. Consider best practices for the specific programming language used.\n\nFor each suggested change, provide:\n1. A short description of the change (one line maximum).\n2. The modified code block.\n\nUse the following format for your output:\n\n[Short Description]\n```[language]:[path/to/file]\n[code block]\n```\n\nBegin fixing the codebase provide your solutions.\n\nMy current codebase:\n<current_codebase>\n{{CURRENT_CODEBASE}}\n</current_codebase>\n";
@@ -188,4 +239,4 @@ declare const isCloudflareWorker: boolean;
  */
 declare const getCacheSizeLimit: () => number;
 
-export { type CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, _default as testgenPrompt };
+export { type CodefetchConfig$1 as CodefetchConfig, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchResult, FetchResultImpl, type FileContent, type FileNode, type MarkdownFromContentOptions, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, _default$3 as codegenPrompt, countTokens, fetchFromWebWorker as fetchFromWeb, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isCloudflareWorker, mergeWithCliArgs, prompts, resolveCodefetchConfig, streamGitHubTarball, _default as testgenPrompt };

@@ -13,7 +13,7 @@ export {
   resolveCodefetchConfig,
   mergeWithCliArgs,
   type CodefetchConfig,
-} from "./config.js";
+} from "./config-worker.js";
 export { countTokens } from "./token-counter.js";
 export { VALID_PROMPTS, VALID_ENCODERS, VALID_LIMITERS } from "./constants.js";
 
@@ -30,6 +30,9 @@ export type { WebFetchConfig, CrawlOptions, CrawlResult } from "./web/types.js";
 
 // HTML to Markdown conversion (Worker-safe)
 export { htmlToMarkdown } from "./web/html-to-markdown.js";
+
+// GitHub tarball extraction (uses native DecompressionStream)
+export { streamGitHubTarball } from "./web/github-tarball.js";
 
 // Types (Worker-safe)
 export type { FileNode, FetchResult, FetchMetadata } from "./types.js";

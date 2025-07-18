@@ -1,3 +1,11 @@
+/**
+ * GitHub API client for Node.js environments
+ *
+ * NOTE: This module is NOT compatible with Cloudflare Workers.
+ * For Worker environments, use github-tarball.ts which provides
+ * a streaming implementation using native Worker APIs.
+ */
+
 import { join } from "node:path";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";

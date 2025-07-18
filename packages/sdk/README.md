@@ -1,30 +1,38 @@
-# codefetch-sdk
+# Codefetch SDK
 
-[![SDK Tests](https://github.com/regenrek/codefetch/actions/workflows/sdk-test.yml/badge.svg)](https://github.com/regenrek/codefetch/actions/workflows/sdk-test.yml)
-[![npm version](https://badge.fury.io/js/codefetch-sdk.svg)](https://www.npmjs.com/package/codefetch-sdk)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-The core SDK for Codefetch - a powerful tool for converting codebases into AI-friendly markdown formats.
+Core SDK for codefetch functionality. Provides file collection, markdown generation, and web fetching capabilities.
 
 ## Installation
 
 ```bash
 npm install codefetch-sdk
-# or
-yarn add codefetch-sdk
-# or
-pnpm add codefetch-sdk
 ```
 
-## Overview
+## Features
 
-The SDK provides programmatic access to all Codefetch functionality, allowing you to:
+- File system traversal with gitignore support
+- Markdown generation with token counting
+- Web content fetching (GitHub repos, URLs)
+- Multiple token encoders (cl100k, p50k, o200k)
+- Configurable file filtering and exclusion
+- Project tree visualization
+- Template variable support
 
-- Collect files from a codebase with intelligent filtering
-- Generate markdown documentation with project structure
-- Count tokens for various AI models
-- Apply prompt templates
-- Configure ignore patterns and file filtering
+## Cloudflare Workers Support
+
+The SDK provides a specialized `/worker` export for Cloudflare Workers:
+
+```javascript
+import { streamGitHubTarball, fetchFromWeb } from 'codefetch-sdk/worker';
+```
+
+**Key benefits:**
+- ✅ Zero file system dependencies
+- ✅ 35.4KB optimized bundle
+- ✅ Native DecompressionStream support
+- ✅ No nodejs_compat flag required
+
+See [README-Worker.md](./README-Worker.md) for complete Worker documentation.
 
 ## Basic Usage
 

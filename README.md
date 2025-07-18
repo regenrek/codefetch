@@ -396,6 +396,32 @@ export default {
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
+## PR Preview Packages
+
+When you open a pull request, our automated workflow will publish preview packages using [pkg.pr.new](https://pkg.pr.new/). This allows you to test changes before they're merged.
+
+### How it works
+
+1. Open a pull request
+2. The workflow automatically builds and publishes preview packages
+3. A bot comments on your PR with installation links
+4. Install and test the preview package in your project
+
+### Example Usage
+
+After opening a PR, you'll see a comment like:
+
+```
+📦 Preview packages published:
+- codefetch-sdk: https://pkg.pr.new/regenrek/codefetch@[commit-hash]/packages/sdk
+```
+
+Install the preview package:
+
+```bash
+npm install https://pkg.pr.new/regenrek/codefetch@[commit-hash]/packages/sdk
+```
+
 ## Advanced Usage
 
 ### Programmatic SDK Usage

@@ -26,7 +26,7 @@ const PACKAGES_TO_PUBLISH = [
   {
     name: "codefetch",
     directory: "cli",
-    publish: true,
+    publish: false, // Temporarily disabled - only publishing SDK
   },
   // Uncomment when ready to publish MCP
   // {

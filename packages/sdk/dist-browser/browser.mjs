@@ -594,7 +594,7 @@ class WorkerWebCache {
     const encoder = new TextEncoder();
     const data = encoder.encode(key);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashArray = [...new Uint8Array(hashBuffer)];
     const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     const shortHash = hashHex.slice(0, 8);
     return `${this.cachePrefix}:${parsedUrl.type}:${key}-${shortHash}`;
@@ -701,7 +701,7 @@ class WorkerWebCache {
   }
 }
 
-const isCloudflareWorker = globalThis.WebSocketPair !== undefined && !("__dirname" in globalThis);
+const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
 const getCacheSizeLimit = () => {
   if (isCloudflareWorker) {
     return 8 * 1024 * 1024;
@@ -890,7 +890,9 @@ async function fetchFromWebWorker(url, options = {}) {
   logger.info(`Fetching from: ${parsedUrl.url}`);
   let cache = null;
   let cachedContent = null;
-  if (!options.noCache) {
+  if (options.noCache) {
+    logger.debug("Cache disabled");
+  } else {
     if (isCloudflareWorker) {
       cache = new WorkerWebCache({
         ttlHours: options.cacheTTL || 1
@@ -902,11 +904,11 @@ async function fetchFromWebWorker(url, options = {}) {
         cachedContent = JSON.parse(cached.content);
       }
     }
-  } else {
-    logger.debug("Cache disabled");
   }
   let files = [];
-  if (!cachedContent) {
+  if (cachedContent) {
+    files = cachedContent;
+  } else {
     if (parsedUrl.gitProvider === "github") {
       files = await fetchGitHubInMemory(parsedUrl, logger, options);
     } else {
@@ -917,8 +919,6 @@ async function fetchFromWebWorker(url, options = {}) {
     if (cache) {
       await cache.set(parsedUrl, JSON.stringify(files));
     }
-  } else {
-    files = cachedContent;
   }
   logger.info(`Analyzing ${files.length} files...`);
   if (options.format === "json") {
@@ -1075,7 +1075,7 @@ async function buildTreeFromFiles(files, options) {
       }
       currentNode = dirNode;
     }
-    const fileName = pathParts[pathParts.length - 1];
+    const fileName = pathParts.at(-1) || "";
     const tokens = await countTokens(
       file.content,
       options.tokenEncoder || "simple"

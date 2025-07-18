@@ -31,7 +31,7 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
-    "codefetch-sdk": "^1.6.1",
+    "codefetch-sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.13.2"
   }
 }

@@ -103,14 +103,14 @@ cat > package.json << EOF
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@codefetch/sdk": "file:$PWD"
+    "codefetch-sdk": "file:$PWD"
   }
 }
 EOF
 
 # Create test worker
 cat > index.js << 'EOF'
-import { fetchFromWeb, isCloudflareWorker } from "@codefetch/sdk/worker";
+import { fetchFromWeb, isCloudflareWorker } from "codefetch-sdk/worker";
 
 export default {
   async fetch(request) {

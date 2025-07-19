@@ -1,4 +1,4 @@
-# @codefetch/cli
+# codefetch (CLI)
 
 Command-line interface for Codefetch - convert any codebase or website into AI-friendly markdown documentation.
 
@@ -6,25 +6,25 @@ Command-line interface for Codefetch - convert any codebase or website into AI-f
 
 ### Global Installation
 ```bash
-npm install -g @codefetch/cli
+npm install -g codefetch
 # or
-yarn global add @codefetch/cli
+yarn global add codefetch
 # or
-pnpm add -g @codefetch/cli
+pnpm add -g codefetch
 ```
 
 ### Local Installation
 ```bash
-npm install --save-dev @codefetch/cli
+npm install --save-dev codefetch
 # or
-yarn add -D @codefetch/cli
+yarn add -D codefetch
 # or
-pnpm add -D @codefetch/cli
+pnpm add -D codefetch
 ```
 
 ### Direct Usage (No Installation)
 ```bash
-npx @codefetch/cli
+npx codefetch
 ```
 
 ## Quick Start
@@ -321,8 +321,8 @@ Web fetching results are cached to improve performance:
 - Use `--no-cache` if cached data is stale
 
 **"Command not found"**
-- Ensure global installation: `npm install -g @codefetch/cli`
-- Or use npx: `npx @codefetch/cli`
+- Ensure global installation: `npm install -g codefetch`
+- Or use npx: `npx codefetch`
 
 ### Debug Mode
 
@@ -352,7 +352,7 @@ codefetch -vvv --url example.com
 # GitHub Actions example
 - name: Generate Documentation
   run: |
-    npx @codefetch/cli \
+    npx codefetch \
       -e ts,tsx,js,jsx \
       --exclude-dir node_modules,coverage \
       -o codebase-docs.md

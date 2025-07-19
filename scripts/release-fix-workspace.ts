@@ -19,7 +19,7 @@ const rootPath = path.resolve(__dirname, "..");
 // Comment out or remove packages from this array to skip them
 const PACKAGES_TO_PUBLISH = [
   {
-    name: "@codefetch/sdk",
+    name: "codefetch-sdk",
     directory: "sdk",
     publish: true,
   },

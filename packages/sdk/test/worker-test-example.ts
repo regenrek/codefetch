@@ -1,5 +1,5 @@
 /**
- * Test Cloudflare Worker using @codefetch/sdk/worker
+ * Test Cloudflare Worker using codefetch-sdk/worker
  */
 
 import { fetchFromWeb, isCloudflareWorker } from "../src/worker";

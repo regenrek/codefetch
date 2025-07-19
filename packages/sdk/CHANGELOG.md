@@ -15,7 +15,7 @@
 
 - **Breaking**: Renamed `streamGitHubTarball` to `fetchGitHubTarball` for clarity
   - The function still returns a streaming response but the name better reflects its purpose
-  - Update imports: `import { fetchGitHubTarball } from '@codefetch/sdk/web'`
+  - Update imports: `import { fetchGitHubTarball } from 'codefetch-sdk/web'`
 
 ### Features
 

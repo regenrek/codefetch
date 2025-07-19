@@ -1,4 +1,4 @@
-# Codefetch MCP Server
+# Codefetch MCP Server (Coming Soon)
 
 A Model Context Protocol (MCP) server that provides AI assistants with tools to analyze codebases and generate structured documentation.
 

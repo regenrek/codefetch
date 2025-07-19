@@ -1,5 +1,5 @@
 /**
- * Cloudflare Worker-compatible entry point for @codefetch/sdk
+ * Cloudflare Worker-compatible entry point for codefetch-sdk
  *
  * This module re-exports only the APIs that work within Worker constraints:
  * - No local file system access

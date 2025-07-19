@@ -53,7 +53,7 @@ codefetch --help
 ### In Your Project
 
 ```bash
-npm install --save-dev @codefetch/cli
+npm install --save-dev codefetch
 # Add to package.json scripts
 ```
 
@@ -283,12 +283,12 @@ You can use this command to create code-to-markdown in [bolt.new](https://bolt.n
 
 Codefetch is organized as a monorepo with multiple packages:
 
-### [@codefetch/cli](./packages/cli/README.md)
+### [codefetch](./packages/cli/README.md)
 
 Command-line interface for Codefetch with web fetching capabilities.
 
 ```bash
-npm install -g @codefetch/cli
+npm install -g codefetch
 ```
 
 **Features:**
@@ -319,13 +319,9 @@ npm install codefetch-sdk
 
 [Read the full SDK documentation →](./packages/sdk/README.md)
 
-### [@codefetch/mcp-server](./packages/mcp/README.md) (Coming soon)
+### [codefetch-mcp-server](./packages/mcp/README.md) (Coming soon)
 
 Model Context Protocol server for AI assistants like Claude.
-
-```bash
-npx @codefetch/mcp-server
-```
 
 **Features:**
 

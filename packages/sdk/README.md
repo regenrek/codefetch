@@ -365,7 +365,7 @@ The SDK provides a Worker-compatible build that runs in Cloudflare Workers with 
 ### Installation
 
 ```bash
-npm install @codefetch/sdk
+npm install codefetch-sdk
 ```
 
 ### Worker Configuration
@@ -382,7 +382,7 @@ compatibility_flags = ["nodejs_compat"]
 ### Usage in Workers
 
 ```typescript
-import { fetchFromWeb } from "@codefetch/sdk/worker";
+import { fetchFromWeb } from "codefetch-sdk/worker";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

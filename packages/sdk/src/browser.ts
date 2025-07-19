@@ -1,5 +1,5 @@
 /**
- * Browser-safe entry point for @codefetch/sdk
+ * Browser-safe entry point for codefetch-sdk
  *
  * This module exports only the APIs that work in browser environments:
  * - No Node.js built-in modules (fs, path, os, etc.)

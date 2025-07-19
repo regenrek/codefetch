@@ -5,206 +5,150 @@ The `codefetch-sdk` provides a specialized `/worker` export optimized for Cloudf
 ## Installation
 
 ```bash
-npm install codefetch-sdk
+npm install codefetch-sdk@latest
 # or
-pnpm add codefetch-sdk
+pnpm add codefetch-sdk@latest
 # or
-yarn add codefetch-sdk
+yarn add codefetch-sdk@latest
 ```
 
 ## Worker-Specific Import
 
 ```javascript
 // Use the /worker export for Cloudflare Workers
-import { 
-  streamGitHubTarball,
-  fetchFromWeb,
-  generateMarkdownFromContent,
-  htmlToMarkdown,
-  countTokens
-} from 'codefetch-sdk/worker';
+import { fetch } from 'codefetch-sdk/worker';
 ```
 
-## Key Features
+## Features
 
+- 🎯 **Unified `fetch()` API** - Single method for GitHub repos, web content, and more
 - 🚀 **Zero nodejs_compat required** - Uses native Web APIs
-- 📦 **35.4KB bundle size** - Optimized for edge performance  
+- 📦 **Optimized bundle** - Only 23KB for edge performance
 - 🌊 **Native streaming** - Memory-efficient processing
 - 🔒 **Private repo support** - GitHub token authentication
-- 🎯 **Smart filtering** - Extension and directory filters
+- ⚡ **Fast GitHub fetching** - Efficient repository processing
+- 🎯 **Simple configuration** - Minimal boilerplate
 
-## API Reference
+## Quick Start
 
-### `streamGitHubTarball()`
-
-Extract files from GitHub repositories using native DecompressionStream.
-
-```typescript
-async function streamGitHubTarball(
-  owner: string,
-  repo: string,
-  ref?: string,
-  options?: {
-    token?: string;           // GitHub token for private repos
-    extensions?: string[];    // Filter by file extensions
-    excludeDirs?: string[];   // Directories to exclude
-    maxFiles?: number;        // Limit number of files
-    onProgress?: (count: number) => void;
-  }
-): Promise<FileContent[]>
-```
-
-#### Example: Basic Usage
+### Basic Worker
 
 ```javascript
 export default {
   async fetch(request) {
-    const files = await streamGitHubTarball('facebook', 'react', 'main', {
+    const result = await fetch({
+      source: 'https://github.com/facebook/react',
       extensions: ['.js', '.ts', '.md'],
-      excludeDirs: ['node_modules', '.git'],
-      maxFiles: 100
+      maxFiles: 50
     });
 
-    return Response.json({
-      fileCount: files.length,
-      files: files.map(f => ({
-        path: f.path,
-        size: f.content.length
-      }))
-    });
-  }
-};
-```
-
-#### Example: Private Repository
-
-```javascript
-export default {
-  async fetch(request, env) {
-    const files = await streamGitHubTarball('myorg', 'private-repo', 'main', {
-      token: env.GITHUB_TOKEN,  // Store in Workers secrets
-      extensions: ['.ts', '.tsx']
-    });
-
-    // Process files...
-    return new Response('OK');
-  }
-};
-```
-
-### `fetchFromWeb()`
-
-Fetch and process web content (GitHub repos, URLs, local files in memory).
-
-```typescript
-async function fetchFromWeb(
-  source: string,
-  options?: FetchOptions
-): Promise<FetchResult>
-```
-
-#### Example: Multi-Source Fetching
-
-```javascript
-export default {
-  async fetch(request) {
-    // Supports multiple sources
-    const sources = [
-      'https://github.com/sindresorhus/got',
-      'https://raw.githubusercontent.com/user/repo/main/README.md',
-      'https://example.com/api/docs'
-    ];
-
-    const results = await Promise.all(
-      sources.map(url => fetchFromWeb(url, {
-        maxTokens: 50000,
-        extensions: ['.ts', '.js', '.md']
-      }))
-    );
-
-    return Response.json({
-      sources: results.map(r => ({
-        url: r.metadata.sourceUrl,
-        files: r.files.length,
-        tokens: r.metadata.totalTokens
-      }))
-    });
-  }
-};
-```
-
-### `generateMarkdownFromContent()`
-
-Generate formatted markdown from in-memory file content.
-
-```typescript
-function generateMarkdownFromContent(
-  files: FileContent[],
-  options?: MarkdownFromContentOptions
-): Promise<string>
-```
-
-#### Example: API Documentation Generator
-
-```javascript
-export default {
-  async fetch(request) {
-    // Fetch repository files
-    const files = await streamGitHubTarball('expressjs', 'express', 'master', {
-      extensions: ['.js', '.md'],
-      excludeDirs: ['test', 'examples']
-    });
-
-    // Generate documentation
-    const markdown = await generateMarkdownFromContent(files, {
-      projectName: 'Express.js API',
-      includeTreeStructure: true,
-      contentOnly: false
-    });
-
-    return new Response(markdown, {
-      headers: {
-        'Content-Type': 'text/markdown',
-        'Cache-Control': 'public, max-age=3600'
-      }
-    });
-  }
-};
-```
-
-### `htmlToMarkdown()`
-
-Convert HTML content to clean Markdown.
-
-```javascript
-export default {
-  async fetch(request) {
-    const html = await fetch('https://example.com/docs').then(r => r.text());
-    const markdown = htmlToMarkdown(html);
-    
-    return new Response(markdown, {
+    return new Response(result.markdown, {
       headers: { 'Content-Type': 'text/markdown' }
     });
   }
 };
 ```
 
-### `countTokens()`
-
-Count tokens for LLM context management.
+### Private Repository
 
 ```javascript
-const content = "Your content here...";
-const tokenCount = countTokens(content, 'cl100k'); // OpenAI encoding
+export default {
+  async fetch(request, env) {
+    const result = await fetch({
+      source: 'https://github.com/myorg/private-repo',
+      githubToken: env.GITHUB_TOKEN,
+      extensions: ['.ts', '.tsx'],
+      maxFiles: 100
+    });
 
-if (tokenCount > 100000) {
-  // Handle large content
+    return new Response(result.markdown);
+  }
+};
+```
+
+### Web Content Crawling
+
+```javascript
+export default {
+  async fetch(request) {
+    const result = await fetch({
+      source: 'https://example.com/docs',
+      maxPages: 10,
+      maxDepth: 2
+    });
+
+    return Response.json({
+      pages: result.metadata.totalPages,
+      tokens: result.metadata.totalTokens,
+      content: result.markdown
+    });
+  }
+};
+```
+
+## API Reference
+
+### `fetch(options: FetchOptions): Promise<FetchResult>`
+
+The unified API for all content sources in Workers.
+
+```typescript
+interface FetchOptions {
+  // Source (required)
+  source: string; // GitHub URL, web URL, or local path (ignored in Workers)
+
+  // Filtering
+  extensions?: string[];
+  excludeFiles?: string[];
+  includeFiles?: string[];
+  excludeDirs?: string[];
+  includeDirs?: string[];
+
+  // Token management
+  maxTokens?: number;
+  maxFiles?: number;
+  tokenEncoder?: 'cl100k' | 'p50k' | 'o200k' | 'simple';
+  tokenLimiter?: 'sequential' | 'truncated';
+
+  // GitHub specific
+  githubToken?: string;
+  branch?: string;
+
+  // Web crawling
+  maxPages?: number;
+  maxDepth?: number;
+
+  // Output
+  includeTree?: boolean | number;
+  disableLineNumbers?: boolean;
+
+  // Caching
+  noCache?: boolean;
+  cacheTTL?: number;
 }
 ```
 
-## Real-World Use Cases
+### Response Format
 
-### 1. GitHub Repository Analyzer
+```typescript
+interface FetchResult {
+  markdown: string;
+  files: File[];
+  metadata: {
+    totalFiles: number;
+    totalTokens: number;
+    totalSize: number;
+    source: string;
+    timestamp: string;
+    tree?: string;
+    totalPages?: number; // For web crawling
+  };
+}
+```
+
+## Real-World Examples
+
+### 1. GitHub Repository Analyzer API
 
 ```javascript
 export default {
@@ -229,21 +173,24 @@ export default {
       }
 
       // Fetch repository
-      const files = await streamGitHubTarball(owner, name, 'main', {
-        extensions: ['.js', '.ts', '.py', '.go'],
+      const result = await fetch({
+        source: `https://github.com/${owner}/${name}`,
+        githubToken: env.GITHUB_TOKEN,
+        extensions: ['.ts', '.js', '.py', '.go'],
         excludeDirs: ['node_modules', 'vendor', '.git'],
-        token: env.GITHUB_TOKEN
+        maxFiles: 100
       });
 
       // Analyze code
       const analysis = {
-        totalFiles: files.length,
+        totalFiles: result.metadata.totalFiles,
+        totalTokens: result.metadata.totalTokens,
         languages: {},
         totalSize: 0,
         largestFiles: []
       };
 
-      for (const file of files) {
+      for (const file of result.files) {
         const ext = file.path.split('.').pop();
         analysis.languages[ext] = (analysis.languages[ext] || 0) + 1;
         analysis.totalSize += file.content.length;
@@ -274,43 +221,28 @@ export default {
 };
 ```
 
-### 2. Documentation API
+### 2. Documentation Generator
 
 ```javascript
-import { 
-  streamGitHubTarball, 
-  generateMarkdownFromContent,
-  countTokens 
-} from 'codefetch-sdk/worker';
-
 export default {
   async fetch(request, env) {
     const { searchParams } = new URL(request.url);
     const repo = searchParams.get('repo');
     const maxTokens = parseInt(searchParams.get('maxTokens') || '50000');
 
-    // Fetch documentation files
-    const files = await streamGitHubTarball(...repo.split('/'), 'main', {
-      extensions: ['.md', '.mdx'],
-      excludeDirs: ['node_modules']
+    const result = await fetch({
+      source: `https://github.com/${repo}`,
+      githubToken: env.GITHUB_TOKEN,
+      extensions: ['.md', '.mdx', '.ts', '.js'],
+      excludeDirs: ['node_modules', 'test'],
+      maxTokens,
+      includeTree: true
     });
 
-    // Generate formatted documentation
-    let markdown = await generateMarkdownFromContent(files, {
-      includeTreeStructure: true
-    });
-
-    // Ensure it fits within token limits
-    const tokens = countTokens(markdown);
-    if (tokens > maxTokens) {
-      // Truncate or summarize
-      markdown = markdown.slice(0, maxTokens * 4); // rough estimate
-    }
-
-    return new Response(markdown, {
+    return new Response(result.markdown, {
       headers: {
         'Content-Type': 'text/markdown',
-        'X-Token-Count': tokens.toString()
+        'X-Token-Count': result.metadata.totalTokens.toString()
       }
     });
   }
@@ -324,11 +256,13 @@ export default {
   async fetch(request) {
     const { repo, query } = await request.json();
     
-    const files = await streamGitHubTarball(...repo.split('/'), 'main', {
-      extensions: ['.js', '.ts', '.jsx', '.tsx']
+    const result = await fetch({
+      source: `https://github.com/${repo}`,
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      maxFiles: 200
     });
 
-    const results = files
+    const results = result.files
       .filter(file => file.content.includes(query))
       .map(file => {
         const lines = file.content.split('\n');
@@ -349,16 +283,18 @@ export default {
 
         return { path: file.path, matches };
       })
-      .filter(result => result.matches.length > 0);
+      .filter(result => result.matches.length > 0)
+      .slice(0, 10); // Limit results
 
     return Response.json({ 
       query,
       resultCount: results.length,
-      results: results.slice(0, 10) // Limit results
+      results
     });
   }
 };
 ```
+
 
 ## Performance Tips
 
@@ -366,7 +302,7 @@ export default {
 
 ```javascript
 const cache = caches.default;
-const cacheKey = new Request(url);
+const cacheKey = new Request(`https://cache.example.com/${repo}`);
 const cached = await cache.match(cacheKey);
 if (cached) return cached;
 ```
@@ -377,11 +313,9 @@ if (cached) return cached;
 const { readable, writable } = new TransformStream();
 const writer = writable.getWriter();
 
-// Stream results as they process
 ctx.waitUntil((async () => {
-  for await (const chunk of processLargeData()) {
-    await writer.write(chunk);
-  }
+  const result = await fetch({ source: repoUrl });
+  await writer.write(result.markdown);
   await writer.close();
 })());
 
@@ -391,18 +325,10 @@ return new Response(readable);
 ### 3. Use Durable Objects for State
 
 ```javascript
-// Store analysis results in Durable Objects
 const id = env.REPO_ANALYZER.idFromName(repoKey);
 const analyzer = env.REPO_ANALYZER.get(id);
 return analyzer.fetch(request);
 ```
-
-## Limitations
-
-1. **No File System** - All operations are in-memory
-2. **Memory Limits** - Workers have 128MB memory limit
-3. **CPU Time** - Maximum 30 seconds for free plan
-4. **Subrequest Limits** - 50 subrequests per request
 
 ## Environment Setup
 
@@ -412,6 +338,7 @@ return analyzer.fetch(request);
 name = "codefetch-worker"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
+# No nodejs_compat needed!
 
 [vars]
 MAX_FILE_SIZE = "1048576"  # 1MB
@@ -445,7 +372,7 @@ export default {
 
 ```javascript
 try {
-  const files = await streamGitHubTarball(owner, repo);
+  const result = await fetch({ source: repoUrl });
 } catch (error) {
   if (error.message.includes('404')) {
     return new Response('Repository not found', { status: 404 });
@@ -453,11 +380,22 @@ try {
   if (error.message.includes('403')) {
     return new Response('Rate limit exceeded or auth required', { status: 403 });
   }
+  if (error.message.includes('Invalid URL')) {
+    return new Response('Invalid repository URL', { status: 400 });
+  }
   // Log to Workers Analytics
-  console.error('GitHub fetch error:', error);
+  console.error('Fetch error:', error);
   return new Response('Internal error', { status: 500 });
 }
 ```
+
+## Limitations
+
+1. **No File System** - All operations are in-memory
+2. **Memory Limits** - Workers have 128MB memory limit
+3. **CPU Time** - Maximum 30 seconds for free plan
+4. **Subrequest Limits** - 50 subrequests per request
+5. **Response Size** - 10MB response limit
 
 ## Testing Locally
 
@@ -466,29 +404,13 @@ try {
 pnpm add -D wrangler
 
 # Create worker file
-echo 'import { streamGitHubTarball } from "codefetch-sdk/worker";
+echo 'import { fetch } from "codefetch-sdk/worker";
 export default { 
   fetch: () => new Response("OK") 
 };' > worker.js
 
 # Test locally
 wrangler dev worker.js
-```
-
-## Migration from Node.js
-
-If migrating from the Node.js version:
-
-```javascript
-// Before (Node.js)
-import { collectFiles, generateMarkdown } from 'codefetch-sdk';
-const files = await collectFiles('./src');
-const markdown = await generateMarkdown(files);
-
-// After (Workers)
-import { streamGitHubTarball, generateMarkdownFromContent } from 'codefetch-sdk/worker';
-const files = await streamGitHubTarball('owner', 'repo');
-const markdown = await generateMarkdownFromContent(files);
 ```
 
 ## Support

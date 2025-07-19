@@ -360,7 +360,7 @@ codefetch -vvv --url example.com
 
 ## Contributing
 
-See the [main repository](https://github.com/codefetch-ai/codefetch) for contribution guidelines.
+See the [main repository](https://github.com/regenrek/codefetch) for contribution guidelines.
 
 ## License
 

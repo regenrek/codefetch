@@ -243,7 +243,7 @@ The `.codefetchignore` file works exactly like `.gitignore` and is useful when y
 
 Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis.
 
-You can view the complete list of default patterns in [default-ignore.ts](src/default-ignore.ts).
+You can view the complete list of default patterns in [default-ignore.ts](packages/sdk/src/default-ignore.ts).
 
 ## Token Counting
 
@@ -306,18 +306,68 @@ npm install -g codefetch
 Core SDK for programmatic usage in your applications.
 
 ```bash
-npm install codefetch-sdk
+npm install codefetch-sdk@latest
 ```
 
 **Features:**
+- 🎯 **Unified `fetch()` API** - Single method for all sources
+- 🚀 **Zero-config defaults** - Works out of the box
+- 📦 **Optimized bundle** - Small footprint for edge environments
+- 🔧 **Full TypeScript support** - Complete type safety
+- 🌐 **Enhanced web support** - GitHub API integration
 
-- File collection and filtering
-- Markdown generation
-- Token counting
-- Template processing
-- Full TypeScript support
+**Quick Start:**
+```typescript
+import { fetch } from 'codefetch-sdk';
+
+// Local codebase
+const result = await fetch({
+  source: './src',
+  extensions: ['.ts', '.tsx'],
+  maxTokens: 50000,
+});
+
+// GitHub repository
+const result = await fetch({
+  source: 'https://github.com/facebook/react',
+  branch: 'main',
+  extensions: ['.js', '.ts'],
+});
+
+console.log(result.markdown); // AI-ready markdown
+```
 
 [Read the full SDK documentation →](./packages/sdk/README.md)
+
+### [codefetch-sdk/worker](./packages/sdk/README-Worker.md)
+
+**Cloudflare Workers optimized build** - Zero file system dependencies.
+
+```typescript
+import { fetch } from 'codefetch-sdk/worker';
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const result = await fetch({
+      source: 'https://github.com/vercel/next.js',
+      maxFiles: 50,
+      extensions: ['.ts', '.tsx'],
+    });
+
+    return new Response(result.markdown, {
+      headers: { 'Content-Type': 'text/markdown' }
+    });
+  }
+};
+```
+
+**Features:**
+- 🚀 **Zero nodejs_compat required** - Uses native Web APIs
+- 📦 **35.4KB bundle size** - Optimized for edge performance
+- 🔒 **Private repo support** - GitHub token authentication
+- 🌊 **Native streaming** - Memory-efficient processing
+
+[Read the full Worker documentation →](./packages/sdk/README-Worker.md)
 
 ### [codefetch-mcp-server](./packages/mcp/README.md) (Coming soon)
 

@@ -17,19 +17,19 @@ The Codefetch MCP server enables AI assistants like Claude to:
 ### Via NPX (Recommended)
 
 ```bash
-npx @codefetch/mcp-server
+npx @codefetch/mcp
 ```
 
 ### Global Installation
 
 ```bash
-npm install -g @codefetch/mcp-server
+npm install -g @codefetch/mcp
 ```
 
 ### Local Installation
 
 ```bash
-npm install @codefetch/mcp-server
+npm install @codefetch/mcp
 ```
 
 ## Configuration
@@ -47,7 +47,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "codefetch": {
       "command": "npx",
-      "args": ["@codefetch/mcp-server"]
+      "args": ["@codefetch/mcp"]
     }
   }
 }
@@ -62,7 +62,7 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
   "mcpServers": {
     "codefetch": {
       "command": "npx",
-      "args": ["@codefetch/mcp-server"]
+      "args": ["@codefetch/mcp"]
     }
   }
 }
@@ -77,7 +77,7 @@ You can configure default settings via environment variables:
   "mcpServers": {
     "codefetch": {
       "command": "npx",
-      "args": ["@codefetch/mcp-server"],
+      "args": ["@codefetch/mcp"],
       "env": {
         "CODEFETCH_MAX_TOKENS": "100000",
         "CODEFETCH_TOKEN_ENCODER": "cl100k",
@@ -209,7 +209,7 @@ Show me the project structure of /path/to/project with depth 3
 
 ```bash
 # Clone the repository
-git clone https://github.com/codefetch-ai/codefetch
+git clone https://github.com/regenrek/codefetch
 cd codefetch/mcp
 
 # Install dependencies
@@ -252,7 +252,7 @@ The MCP server is built on:
 
 ## Contributing
 
-See the [main repository](https://github.com/codefetch-ai/codefetch) for contribution guidelines.
+See the [main repository](https://github.com/regenrek/codefetch) for contribution guidelines.
 
 ## License
 

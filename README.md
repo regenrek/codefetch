@@ -74,7 +74,7 @@ npx codefetch -p improve --max-tokens 50000
 
 ### Git Repository Fetching
 
-````bash
+```bash
 # Analyze a GitHub repository
 npx codefetch --url github.com/vuejs/vue --branch main -e js,ts
 ```
@@ -89,7 +89,7 @@ npx codefetch --include-files "*.ts" -o typescript-only.md
 
 # Include src directory, exclude test files
 npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
-````
+```
 
 Dry run (only output to console)
 
@@ -319,7 +319,7 @@ npm install codefetch-sdk
 
 [Read the full SDK documentation →](./packages/sdk/README.md)
 
-### [@codefetch/mcp-server](./packages/mcp/README.md)
+### [@codefetch/mcp-server](./packages/mcp/README.md) (Coming soon)
 
 Model Context Protocol server for AI assistants like Claude.
 
@@ -397,52 +397,14 @@ export default {
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
-## Advanced Usage
-
-### Programmatic SDK Usage
-
-```typescript
-import { collectFiles, generateMarkdown, countTokens } from "codefetch-sdk";
-
-const files = await collectFiles("./src", {
-  extensionSet: new Set([".ts", ".tsx"]),
-  excludeDirs: ["node_modules", "dist"],
-});
-
-const markdown = await generateMarkdown(files, {
-  maxTokens: 50000,
-  tokenEncoder: "cl100k",
-});
-
-const tokens = await countTokens(markdown, "cl100k");
-console.log(`Generated ${tokens} tokens`);
-```
-
-### CI/CD Integration
-
-```yaml
-# GitHub Actions
-- name: Generate Documentation
-  run: npx codefetch -e ts,tsx,js,jsx -o docs/codebase.md
-
-# GitLab CI
-documentation:
-  script:
-    - npx codefetch --max-tokens 100000
-  artifacts:
-    paths:
-      - codefetch/
-```
 
 ## See my other projects:
 
-- [aidex](https://github.com/regenrek/aidex) - AI model information CLI tool
-- [codetie](https://github.com/codetie-ai/codetie) - XCode CLI
+- [aidex](https://github.com/regenrek/aidex) - AI model information 
 
 ## Credits
 
 This project was inspired by
 
-- [codetie](https://github.com/codetie-ai/codetie) CLI made by [@kevinkern](https://github.com/regenrek) & [@timk](https://github.com/KerneggerTim)
 - [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
   [unjs](https://github.com/unjs) - for bringing us the best javascript tooling system

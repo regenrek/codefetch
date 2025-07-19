@@ -474,70 +474,6 @@ declare function createCacheStorage(cacheOrKV: Cache | KVNamespace): CacheStorag
 declare function withCache<T extends (...args: any[]) => Promise<any>>(fn: T, getCacheKey: (...args: Parameters<T>) => string, ttl?: number): T;
 
 /**
- * Migration helpers and compatibility layer for version changes
- */
-
-/**
- * Migrate from old v1 result format to new format
- */
-declare function migrateFromV1(oldResult: {
-    root: any;
-    url?: string;
-    metadata?: any;
-}): FetchResult;
-/**
- * Compatibility layer for old API
- */
-declare const compat: {
-    /**
-     * Legacy FetchResultImpl that maintains backward compatibility
-     */
-    FetchResultImpl: {
-        new (root: FileNode | any, urlOrMetadata: string | any): {
-            root: FileNode;
-            url: string;
-            result: FetchResult;
-            /**
-             * Legacy toMarkdown method
-             */
-            toMarkdown(): Promise<string>;
-            /**
-             * Get the modern FetchResult
-             */
-            toFetchResult(): FetchResult;
-        };
-    };
-    /**
-     * Legacy function signatures
-     */
-    fetchFromWeb(url: string, options?: any): Promise<any>;
-    /**
-     * Convert between old and new file formats
-     */
-    convertFileFormat(oldFile: any): FileContent;
-    /**
-     * Convert old options to new format
-     */
-    convertOptions(oldOptions: any): any;
-};
-/**
- * Migration guide generator
- */
-declare function generateMigrationGuide(fromVersion: string, toVersion: string): string;
-/**
- * Check if code needs migration
- */
-declare function needsMigration(code: string): {
-    needsMigration: boolean;
-    issues: string[];
-    suggestions: string[];
-};
-/**
- * Auto-migrate code (basic string replacements)
- */
-declare function autoMigrateCode(code: string): string;
-
-/**
  * Type guards and branded types for improved type safety
  */
 type GitHubToken = string & {
@@ -613,4 +549,4 @@ declare function assert(condition: unknown, message?: string): asserts condition
  */
 declare function exhaustiveCheck(value: never): never;
 
-export { CacheError, type CacheOptions, type CacheStorage, type CodefetchConfig$1 as CodefetchConfig, CodefetchError, ConfigError, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchOptions, type FetchResult, FetchResultImpl, type FileContent, type FileNode, GitHubError, type GitHubToken, type GitHubUrl, type MarkdownFromContentOptions, NetworkError, type OutputFormat, ParseError, type PerformanceMetrics, type RepoPath, type SemVer, type StreamOptions, type TokenEncoder, TokenLimitError, type TokenLimiter, URLValidationError, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, assert, assertDefined, autoMigrateCode, calculateTreeMetrics, clearCache, _default$3 as codegenPrompt, collectStream, compat, countTokens, createCacheStorage, createGitHubToken, createGitHubUrl, createMarkdownStream, createRepoPath, createTransformStream, deleteFromCache, detectLanguage, exhaustiveCheck, fetchFromWebWorker as fetchFromWeb, fetchFromWebCached, fetchGitHubTarball, filesToTree, filterStream, filterTree, findNodeByPath, _default$2 as fixPrompt, generateMarkdownFromContent, generateMigrationGuide, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isArray, isCloudflareWorker, isCodefetchError, isGitHubError, isNotNull, isNumber, isObject, isString, isTokenLimitError, isValidGitHubToken, isValidGitHubUrl, isValidRepoPath, isValidSemVer, mapStream, mergeWithCliArgs, migrateFromV1, needsMigration, prompts, resolveCodefetchConfig, sortTree, streamGitHubFiles, _default as testgenPrompt, treeToFiles, walkTree, withCache, wrapError };
+export { CacheError, type CacheOptions, type CacheStorage, type CodefetchConfig$1 as CodefetchConfig, CodefetchError, ConfigError, type CrawlOptions, type CrawlResult, type FetchMetadata, type FetchOptions, type FetchResult, FetchResultImpl, type FileContent, type FileNode, GitHubError, type GitHubToken, type GitHubUrl, type MarkdownFromContentOptions, NetworkError, type OutputFormat, ParseError, type PerformanceMetrics, type RepoPath, type SemVer, type StreamOptions, type TokenEncoder, TokenLimitError, type TokenLimiter, URLValidationError, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, type WebFetchConfig, assert, assertDefined, calculateTreeMetrics, clearCache, _default$3 as codegenPrompt, collectStream, countTokens, createCacheStorage, createGitHubToken, createGitHubUrl, createMarkdownStream, createRepoPath, createTransformStream, deleteFromCache, detectLanguage, exhaustiveCheck, fetchFromWebWorker as fetchFromWeb, fetchFromWebCached, fetchGitHubTarball, filesToTree, filterStream, filterTree, findNodeByPath, _default$2 as fixPrompt, generateMarkdownFromContent, getCacheSizeLimit, getDefaultConfig, htmlToMarkdown, _default$1 as improvePrompt, isArray, isCloudflareWorker, isCodefetchError, isGitHubError, isNotNull, isNumber, isObject, isString, isTokenLimitError, isValidGitHubToken, isValidGitHubUrl, isValidRepoPath, isValidSemVer, mapStream, mergeWithCliArgs, prompts, resolveCodefetchConfig, sortTree, streamGitHubFiles, _default as testgenPrompt, treeToFiles, walkTree, withCache, wrapError };

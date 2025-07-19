@@ -4,14 +4,15 @@
 
 import { CacheInterface, CacheOptions } from "./interface.js";
 import { CloudflareCache } from "./cloudflare-cache.js";
-import { FileSystemCache } from "./filesystem-cache.js";
 import { MemoryCache } from "./memory-cache.js";
 import { isCloudflareWorker } from "../env.js";
 
 /**
  * Create a cache instance based on the runtime environment
  */
-export function createCache(options?: CacheOptions): CacheInterface {
+export async function createCache(
+  options?: CacheOptions
+): Promise<CacheInterface> {
   // Check for Cloudflare Workers environment
   if (typeof caches !== "undefined" && (globalThis as any).caches?.default) {
     return new CloudflareCache(options);
@@ -23,6 +24,8 @@ export function createCache(options?: CacheOptions): CacheInterface {
     process.versions?.node &&
     !isCloudflareWorker
   ) {
+    // Dynamic import to avoid bundling Node.js dependencies in browser/worker
+    const { FileSystemCache } = await import("./filesystem-cache.js");
     return new FileSystemCache(options);
   }
 
@@ -31,17 +34,19 @@ export function createCache(options?: CacheOptions): CacheInterface {
 }
 
 /**
- * Create a cache with explicit type
+ * Create a cache instance of a specific type
  */
-export function createCacheOfType(
+export async function createCacheOfType(
   type: "cloudflare" | "filesystem" | "memory",
   options?: CacheOptions
-): CacheInterface {
+): Promise<CacheInterface> {
   switch (type) {
     case "cloudflare": {
       return new CloudflareCache(options);
     }
     case "filesystem": {
+      // Dynamic import to avoid bundling Node.js dependencies
+      const { FileSystemCache } = await import("./filesystem-cache.js");
       return new FileSystemCache(options);
     }
     case "memory": {

@@ -141,9 +141,17 @@ interface CodefetchConfig {
     format?: OutputFormat;
 }
 
+type CacheStrategy = "auto" | "force" | "bypass" | "refresh" | "validate";
+
 interface FetchOptions extends Partial<CodefetchConfig> {
     source?: string;
     format?: OutputFormat;
+    cache?: boolean | CacheStrategy;
+    cacheKey?: string;
+    cacheTTL?: number;
+    cacheNamespace?: string;
+    cacheBaseUrl?: string;
+    noCache?: boolean;
 }
 
 /**

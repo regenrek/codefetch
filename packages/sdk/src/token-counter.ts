@@ -1,16 +1,35 @@
 import { Tiktoken, type TiktokenBPE } from "js-tiktoken/lite";
 import type { TokenEncoder } from "./types";
 
-let tokenizer: Tiktoken | null = null;
+const tokenizerCache = new Map<TokenEncoder, Tiktoken>();
 
-const initTokenizer = async () => {
-  if (!tokenizer) {
-    const response = await fetch(
-      "https://tiktoken.pages.dev/js/p50k_base.json"
-    );
-    const rank = (await response.json()) as TiktokenBPE;
-    tokenizer = new Tiktoken(rank);
+const getTokenizer = async (encoder: TokenEncoder): Promise<Tiktoken> => {
+  if (tokenizerCache.has(encoder)) {
+    return tokenizerCache.get(encoder)!;
   }
+
+  // A simplified map of encoders to their JSON definition files
+  const encoderFiles: Record<string, string> = {
+    p50k: "p50k_base.json",
+    o200k: "o200k_base.json",
+    cl100k: "cl100k_base.json",
+  };
+
+  const fileName = encoderFiles[encoder];
+  if (!fileName) {
+    throw new Error(`Unsupported token encoder: ${encoder}`);
+  }
+
+  const response = await fetch(`https://tiktoken.pages.dev/js/${fileName}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch tokenizer file for ${encoder}: ${response.statusText}`
+    );
+  }
+
+  const rank = (await response.json()) as TiktokenBPE;
+  const tokenizer = new Tiktoken(rank);
+  tokenizerCache.set(encoder, tokenizer);
   return tokenizer;
 };
 
@@ -28,7 +47,7 @@ const getTokenCount = async (
     return estimateTokens(text);
   }
 
-  const tiktoken = await initTokenizer();
+  const tiktoken = await getTokenizer(encoder);
   return tiktoken.encode(text).length;
 };
 

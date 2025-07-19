@@ -18,6 +18,32 @@ npm install codefetch-sdk
 - Project tree visualization
 - Template variable support
 
+## Caching System
+
+The SDK includes an intelligent, environment-aware caching system:
+
+- **Automatic Environment Detection**: Uses appropriate cache for Node.js, Cloudflare Workers, or browsers
+- **Cloudflare Workers Fix**: Resolves "Invalid URL" errors with proper cache URL generation
+- **Graceful Degradation**: Falls back to in-memory cache if preferred cache unavailable
+- **Content Validation**: Automatically validates and cleans invalid cache entries
+
+### Quick Fix for Cloudflare Workers Cache Errors
+
+If you're experiencing cache errors in Workers, use one of these solutions:
+
+```typescript
+// Option 1: Disable cache (immediate fix)
+const result = await fetchFromWeb(url, { noCache: true });
+
+// Option 2: Configure proper cache URL (recommended)
+const result = await fetchFromWeb(url, {
+  cacheBaseUrl: 'https://your-domain.com',
+  cacheTTL: 3600
+});
+```
+
+See [docs/cache-implementation.md](./docs/cache-implementation.md) for detailed cache documentation.
+
 ## Cloudflare Workers Support
 
 The SDK provides a specialized `/worker` export for Cloudflare Workers:

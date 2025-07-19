@@ -25,14 +25,14 @@ export async function* streamGitHubFiles(
   repo: string,
   options?: StreamOptions & { branch?: string; token?: string }
 ): AsyncGenerator<FileContent, void, unknown> {
-  const { streamGitHubTarball } = await import("./web/github-tarball.js");
+  const { fetchGitHubTarball } = await import("./web/github-tarball.js");
 
   const branch = options?.branch || "main";
   const extensions = options?.extensions || [];
   const excludeDirs = options?.excludeDirs || [];
 
   // Get the files from tarball
-  const files = await streamGitHubTarball(owner, repo, branch, {
+  const files = await fetchGitHubTarball(owner, repo, branch, {
     token: options?.token,
     extensions,
     excludeDirs,

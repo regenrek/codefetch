@@ -23,5 +23,5 @@ describe("token-counter", () => {
     const text = "Hello, I'm using the cl100k encoder test.";
     const tokens = await countTokens(text, "cl100k");
     expect(tokens).toBeGreaterThan(0);
-  });
+  }, 10_000); // 10 second timeout
 });

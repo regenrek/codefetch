@@ -112,9 +112,9 @@ class TarStreamParser {
 }
 
 /**
- * Stream and process GitHub tarball
+ * Stream and process GitHub tarball, yielding files one by one.
  */
-export async function streamGitHubTarball(
+export async function* streamGitHubFiles(
   owner: string,
   repo: string,
   ref: string = "HEAD",
@@ -125,7 +125,7 @@ export async function streamGitHubTarball(
     maxFiles?: number;
     onProgress?: (processed: number) => void;
   } = {}
-): Promise<FileContent[]> {
+): AsyncGenerator<FileContent, void, undefined> {
   const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`;
 
   const headers: Record<string, string> = {
@@ -161,7 +161,6 @@ export async function streamGitHubTarball(
 
   // Parse TAR format
   const parser = new TarStreamParser();
-  const files: FileContent[] = [];
 
   // Default exclusions
   const defaultExcludeDirs = [
@@ -210,17 +209,38 @@ export async function streamGitHubTarball(
     // Convert body to string
     const content = new TextDecoder().decode(body);
 
-    files.push({
+    yield {
       path: relativePath,
       content,
-    });
+    };
 
     processed++;
     if (options.onProgress) {
       options.onProgress(processed);
     }
   }
+}
 
+/**
+ * Fetch all files from a GitHub tarball at once.
+ * @deprecated Use streamGitHubFiles for better memory management.
+ */
+export async function fetchGitHubTarball(
+  owner: string,
+  repo: string,
+  ref: string = "HEAD",
+  options: {
+    token?: string;
+    extensions?: string[];
+    excludeDirs?: string[];
+    maxFiles?: number;
+    onProgress?: (processed: number) => void;
+  } = {}
+): Promise<FileContent[]> {
+  const files: FileContent[] = [];
+  for await (const file of streamGitHubFiles(owner, repo, ref, options)) {
+    files.push(file);
+  }
   return files;
 }
 

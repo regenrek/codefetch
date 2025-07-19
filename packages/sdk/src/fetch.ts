@@ -8,10 +8,23 @@ import { collectFilesAsTree } from "./files-tree";
 import { generateMarkdown } from "./markdown";
 import { FetchResultImpl } from "./fetch-result";
 import { DEFAULT_IGNORE_PATTERNS } from "./default-ignore";
+import { CacheStrategy } from "./cache/interface.js";
 
 export interface FetchOptions extends Partial<CodefetchConfig> {
   source?: string; // URL or local path, defaults to cwd
   format?: OutputFormat;
+
+  // Cache control options
+  cache?: boolean | CacheStrategy;
+  cacheKey?: string;
+  cacheTTL?: number; // in seconds
+  cacheNamespace?: string;
+
+  // For Cloudflare Workers
+  cacheBaseUrl?: string;
+
+  // Bypass cache completely
+  noCache?: boolean;
 }
 
 export async function fetch(

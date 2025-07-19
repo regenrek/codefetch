@@ -71,7 +71,7 @@ describe("Worker Module Exports Smoke Tests", () => {
     expect(workerModule.htmlToMarkdown).toBeDefined();
 
     // GitHub tarball
-    expect(workerModule.streamGitHubTarball).toBeDefined();
+    expect(workerModule.fetchGitHubTarball).toBeDefined();
 
     // Cache integration
     expect(workerModule.fetchFromWebCached).toBeDefined();

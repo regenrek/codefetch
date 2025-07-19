@@ -3,10 +3,8 @@
  * Works with in-memory content instead of file system operations
  */
 
-import { parseURL, validateURL } from "./url-handler.js";
-import { WorkerWebCache } from "./cache-worker.js";
-import { isCloudflareWorker } from "../env.js";
-import { streamGitHubTarball } from "./github-tarball.js";
+import { parseURL, validateURL, ParsedURL } from "./url-handler.js";
+import { fetchGitHubTarball } from "./github-tarball.js";
 import type { FetchOptions } from "../fetch.js";
 import { FetchResultImpl } from "../fetch-result.js";
 import {
@@ -16,6 +14,13 @@ import {
 import type { FileNode } from "../types.js";
 import { countTokens } from "../token-counter.js";
 import { detectLanguage } from "../utils-browser.js";
+// Import new cache system
+import {
+  createCache,
+  CacheInterface,
+  generateCacheKey,
+  validateCachedContent,
+} from "../cache/index.js";
 
 /**
  * Simplified logger for Workers
@@ -53,32 +58,54 @@ export async function fetchFromWebWorker(
 
   logger.info(`Fetching from: ${parsedUrl.url}`);
 
-  // Initialize cache based on environment
-  let cache: WorkerWebCache | null = null;
-  let cachedContent: any = null;
+  // Initialize new cache system based on options
+  let cache: CacheInterface | null = null;
 
-  if ((options as any).noCache) {
-    logger.debug("Cache disabled");
-  } else {
-    if (isCloudflareWorker) {
-      cache = new WorkerWebCache({
-        ttlHours: (options as any).cacheTTL || 1,
+  if (!options.noCache && options.cache !== "bypass") {
+    try {
+      cache = createCache({
+        namespace: options.cacheNamespace || "codefetch",
+        baseUrl: options.cacheBaseUrl || "https://cache.codefetch.workers.dev",
+        ttl: options.cacheTTL || 3600,
       });
-      await cache.init();
+    } catch (error) {
+      logger.warn(`Failed to initialize cache: ${error}`);
+      // Continue without cache
+    }
+  }
 
-      const cached = await cache.get(parsedUrl);
-      if (cached) {
+  // Generate cache key
+  const cacheKey = options.cacheKey || generateCacheKey(url, options);
+
+  // Try to get from cache first
+  let files: FileContent[] = [];
+  let fromCache = false;
+
+  if (cache && options.cache !== "refresh") {
+    try {
+      const cached = await cache.get(cacheKey);
+      if (cached && (await validateCachedContent(cached))) {
         logger.info("Using cached content");
-        cachedContent = JSON.parse(cached.content);
+        // For worker environment, content should be serialized
+        if (typeof cached.content === "string") {
+          files = JSON.parse(cached.content);
+        } else if (Array.isArray(cached.content)) {
+          files = cached.content;
+        }
+        fromCache = true;
+      } else if (cached) {
+        // Invalid cache entry, delete it
+        await cache.delete(cacheKey);
+        logger.debug("Cached content invalid, fetching fresh");
       }
+    } catch (error) {
+      logger.warn(`Cache retrieval failed: ${error}`);
+      // Continue to fetch fresh data
     }
   }
 
   // Fetch content if not cached
-  let files: FileContent[] = [];
-  if (cachedContent) {
-    files = cachedContent;
-  } else {
+  if (!fromCache) {
     if (parsedUrl.gitProvider === "github") {
       files = await fetchGitHubStreaming(parsedUrl, logger, options);
     } else {
@@ -88,9 +115,14 @@ export async function fetchFromWebWorker(
       );
     }
 
-    // Cache the fetched files if cache is enabled
-    if (cache) {
-      await cache.set(parsedUrl, JSON.stringify(files));
+    // Store in cache if successful
+    if (cache && files.length > 0 && options.cache !== "bypass") {
+      try {
+        await cache.set(cacheKey, JSON.stringify(files), options.cacheTTL);
+      } catch (error) {
+        logger.warn(`Cache storage failed: ${error}`);
+        // Non-critical, continue
+      }
     }
   }
 
@@ -134,7 +166,7 @@ export async function fetchFromWebWorker(
  * Fetch GitHub repository content using streaming tarball
  */
 async function fetchGitHubStreaming(
-  parsedUrl: any,
+  parsedUrl: ParsedURL,
   logger: any,
   options: FetchOptions
 ): Promise<FileContent[]> {
@@ -149,7 +181,7 @@ async function fetchGitHubStreaming(
   );
 
   let _processed = 0;
-  const files = await streamGitHubTarball(
+  const files = await fetchGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
     branch,

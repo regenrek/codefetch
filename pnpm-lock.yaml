@@ -69,6 +69,9 @@ importers:
       eslint-config-unjs:
         specifier: ^0.4.2
         version: 0.4.2(eslint@9.18.0(jiti@2.4.2))(typescript@5.7.3)
+      msw:
+        specifier: ^2.10.4
+        version: 2.10.4(@types/node@22.10.5)(typescript@5.7.3)
       prettier:
         specifier: ^3.4.2
         version: 3.4.2

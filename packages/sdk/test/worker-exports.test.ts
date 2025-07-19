@@ -80,13 +80,6 @@ describe("Worker Module Exports Smoke Tests", () => {
     expect(workerModule.createCacheStorage).toBeDefined();
     expect(workerModule.withCache).toBeDefined();
 
-    // Migration helpers
-    expect(workerModule.migrateFromV1).toBeDefined();
-    expect(workerModule.compat).toBeDefined();
-    expect(workerModule.generateMigrationGuide).toBeDefined();
-    expect(workerModule.needsMigration).toBeDefined();
-    expect(workerModule.autoMigrateCode).toBeDefined();
-
     // Type guards
     expect(workerModule.isValidGitHubUrl).toBeDefined();
     expect(workerModule.isValidRepoPath).toBeDefined();

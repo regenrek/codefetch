@@ -107,15 +107,6 @@ export {
   type CacheStorage,
 } from "./cache-enhanced.js";
 
-// Migration helpers (Worker-safe)
-export {
-  migrateFromV1,
-  compat,
-  generateMigrationGuide,
-  needsMigration,
-  autoMigrateCode,
-} from "./migration.js";
-
 // Type guards and branded types (Worker-safe)
 export {
   isValidGitHubUrl,

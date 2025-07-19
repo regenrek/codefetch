@@ -19,12 +19,15 @@ import { isCloudflareWorker } from "../env.js";
 import { fetchGitHubViaApi } from "./github-api.js";
 import type { FetchOptions } from "../fetch.js";
 // Import new cache system
-import {
-  createCache,
-  CacheInterface,
-  generateCacheKey,
-  validateCachedContent,
-} from "../cache/index.js";
+import { createCache, CacheInterface } from "../cache/index.js";
+
+// Import these from validation module using dynamic import to avoid Node.js deps
+async function loadValidationHelpers() {
+  const { generateCacheKey, validateCachedContent } = await import(
+    "../cache/validation.js"
+  );
+  return { generateCacheKey, validateCachedContent };
+}
 
 export async function fetchFromWeb(
   url: string,
@@ -64,14 +67,14 @@ export async function fetchFromWeb(
     `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
   );
 
-  // Initialize new cache system based on options
+  // Initialize cache based on options
   let cache: CacheInterface | null = null;
 
   if (!options.noCache && options.cache !== "bypass") {
     try {
-      cache = createCache({
+      cache = await createCache({
         namespace: options.cacheNamespace || "codefetch",
-        baseUrl: options.cacheBaseUrl,
+        baseUrl: options.cacheBaseUrl || "https://cache.codefetch.workers.dev",
         ttl: options.cacheTTL || 3600,
       });
     } catch (error) {
@@ -79,6 +82,10 @@ export async function fetchFromWeb(
       // Continue without cache
     }
   }
+
+  // Load validation helpers
+  const { generateCacheKey, validateCachedContent } =
+    await loadValidationHelpers();
 
   // Generate cache key
   const cacheKey = options.cacheKey || generateCacheKey(url, options);

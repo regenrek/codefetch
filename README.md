@@ -77,6 +77,7 @@ npx codefetch -p improve --max-tokens 50000
 ````bash
 # Analyze a GitHub repository
 npx codefetch --url github.com/vuejs/vue --branch main -e js,ts
+```
 
 Include or exclude specific files and directories:
 ```bash

@@ -443,7 +443,6 @@ export default {
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
-
 ## See my other projects:
 
 - [aidex](https://github.com/regenrek/aidex) - AI model information 

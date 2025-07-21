@@ -1,4 +1,9 @@
 import { Tiktoken } from 'js-tiktoken/lite';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdir, readFile, stat, writeFile, rm, readdir } from 'node:fs/promises';
+import 'node:fs';
+import 'pathe';
 
 class FetchResultImpl {
   constructor(root, metadata) {
@@ -95,15 +100,29 @@ class FetchResultImpl {
   }
 }
 
-let tokenizer = null;
-const initTokenizer = async () => {
-  if (!tokenizer) {
-    const response = await fetch(
-      "https://tiktoken.pages.dev/js/p50k_base.json"
-    );
-    const rank = await response.json();
-    tokenizer = new Tiktoken(rank);
+const tokenizerCache = /* @__PURE__ */ new Map();
+const getTokenizer = async (encoder) => {
+  if (tokenizerCache.has(encoder)) {
+    return tokenizerCache.get(encoder);
   }
+  const encoderFiles = {
+    p50k: "p50k_base.json",
+    o200k: "o200k_base.json",
+    cl100k: "cl100k_base.json"
+  };
+  const fileName = encoderFiles[encoder];
+  if (!fileName) {
+    throw new Error(`Unsupported token encoder: ${encoder}`);
+  }
+  const response = await fetch(`https://tiktoken.pages.dev/js/${fileName}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch tokenizer file for ${encoder}: ${response.statusText}`
+    );
+  }
+  const rank = await response.json();
+  const tokenizer = new Tiktoken(rank);
+  tokenizerCache.set(encoder, tokenizer);
   return tokenizer;
 };
 const estimateTokens = (text) => {
@@ -114,7 +133,7 @@ const getTokenCount = async (text, encoder) => {
   if (encoder === "simple") {
     return estimateTokens(text);
   }
-  const tiktoken = await initTokenizer();
+  const tiktoken = await getTokenizer(encoder);
   return tiktoken.encode(text).length;
 };
 const countTokens = async (text, encoder) => {
@@ -446,7 +465,7 @@ function isIPv4(str) {
   if (parts.length !== 4) return false;
   return parts.every((part) => {
     const num = Number.parseInt(part, 10);
-    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
+    return !Number.isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
   });
 }
 function isIPv6(str) {
@@ -580,144 +599,14 @@ function parseURL(urlString) {
     gitRef
   };
 }
-function extractCacheKey(parsedUrl) {
-  const ref = parsedUrl.gitRef || "default";
-  return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
-}
 
-var __defProp$1 = Object.defineProperty;
-var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$1 = (obj, key, value) => __defNormalProp$1(obj, typeof key !== "symbol" ? key + "" : key, value);
-class WorkerWebCache {
-  constructor(options) {
-    __publicField$1(this, "ttlHours");
-    __publicField$1(this, "cachePrefix", "codefetch-v1");
-    this.ttlHours = options?.ttlHours ?? 1;
-  }
-  /**
-   * Generate cache key for a parsed URL using Web Crypto API
-   */
-  async getCacheKey(parsedUrl) {
-    const key = extractCacheKey(parsedUrl);
-    const encoder = new TextEncoder();
-    const data = encoder.encode(key);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = [...new Uint8Array(hashBuffer)];
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    const shortHash = hashHex.slice(0, 8);
-    return `${this.cachePrefix}:${parsedUrl.type}:${key}-${shortHash}`;
-  }
-  /**
-   * Initialize cache (no-op for Workers)
-   */
-  async init() {
-  }
-  /**
-   * Check if cache entry exists and is valid
-   */
-  async has(parsedUrl) {
-    const cache = await caches.open(this.cachePrefix);
-    const cacheKey = await this.getCacheKey(parsedUrl);
-    const response = await cache.match(cacheKey);
-    if (!response) return false;
-    const expiresHeader = response.headers.get("expires");
-    if (expiresHeader) {
-      const expiresAt = new Date(expiresHeader);
-      if (expiresAt <= /* @__PURE__ */ new Date()) {
-        await cache.delete(cacheKey);
-        return false;
-      }
-    }
-    return true;
-  }
-  /**
-   * Get cached content
-   */
-  async get(parsedUrl) {
-    const cache = await caches.open(this.cachePrefix);
-    const cacheKey = await this.getCacheKey(parsedUrl);
-    const response = await cache.match(cacheKey);
-    if (!response) return null;
-    const expiresHeader = response.headers.get("expires");
-    if (expiresHeader) {
-      const expiresAt = new Date(expiresHeader);
-      if (expiresAt <= /* @__PURE__ */ new Date()) {
-        await cache.delete(cacheKey);
-        return null;
-      }
-    }
-    try {
-      const data = await response.json();
-      return data;
-    } catch {
-      await cache.delete(cacheKey);
-      return null;
-    }
-  }
-  /**
-   * Store content in cache
-   */
-  async set(parsedUrl, content, options) {
-    const cache = await caches.open(this.cachePrefix);
-    const cacheKey = await this.getCacheKey(parsedUrl);
-    const now = /* @__PURE__ */ new Date();
-    const expiresAt = new Date(now.getTime() + this.ttlHours * 60 * 60 * 1e3);
-    const metadata = {
-      url: parsedUrl.url,
-      fetchedAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      contentType: options?.contentType,
-      headers: options?.headers
-    };
-    const cacheEntry = {
-      metadata,
-      content: content.toString()
-    };
-    const response = new Response(JSON.stringify(cacheEntry), {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": `public, max-age=${this.ttlHours * 3600}`,
-        Expires: expiresAt.toUTCString()
-      }
-    });
-    await cache.put(cacheKey, response);
-  }
-  /**
-   * Delete cache entry
-   */
-  async delete(parsedUrl) {
-    const cache = await caches.open(this.cachePrefix);
-    const cacheKey = await this.getCacheKey(parsedUrl);
-    await cache.delete(cacheKey);
-  }
-  /**
-   * Clear entire cache
-   */
-  async clear() {
-    console.warn("Cache clear not fully supported in Workers");
-  }
-  /**
-   * Get cache statistics (limited in Workers)
-   */
-  async getStats() {
-    return {
-      sizeMB: 0,
-      entryCount: 0,
-      websiteCount: 0,
-      repoCount: 0
-    };
-  }
-}
-
-const isCloudflareWorker = globalThis.WebSocketPair !== undefined && !("__dirname" in globalThis);
-
-var __defProp = Object.defineProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$3 = Object.defineProperty;
+var __defNormalProp$3 = (obj, key, value) => key in obj ? __defProp$3(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$3 = (obj, key, value) => __defNormalProp$3(obj, typeof key !== "symbol" ? key + "" : key, value);
 class TarStreamParser {
   constructor() {
-    __publicField(this, "buffer", new Uint8Array(0));
-    __publicField(this, "position", 0);
+    __publicField$3(this, "buffer", new Uint8Array(0));
+    __publicField$3(this, "position", 0);
   }
   async *parse(stream) {
     const reader = stream.getReader();
@@ -779,7 +668,7 @@ class TarStreamParser {
     return new TextDecoder().decode(bytes.slice(0, effectiveLength));
   }
 }
-async function streamGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
+async function* streamGitHubFiles(owner, repo, ref = "HEAD", options = {}) {
   const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`;
   const headers = {
     Accept: "application/vnd.github.v3.tarball",
@@ -806,7 +695,6 @@ async function streamGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
     new DecompressionStream("gzip")
   );
   const parser = new TarStreamParser();
-  const files = [];
   const defaultExcludeDirs = [
     ".git",
     "node_modules",
@@ -837,18 +725,288 @@ async function streamGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
       break;
     }
     const content = new TextDecoder().decode(body);
-    files.push({
+    yield {
       path: relativePath,
       content
-    });
+    };
     processed++;
     if (options.onProgress) {
       options.onProgress(processed);
     }
   }
+}
+async function fetchGitHubTarball(owner, repo, ref = "HEAD", options = {}) {
+  const files = [];
+  for await (const file of streamGitHubFiles(owner, repo, ref, options)) {
+    files.push(file);
+  }
   return files;
 }
 
+function createHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.codePointAt(i) || 0;
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
+}
+
+var __defProp$2 = Object.defineProperty;
+var __defNormalProp$2 = (obj, key, value) => key in obj ? __defProp$2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$2 = (obj, key, value) => __defNormalProp$2(obj, typeof key !== "symbol" ? key + "" : key, value);
+class CloudflareCache {
+  constructor(options = {}) {
+    __publicField$2(this, "options");
+    __publicField$2(this, "cacheInstance");
+    this.options = {
+      namespace: "codefetch",
+      ttl: 3600,
+      // 1 hour default
+      baseUrl: "https://cache.codefetch.workers.dev",
+      // Default base URL
+      ...options
+    };
+    this.cacheInstance = globalThis.caches?.default || caches.default;
+  }
+  /**
+   * Generate a valid cache URL from a key
+   */
+  getCacheUrl(key) {
+    const baseUrl = this.options.baseUrl || "https://cache.codefetch.workers.dev";
+    const keyHash = createHash(key);
+    return `${baseUrl}/cache/${this.options.namespace}/${encodeURIComponent(keyHash)}`;
+  }
+  async get(key) {
+    try {
+      const cacheUrl = this.getCacheUrl(key);
+      const request = new Request(cacheUrl);
+      const response = await this.cacheInstance.match(request);
+      if (!response) {
+        return null;
+      }
+      const ageHeader = response.headers.get("age");
+      const maxAge = this.options.ttl || 3600;
+      if (ageHeader && Number.parseInt(ageHeader, 10) > maxAge) {
+        await this.delete(key);
+        return null;
+      }
+      const data = await response.json();
+      if (data.metadata?.expiresAt) {
+        const expiresAt = new Date(data.metadata.expiresAt);
+        if (expiresAt <= /* @__PURE__ */ new Date()) {
+          await this.delete(key);
+          return null;
+        }
+      }
+      return data;
+    } catch (error) {
+      console.warn("CloudflareCache.get failed:", error);
+      return null;
+    }
+  }
+  async set(key, value, ttl) {
+    try {
+      const cacheUrl = this.getCacheUrl(key);
+      const request = new Request(cacheUrl);
+      const effectiveTtl = ttl || this.options.ttl || 3600;
+      const now = /* @__PURE__ */ new Date();
+      const expiresAt = new Date(now.getTime() + effectiveTtl * 1e3);
+      const metadata = {
+        url: key,
+        fetchedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        contentType: "application/json"
+      };
+      const cachedResult = {
+        metadata,
+        content: value,
+        type: "serialized"
+      };
+      const response = new Response(JSON.stringify(cachedResult), {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": `public, max-age=${effectiveTtl}`,
+          Expires: expiresAt.toUTCString()
+        }
+      });
+      await this.cacheInstance.put(request, response);
+    } catch (error) {
+      console.warn("CloudflareCache.set failed:", error);
+    }
+  }
+  async delete(key) {
+    try {
+      const cacheUrl = this.getCacheUrl(key);
+      const request = new Request(cacheUrl);
+      await this.cacheInstance.delete(request);
+    } catch (error) {
+      console.warn("CloudflareCache.delete failed:", error);
+    }
+  }
+  async clear() {
+    console.warn(
+      "CloudflareCache.clear() is not supported. Cache entries will expire based on TTL."
+    );
+  }
+  async has(key) {
+    try {
+      const cacheUrl = this.getCacheUrl(key);
+      const request = new Request(cacheUrl);
+      const response = await this.cacheInstance.match(request);
+      if (!response) {
+        return false;
+      }
+      const cached = await this.get(key);
+      return cached !== null;
+    } catch (error) {
+      console.warn("CloudflareCache.has failed:", error);
+      return false;
+    }
+  }
+}
+
+var __defProp$1 = Object.defineProperty;
+var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$1 = (obj, key, value) => __defNormalProp$1(obj, typeof key !== "symbol" ? key + "" : key, value);
+class MemoryCache {
+  constructor(options = {}) {
+    __publicField$1(this, "cache", /* @__PURE__ */ new Map());
+    __publicField$1(this, "options");
+    this.options = {
+      namespace: "codefetch",
+      ttl: 3600,
+      // 1 hour default
+      maxSize: 50 * 1024 * 1024,
+      // 50MB default for memory
+      ...options
+    };
+  }
+  async get(key) {
+    const entry = this.cache.get(key);
+    if (!entry) {
+      return null;
+    }
+    if (entry.expires <= Date.now()) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+  async set(key, value, ttl) {
+    const effectiveTtl = ttl || this.options.ttl || 3600;
+    const now = /* @__PURE__ */ new Date();
+    const expiresAt = new Date(now.getTime() + effectiveTtl * 1e3);
+    const cachedResult = {
+      metadata: {
+        url: key,
+        fetchedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        contentType: "application/json"
+      },
+      content: value,
+      type: "memory"
+    };
+    this.cache.set(key, {
+      data: cachedResult,
+      expires: expiresAt.getTime()
+    });
+    this.cleanupExpired();
+    this.cleanupIfNeeded();
+  }
+  async delete(key) {
+    this.cache.delete(key);
+  }
+  async clear() {
+    this.cache.clear();
+  }
+  async has(key) {
+    const entry = this.cache.get(key);
+    if (!entry) {
+      return false;
+    }
+    if (entry.expires <= Date.now()) {
+      this.cache.delete(key);
+      return false;
+    }
+    return true;
+  }
+  /**
+   * Clean up expired entries
+   */
+  cleanupExpired() {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.expires <= now) {
+        this.cache.delete(key);
+      }
+    }
+  }
+  /**
+   * Estimate memory usage and clean if needed
+   */
+  cleanupIfNeeded() {
+    const maxEntries = Math.floor(
+      (this.options.maxSize || 5e7) / 10240
+    );
+    if (this.cache.size > maxEntries) {
+      const entries = [...this.cache.entries()].sort(
+        (a, b) => a[1].expires - b[1].expires
+      );
+      const entriesToRemove = Math.floor(entries.length * 0.2);
+      for (let i = 0; i < entriesToRemove; i++) {
+        this.cache.delete(entries[i][0]);
+      }
+    }
+  }
+}
+
+const isCloudflareWorker = globalThis.WebSocketPair !== void 0 && !("__dirname" in globalThis);
+
+async function createCache(options) {
+  if (typeof caches !== "undefined" && globalThis.caches?.default) {
+    return new CloudflareCache(options);
+  }
+  if (typeof process !== "undefined" && process.versions?.node && !isCloudflareWorker) {
+    const { FileSystemCache } = await Promise.resolve().then(function () { return filesystemCache; });
+    return new FileSystemCache(options);
+  }
+  return new MemoryCache(options);
+}
+
+function generateCacheKey(source, options = {}) {
+  const parts = [source];
+  if (options.extensions?.length > 0) {
+    parts.push(`ext:${options.extensions.sort().join(",")}`);
+  }
+  if (options.excludeDirs?.length > 0) {
+    parts.push(`exclude:${options.excludeDirs.sort().join(",")}`);
+  }
+  if (options.branch) {
+    parts.push(`branch:${options.branch}`);
+  }
+  if (options.maxTokens) {
+    parts.push(`tokens:${options.maxTokens}`);
+  }
+  return parts.join("|");
+}
+async function validateCachedContent(entry) {
+  if (!entry || typeof entry !== "object") {
+    return false;
+  }
+  if (!entry.content || !entry.metadata?.timestamp) {
+    return false;
+  }
+  if (entry.metadata.ttl && entry.metadata.timestamp) {
+    const now = Date.now();
+    const age = now - entry.metadata.timestamp;
+    if (age > entry.metadata.ttl * 1e3) {
+      return false;
+    }
+  }
+  return true;
+}
 const createLogger = (verbose) => ({
   info: (msg) => verbose && verbose >= 1 && console.log(`[INFO] ${msg}`),
   debug: (msg) => verbose && verbose >= 2 && console.log(`[DEBUG] ${msg}`),
@@ -868,26 +1026,40 @@ async function fetchFromWebWorker(url, options = {}) {
   }
   logger.info(`Fetching from: ${parsedUrl.url}`);
   let cache = null;
-  let cachedContent = null;
-  if (options.noCache) {
-    logger.debug("Cache disabled");
-  } else {
-    if (isCloudflareWorker) {
-      cache = new WorkerWebCache({
-        ttlHours: options.cacheTTL || 1
+  if (!options.noCache && options.cache !== "bypass") {
+    try {
+      cache = await createCache({
+        namespace: options.cacheNamespace || "codefetch",
+        baseUrl: options.cacheBaseUrl || "https://cache.codefetch.workers.dev",
+        ttl: options.cacheTTL || 3600
       });
-      await cache.init();
-      const cached = await cache.get(parsedUrl);
-      if (cached) {
-        logger.info("Using cached content");
-        cachedContent = JSON.parse(cached.content);
-      }
+    } catch (error) {
+      logger.warn(`Failed to initialize cache: ${error}`);
     }
   }
+  const cacheKey = options.cacheKey || generateCacheKey(url, options);
   let files = [];
-  if (cachedContent) {
-    files = cachedContent;
-  } else {
+  let fromCache = false;
+  if (cache && options.cache !== "refresh") {
+    try {
+      const cached = await cache.get(cacheKey);
+      if (cached && await validateCachedContent(cached)) {
+        logger.info("Using cached content");
+        if (typeof cached.content === "string") {
+          files = JSON.parse(cached.content);
+        } else if (Array.isArray(cached.content)) {
+          files = cached.content;
+        }
+        fromCache = true;
+      } else if (cached) {
+        await cache.delete(cacheKey);
+        logger.debug("Cached content invalid, fetching fresh");
+      }
+    } catch (error) {
+      logger.warn(`Cache retrieval failed: ${error}`);
+    }
+  }
+  if (!fromCache) {
     if (parsedUrl.gitProvider === "github") {
       files = await fetchGitHubStreaming(parsedUrl, logger, options);
     } else {
@@ -895,8 +1067,12 @@ async function fetchFromWebWorker(url, options = {}) {
         "Only GitHub repositories are supported in Cloudflare Workers. Please use a GitHub URL (e.g., https://github.com/owner/repo)"
       );
     }
-    if (cache) {
-      await cache.set(parsedUrl, JSON.stringify(files));
+    if (cache && files.length > 0 && options.cache !== "bypass") {
+      try {
+        await cache.set(cacheKey, JSON.stringify(files), options.cacheTTL);
+      } catch (error) {
+        logger.warn(`Cache storage failed: ${error}`);
+      }
     }
   }
   logger.info(`Analyzing ${files.length} files...`);
@@ -935,7 +1111,7 @@ async function fetchGitHubStreaming(parsedUrl, logger, options) {
   logger.info(
     `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch}...`
   );
-  const files = await streamGitHubTarball(
+  const files = await fetchGitHubTarball(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
     branch,
@@ -1023,5 +1199,172 @@ function sortTreeChildren(node) {
     }
   }
 }
+
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+class FileSystemCache {
+  constructor(options = {}) {
+    __publicField(this, "cacheDir");
+    __publicField(this, "options");
+    this.options = {
+      namespace: "codefetch",
+      ttl: 3600,
+      // 1 hour default
+      maxSize: 100 * 1024 * 1024,
+      // 100MB default
+      ...options
+    };
+    this.cacheDir = join(
+      tmpdir(),
+      `.codefetch-cache`,
+      this.options.namespace || "codefetch"
+    );
+  }
+  /**
+   * Initialize cache directory
+   */
+  async ensureCacheDir() {
+    await mkdir(this.cacheDir, { recursive: true });
+  }
+  /**
+   * Get cache file path for a key
+   */
+  getCachePath(key) {
+    const keyHash = createHash(key);
+    return join(this.cacheDir, `${keyHash}.json`);
+  }
+  async get(key) {
+    try {
+      const cachePath = this.getCachePath(key);
+      const content = await readFile(cachePath, "utf8");
+      const cached = JSON.parse(content);
+      if (cached.metadata?.expiresAt) {
+        const expiresAt = new Date(cached.metadata.expiresAt);
+        if (expiresAt <= /* @__PURE__ */ new Date()) {
+          await this.delete(key);
+          return null;
+        }
+      }
+      if (cached.type === "filesystem" && cached.content?.path) {
+        try {
+          await stat(cached.content.path);
+        } catch {
+          await this.delete(key);
+          return null;
+        }
+      }
+      return cached;
+    } catch {
+      return null;
+    }
+  }
+  async set(key, value, ttl) {
+    try {
+      await this.ensureCacheDir();
+      const effectiveTtl = ttl || this.options.ttl || 3600;
+      const now = /* @__PURE__ */ new Date();
+      const expiresAt = new Date(now.getTime() + effectiveTtl * 1e3);
+      const metadata = {
+        url: key,
+        fetchedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        contentType: "application/json"
+      };
+      const cachedResult = {
+        metadata,
+        content: value,
+        type: typeof value === "string" && value.startsWith("/") ? "filesystem" : "serialized"
+      };
+      const cachePath = this.getCachePath(key);
+      await writeFile(cachePath, JSON.stringify(cachedResult, null, 2));
+      await this.cleanupIfNeeded();
+    } catch (error) {
+      console.warn("FileSystemCache.set failed:", error);
+    }
+  }
+  async delete(key) {
+    try {
+      const cachePath = this.getCachePath(key);
+      await rm(cachePath, { force: true });
+    } catch {
+    }
+  }
+  async clear() {
+    try {
+      await rm(this.cacheDir, { recursive: true, force: true });
+    } catch {
+    }
+  }
+  async has(key) {
+    try {
+      const cachePath = this.getCachePath(key);
+      await stat(cachePath);
+      const cached = await this.get(key);
+      return cached !== null;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Get total cache size in bytes
+   */
+  async getCacheSize() {
+    let totalSize = 0;
+    try {
+      const files = await readdir(this.cacheDir);
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          const filePath = join(this.cacheDir, file);
+          const stats = await stat(filePath);
+          totalSize += stats.size;
+        }
+      }
+    } catch {
+    }
+    return totalSize;
+  }
+  /**
+   * Cleanup cache if it exceeds size limit
+   */
+  async cleanupIfNeeded() {
+    const maxSize = this.options.maxSize || 100 * 1024 * 1024;
+    const currentSize = await this.getCacheSize();
+    if (currentSize > maxSize) {
+      try {
+        const files = await readdir(this.cacheDir);
+        const fileStats = [];
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            const filePath = join(this.cacheDir, file);
+            const stats = await stat(filePath);
+            fileStats.push({
+              path: filePath,
+              atime: stats.atime,
+              size: stats.size
+            });
+          }
+        }
+        fileStats.sort((a, b) => a.atime.getTime() - b.atime.getTime());
+        let removedSize = 0;
+        const targetSize = maxSize * 0.8;
+        for (const file of fileStats) {
+          if (currentSize - removedSize <= targetSize) {
+            break;
+          }
+          await rm(file.path, { force: true });
+          removedSize += file.size;
+        }
+      } catch (error) {
+        console.warn("Cache cleanup failed:", error);
+      }
+    }
+  }
+}
+
+const filesystemCache = {
+  __proto__: null,
+  FileSystemCache: FileSystemCache
+};
 
 export { FetchResultImpl, SUPPORTED_MODELS, VALID_ENCODERS, VALID_LIMITERS, VALID_PROMPTS, codegenPrompt, countTokens, detectLanguage, fetchFromWebWorker as fetch, fixPrompt, generateMarkdownFromContent, improvePrompt, prompts, testgenPrompt };

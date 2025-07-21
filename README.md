@@ -443,7 +443,6 @@ export default {
 - Learn Cursor AI: [Ultimate Cursor Course](https://www.instructa.ai/en/cursor-ai)
 - Learn to build software with AI: [AI Builder Hub](https://www.instructa.ai/en/ai-builder-hub)
 
-
 ## See my other projects:
 
 - [aidex](https://github.com/regenrek/aidex) - AI model information 
@@ -453,4 +452,5 @@ export default {
 This project was inspired by
 
 - [sitefetch](https://github.com/egoist/sitefetch) CLI made by [@egoist](https://github.com/egoist). While sitefetch is great for fetching documentation and websites, codefetch focuses on fetching local codebases for AI analysis.
-  [unjs](https://github.com/unjs) - for bringing us the best javascript tooling system
+[unjs](https://github.com/unjs) - for bringing us the best javascript tooling system
+

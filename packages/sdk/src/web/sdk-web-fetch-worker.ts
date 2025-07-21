@@ -15,12 +15,57 @@ import type { FileNode } from "../types.js";
 import { countTokens } from "../token-counter.js";
 import { detectLanguage } from "../utils-browser.js";
 // Import new cache system
-import {
-  createCache,
-  CacheInterface,
-  generateCacheKey,
-  validateCachedContent,
-} from "../cache/index.js";
+import { createCache, CacheInterface } from "../cache/index.js";
+
+/**
+ * Browser-safe cache key generation
+ */
+function generateCacheKey(source: string, options: any = {}): string {
+  const parts = [source];
+
+  if (options.extensions?.length > 0) {
+    parts.push(`ext:${options.extensions.sort().join(",")}`);
+  }
+
+  if (options.excludeDirs?.length > 0) {
+    parts.push(`exclude:${options.excludeDirs.sort().join(",")}`);
+  }
+
+  if (options.branch) {
+    parts.push(`branch:${options.branch}`);
+  }
+
+  if (options.maxTokens) {
+    parts.push(`tokens:${options.maxTokens}`);
+  }
+
+  return parts.join("|");
+}
+
+/**
+ * Browser-safe validation of cached content
+ */
+async function validateCachedContent(entry: any): Promise<boolean> {
+  if (!entry || typeof entry !== "object") {
+    return false;
+  }
+
+  // Check if the entry has required fields
+  if (!entry.content || !entry.metadata?.timestamp) {
+    return false;
+  }
+
+  // Check if cache has expired (if ttl is set)
+  if (entry.metadata.ttl && entry.metadata.timestamp) {
+    const now = Date.now();
+    const age = now - entry.metadata.timestamp;
+    if (age > entry.metadata.ttl * 1000) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 /**
  * Simplified logger for Workers
@@ -63,7 +108,7 @@ export async function fetchFromWebWorker(
 
   if (!options.noCache && options.cache !== "bypass") {
     try {
-      cache = createCache({
+      cache = await createCache({
         namespace: options.cacheNamespace || "codefetch",
         baseUrl: options.cacheBaseUrl || "https://cache.codefetch.workers.dev",
         ttl: options.cacheTTL || 3600,

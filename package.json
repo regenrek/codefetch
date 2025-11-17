@@ -14,7 +14,8 @@
     "release:cli": "tsx scripts/release-fix-workspace.ts",
     "release:legacy": "tsx scripts/release.ts",
     "release:sdk": "cd packages/sdk && tsx ../../scripts/release.ts",
-    "release:all": "pnpm release:sdk && pnpm release:cli"
+    "release:all": "pnpm release:sdk && pnpm release:cli",
+    "knip": "knip"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
@@ -27,5 +28,8 @@
     "unbuild": "3.2.0",
     "vitest": "^2.1.8"
   },
-  "packageManager": "pnpm@9.14.4"
+  "packageManager": "pnpm@9.14.4",
+  "dependencies": {
+    "knip": "^5.62.0"
+  }
 }

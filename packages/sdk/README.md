@@ -13,6 +13,7 @@ npm install codefetch-sdk@latest
 - 🎯 **Unified `fetch()` API** - Single method for all sources (local, GitHub, web)
 - 🚀 **Zero-config defaults** - Works out of the box with sensible defaults
 - 📦 **Optimized bundle** - Small footprint for edge environments
+- 🗄️ **Built‑in caching** - Smart in‑memory cache with pluggable adapters
 - 🔧 **Full TypeScript support** - Complete type safety with improved inference
 - 🌐 **Enhanced web support** - GitHub API integration and web crawling
 - ⚡ **Streaming support** - Memory-efficient processing for large codebases
@@ -95,6 +96,8 @@ interface FetchOptions {
   // Web crawling
   maxPages?: number;
   maxDepth?: number;
+  ignoreRobots?: boolean;
+  ignoreCors?: boolean;
 
   // Output
   format?: 'markdown' | 'json';
@@ -157,6 +160,25 @@ export default {
 - **35.4KB bundle size** - Optimized for edge performance
 - **Memory efficient** - Streams large repositories
 - **Private repo support** - GitHub token authentication
+
+## Caching
+
+Every `fetch()` call is cached in memory by default. Re‑using the same
+source URL within a single Node.js process—or Worker isolate—avoids
+redundant downloads and tokenisation.
+
+```typescript
+// Disable cache
+await fetch({ source: './src', noCache: true });
+
+// Custom TTL (seconds)
+await fetch({ source: repoUrl, cacheTTL: 3600 });
+```
+
+> **Need persistence on Cloudflare Workers?**
+> The `/worker` build exposes `createCache()` so you can plug in a KV
+> namespace for cross‑isolate caching. See
+> **packages/sdk/README‑Worker.md** for details.
 
 ## Advanced Usage
 

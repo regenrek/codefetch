@@ -23,3 +23,6 @@ export * from "./prompts/testgen";
 
 // Web module
 export * from "./web/index";
+
+// Cache module
+export { createCache } from "./cache/index";

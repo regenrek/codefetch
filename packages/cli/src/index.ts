@@ -4,7 +4,7 @@ export { DEFAULT_IGNORE_PATTERNS } from "codefetch-sdk";
 export { findProjectRoot } from "codefetch-sdk";
 export * from "./args";
 export * from "./config";
-export { countTokens, SUPPORTED_MODELS } from "codefetch-sdk";
+export { countTokens } from "codefetch-sdk";
 export {
   fetchModels,
   getLocalModels,

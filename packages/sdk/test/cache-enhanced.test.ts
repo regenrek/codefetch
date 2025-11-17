@@ -41,7 +41,7 @@ describe("Enhanced Cache Smoke Tests", () => {
 
     const cachedFunction = withCache(
       expensiveFunction,
-      (input) => `cache-key-${input}`,
+      (input: string) => `cache-key-${input}`,
       60
     );
 

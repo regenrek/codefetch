@@ -1,7 +1,7 @@
 import { defineBuildConfig } from "unbuild";
 
 export default defineBuildConfig({
-  entries: ["./src/index", "./src/browser", "./src/prompts/index"],
+  entries: ["./src/index", "./src/prompts/index"],
   declaration: true,
   clean: true,
   failOnWarn: false,

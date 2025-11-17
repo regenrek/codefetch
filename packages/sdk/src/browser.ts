@@ -17,7 +17,7 @@ export type {
 } from "./types.js";
 
 // Token counting (browser-safe)
-export { countTokens, SUPPORTED_MODELS } from "./token-counter.js";
+export { countTokens } from "./token-counter.js";
 
 // Markdown utilities (browser-safe, only the content-based version)
 export {
@@ -46,5 +46,4 @@ export { fetchFromWebWorker as fetch } from "./web/sdk-web-fetch-worker.js";
 // - collectFilesAsTree (requires fs)
 // - generateMarkdown (requires fs)
 // - findProjectRoot (requires fs)
-// - Web fetching (requires Node.js modules in current implementation)
 // - GitHub API (requires os.tmpdir and process.env)

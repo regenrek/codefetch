@@ -23,12 +23,23 @@ function isIPv6(str: string): boolean {
   return parts.every((part) => hexPattern.test(part));
 }
 
-// Git provider patterns
+// Git provider patterns keyed by domain
 const GIT_PROVIDERS = {
-  github: /^https:\/\/github\.com\/([\w-]+)\/([\w.-]+)/,
-  gitlab: /^https:\/\/gitlab\.com\/([\w-]+)\/([\w.-]+)/,
-  bitbucket: /^https:\/\/bitbucket\.org\/([\w-]+)\/([\w.-]+)/,
-};
+  "github.com": {
+    type: "github",
+    patterns: [
+      /^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/\s]+?)(?:\.git)?(?:\/tree\/([^/\s]+))?(?:\/.*)?$/,
+    ],
+  },
+  "gitlab.com": {
+    type: "gitlab",
+    patterns: [
+      /^(?:https?:\/\/)?gitlab\.com\/([^/]+)\/([^/\s]+?)(?:\.git)?(?:\/-\/tree\/([^/\s]+))?(?:\/.*)?$/,
+      // Also support nested groups
+      /^(?:https?:\/\/)?gitlab\.com\/((?:[^/]+\/)+)([^/\s]+?)(?:\.git)?(?:\/-\/tree\/([^/\s]+))?(?:\/.*)?$/,
+    ],
+  },
+} as const;
 
 // Blocked patterns for security
 const BLOCKED_PATTERNS = [
@@ -55,7 +66,14 @@ export interface ParsedURL {
   normalizedUrl: string;
   domain: string;
   path: string;
-  gitProvider: keyof typeof GIT_PROVIDERS;
+  /**
+   * Logical git provider identifier (e.g. "github" | "gitlab")
+   */
+  gitProvider: "github" | "gitlab";
+  /**
+   * Full host/domain of the provider (e.g. "github.com")
+   */
+  gitHost: keyof typeof GIT_PROVIDERS;
   gitOwner: string;
   gitRepo: string;
   gitRef?: string; // branch/tag/commit
@@ -141,81 +159,64 @@ export function validateURL(urlString: string): URLValidationResult {
 }
 
 /**
- * Detects if a URL is a git repository
- */
-export function detectGitProvider(
-  urlString: string
-): keyof typeof GIT_PROVIDERS | null {
-  for (const [provider, pattern] of Object.entries(GIT_PROVIDERS)) {
-    if (pattern.test(urlString)) {
-      return provider as keyof typeof GIT_PROVIDERS;
-    }
-  }
-  return null;
-}
-
-/**
  * Parses and normalizes a URL
  */
 export function parseURL(urlString: string): ParsedURL | null {
-  // Normalize URL first
-  const normalizedUrlString = normalizeURLString(urlString);
-
   const validation = validateURL(urlString);
   if (!validation.valid) {
-    throw new Error(validation.error);
+    return null;
   }
 
-  const url = new URL(normalizedUrlString);
-  const gitProvider = detectGitProvider(normalizedUrlString);
+  const normalizedUrl = normalizeURLString(urlString);
 
-  if (!gitProvider) {
-    throw new Error(
-      "Only GitHub, GitLab, and Bitbucket repository URLs are supported. " +
-        "Please provide a valid git repository URL (e.g., https://github.com/owner/repo)"
-    );
-  }
+  try {
+    const url = new URL(normalizedUrl);
+    const domain = url.hostname.toLowerCase();
+    const pathname = url.pathname;
 
-  // Parse git repository URL
-  const match = normalizedUrlString.match(GIT_PROVIDERS[gitProvider]);
-  if (!match) {
-    throw new Error("Failed to parse git repository URL");
-  }
+    // Check git providers
+    for (const [providerDomain, providerInfo] of Object.entries(
+      GIT_PROVIDERS
+    )) {
+      if (domain === providerDomain) {
+        for (const pattern of providerInfo.patterns) {
+          const match = normalizedUrl.match(pattern);
+          if (match) {
+            let gitOwner = match[1];
+            let gitRepo = match[2];
+            const gitRef = match[3] || undefined;
 
-  const [, owner, repo] = match;
-  let gitRef: string | undefined;
+            // Handle GitLab nested groups
+            if (providerInfo.type === "gitlab" && gitOwner.endsWith("/")) {
+              // Remove trailing slash from nested groups
+              gitOwner = gitOwner.slice(0, -1);
+            }
 
-  // Extract branch/tag/commit from URL path
-  // e.g., /owner/repo/tree/branch or /owner/repo/commit/sha
-  const pathParts = url.pathname.split("/").filter(Boolean);
-  if (pathParts.length > 2) {
-    const refType = pathParts[2]; // 'tree', 'commit', 'blob', etc.
-    if (["tree", "commit", "blob"].includes(refType) && pathParts[3]) {
-      gitRef = pathParts.slice(3).join("/");
-    } else if (
-      pathParts[2] === "releases" &&
-      pathParts[3] === "tag" &&
-      pathParts[4]
-    ) {
-      gitRef = pathParts[4];
+            // Clean up repo name
+            gitRepo = gitRepo.replace(/\.git$/, "");
+
+            return {
+              type: "git-repository",
+              url: normalizedUrl,
+              normalizedUrl,
+              domain,
+              path: pathname,
+              gitProvider: providerInfo.type,
+              gitHost: providerDomain as keyof typeof GIT_PROVIDERS,
+              gitOwner,
+              gitRepo,
+              gitRef,
+            };
+          }
+        }
+      }
     }
+
+    // If not a git provider, return null for now
+    return null;
+  } catch {
+    return null;
   }
-
-  // Normalize repository URL (remove .git suffix if present)
-  const repoName = repo.replace(/\.git$/, "");
-  const normalizedUrl = `https://${gitProvider}.com/${owner}/${repoName}`;
-
-  return {
-    type: "git-repository",
-    url: normalizedUrlString,
-    normalizedUrl,
-    domain: url.hostname,
-    path: url.pathname,
-    gitProvider,
-    gitOwner: owner,
-    gitRepo: repoName,
-    gitRef,
-  };
 }
 
 /**
@@ -223,5 +224,6 @@ export function parseURL(urlString: string): ParsedURL | null {
  */
 export function extractCacheKey(parsedUrl: ParsedURL): string {
   const ref = parsedUrl.gitRef || "default";
+  // Use logical provider id ("github" / "gitlab") in cache key for stability
   return `${parsedUrl.gitProvider}-${parsedUrl.gitOwner}-${parsedUrl.gitRepo}-${ref}`;
 }

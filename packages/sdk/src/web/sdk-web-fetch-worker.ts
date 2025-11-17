@@ -4,8 +4,9 @@
  */
 
 import { parseURL, validateURL, ParsedURL } from "./url-handler.js";
-import { fetchGitHubTarball } from "./github-tarball.js";
-import type { FetchOptions } from "../fetch.js";
+import { streamGitHubFiles } from "./github-tarball.js";
+import { streamGitLabFiles } from "./gitlab-tarball.js";
+import type { FetchOptions } from "../types-worker.js";
 import { FetchResultImpl } from "../fetch-result.js";
 import {
   generateMarkdownFromContent,
@@ -15,7 +16,7 @@ import type { FileNode } from "../types.js";
 import { countTokens } from "../token-counter.js";
 import { detectLanguage } from "../utils-browser.js";
 // Import new cache system
-import { createCache, CacheInterface } from "../cache/index.js";
+import { createCache, CacheInterface } from "../cache/index-worker.js";
 
 /**
  * Browser-safe cache key generation
@@ -151,12 +152,15 @@ export async function fetchFromWebWorker(
 
   // Fetch content if not cached
   if (!fromCache) {
-    if (parsedUrl.gitProvider === "github") {
-      files = await fetchGitHubStreaming(parsedUrl, logger, options);
+    if (
+      parsedUrl.gitHost === "github.com" ||
+      parsedUrl.gitHost === "gitlab.com"
+    ) {
+      files = await fetchGitStreaming(parsedUrl, logger, options);
     } else {
       throw new Error(
-        "Only GitHub repositories are supported in Cloudflare Workers. " +
-          "Please use a GitHub URL (e.g., https://github.com/owner/repo)"
+        "Only GitHub and GitLab repositories are supported in Cloudflare Workers. " +
+          "Please use a GitHub or GitLab URL (e.g., https://github.com/owner/repo or https://gitlab.com/owner/repo)"
       );
     }
 
@@ -187,7 +191,7 @@ export async function fetchFromWebWorker(
       totalTokens: root.totalTokens || 0,
       fetchedAt: new Date(),
       source: parsedUrl.url,
-      gitProvider: parsedUrl.gitProvider,
+      gitProvider: parsedUrl.gitHost,
       gitOwner: parsedUrl.gitOwner,
       gitRepo: parsedUrl.gitRepo,
       gitRef: parsedUrl.gitRef || (options as any).branch || "main",
@@ -199,7 +203,7 @@ export async function fetchFromWebWorker(
     const markdown = await generateMarkdownFromContent(files, {
       maxTokens: options.maxTokens,
       includeTreeStructure: options.projectTree !== 0,
-      tokenEncoder: options.tokenEncoder || "cl100k",
+      tokenEncoder: (options.tokenEncoder || "cl100k") as any,
       disableLineNumbers: options.disableLineNumbers,
     });
 
@@ -208,43 +212,57 @@ export async function fetchFromWebWorker(
 }
 
 /**
- * Fetch GitHub repository content using streaming tarball
+ * Fetch Git repository content using streaming tarball
  */
-async function fetchGitHubStreaming(
+async function fetchGitStreaming(
   parsedUrl: ParsedURL,
   logger: any,
   options: FetchOptions
 ): Promise<FileContent[]> {
   if (!parsedUrl.gitOwner || !parsedUrl.gitRepo) {
-    throw new Error("Invalid GitHub URL - missing owner or repo");
+    throw new Error("Invalid Git URL - missing owner or repo");
   }
 
   const branch = (options as any).branch || parsedUrl.gitRef || "main";
 
   logger.info(
-    `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch}...`
+    `Streaming repository ${parsedUrl.gitOwner}/${parsedUrl.gitRepo}@${branch} from ${parsedUrl.gitHost}...`
   );
 
   let _processed = 0;
-  const files = await fetchGitHubTarball(
+  const files: FileContent[] = [];
+
+  const streamOptions = {
+    token:
+      (options as any).githubToken ||
+      (options as any).gitlabToken ||
+      (globalThis as any).GITHUB_TOKEN ||
+      (globalThis as any).GITLAB_TOKEN,
+    extensions: options.extensions,
+    excludeDirs: options.excludeDirs,
+    maxFiles: (options as any).maxFiles || 1000,
+    onProgress: (count: number) => {
+      _processed = count;
+      if (count % 50 === 0) {
+        logger.info(`Processed ${count} files...`);
+      }
+    },
+  };
+
+  // Choose the appropriate streaming function based on provider
+  const streamFunction =
+    parsedUrl.gitHost === "github.com" ? streamGitHubFiles : streamGitLabFiles;
+
+  for await (const file of streamFunction(
     parsedUrl.gitOwner,
     parsedUrl.gitRepo,
     branch,
-    {
-      token: (options as any).githubToken || (globalThis as any).GITHUB_TOKEN,
-      extensions: options.extensions,
-      excludeDirs: options.excludeDirs,
-      maxFiles: (options as any).maxFiles || 1000,
-      onProgress: (count) => {
-        _processed = count;
-        if (count % 50 === 0) {
-          logger.info(`Processed ${count} files...`);
-        }
-      },
-    }
-  );
+    streamOptions
+  )) {
+    files.push(file);
+  }
 
-  logger.success(`Streamed ${files.length} files from GitHub`);
+  logger.success(`Streamed ${files.length} files from ${parsedUrl.gitHost}`);
   return files;
 }
 

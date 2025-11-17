@@ -31,6 +31,12 @@ Git Repository Options:
   --no-api                    Disable GitHub API and use git clone instead
   --github-token <token>      GitHub API token for private repos (or set GITHUB_TOKEN env var)
 
+Web Crawling Options:
+  --max-pages <number>        Maximum pages to crawl (default: 50)
+  --max-depth <number>        Maximum crawl depth (default: 2)
+  --ignore-robots             Ignore robots.txt restrictions
+  --ignore-cors               Ignore CORS restrictions
+
 Examples:
   # Analyze a local project
   codefetch --output analysis.md

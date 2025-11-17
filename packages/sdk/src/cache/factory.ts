@@ -14,7 +14,10 @@ export async function createCache(
   options?: CacheOptions
 ): Promise<CacheInterface> {
   // Check for Cloudflare Workers environment
-  if (typeof caches !== "undefined" && (globalThis as any).caches?.default) {
+  if (
+    (globalThis as any).caches !== undefined &&
+    (globalThis as any).caches?.default
+  ) {
     return new CloudflareCache(options);
   }
 

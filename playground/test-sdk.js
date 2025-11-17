@@ -10,7 +10,6 @@ import {
   VALID_PROMPTS,
   VALID_ENCODERS,
   VALID_LIMITERS,
-  SUPPORTED_MODELS,
 } from "../packages/sdk/dist/index.mjs";
 import ignore from "ignore";
 import { resolve, join } from "path";
@@ -23,10 +22,6 @@ console.log("1️⃣ Testing Constants:");
 console.log("Valid Prompts:", VALID_PROMPTS);
 console.log("Valid Encoders:", VALID_ENCODERS);
 console.log("Valid Limiters:", VALID_LIMITERS);
-console.log(
-  "Supported Models sample:",
-  Array.from(SUPPORTED_MODELS).slice(0, 3)
-);
 console.log(
   "Default Ignore Patterns (first 5 lines):",
   DEFAULT_IGNORE_PATTERNS.split("\n").slice(0, 5).join("\n")

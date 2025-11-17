@@ -64,7 +64,7 @@ export async function fetchFromWeb(
 
   logger.info(`Fetching from: ${parsedUrl.url}`);
   logger.info(
-    `Repository: ${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
+    `Repository: ${parsedUrl.gitHost}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`
   );
 
   // Initialize cache based on options
@@ -229,7 +229,7 @@ async function fetchGitRepository(
 
   try {
     // Try GitHub API first if it's a GitHub URL
-    if (parsedUrl.gitProvider === "github" && !(options as any).noApi) {
+    if (parsedUrl.gitHost === "github.com" && !(options as any).noApi) {
       logger.info("Attempting to fetch via GitHub API...");
 
       const apiSuccess = await fetchGitHubViaApi(parsedUrl, repoPath, logger, {

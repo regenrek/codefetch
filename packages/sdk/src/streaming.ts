@@ -7,6 +7,7 @@ import type { MarkdownFromContentOptions } from "./markdown-content.js";
 import { detectLanguage } from "./utils-browser.js";
 import { countTokens } from "./token-counter.js";
 import type { TokenEncoder } from "./types.js";
+import { streamGitHubFiles as tarStreamGitHubFiles } from "./web/github-tarball.js";
 
 export interface StreamOptions {
   maxTokens?: number;
@@ -16,48 +17,33 @@ export interface StreamOptions {
   includeTreeStructure?: boolean;
 }
 
-/**
- * Stream GitHub files as they're extracted from tarball
- * This is a generator function that yields files one by one
- */
 export async function* streamGitHubFiles(
   owner: string,
   repo: string,
   options?: StreamOptions & { branch?: string; token?: string }
 ): AsyncGenerator<FileContent, void, unknown> {
-  const { fetchGitHubTarball } = await import("./web/github-tarball.js");
-
   const branch = options?.branch || "main";
-  const extensions = options?.extensions || [];
-  const excludeDirs = options?.excludeDirs || [];
-
-  // Get the files from tarball
-  const files = await fetchGitHubTarball(owner, repo, branch, {
-    token: options?.token,
-    extensions,
-    excludeDirs,
-  });
-
-  let totalTokens = 0;
-  const maxTokens = options?.maxTokens || Infinity;
+  const maxTokens = options?.maxTokens ?? Infinity;
   const tokenEncoder = options?.tokenEncoder || "cl100k";
 
-  for (const file of files) {
-    // Count tokens
-    const fileTokens = await countTokens(file.content || "", tokenEncoder);
+  let totalTokens = 0;
+
+  for await (const file of tarStreamGitHubFiles(owner, repo, branch, options)) {
+    const fileTokens = await countTokens(
+      file.content || "",
+      tokenEncoder as TokenEncoder
+    );
     if (totalTokens + fileTokens > maxTokens) {
-      // Stop if we would exceed token limit
       break;
     }
 
     totalTokens += fileTokens;
 
-    // Yield the file
     yield {
       path: file.path,
-      content: file.content || "",
+      content: file.content,
       language: detectLanguage(file.path),
-      size: file.content?.length || 0,
+      size: file.content.length,
       tokens: fileTokens,
     };
   }

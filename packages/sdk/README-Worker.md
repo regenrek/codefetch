@@ -23,8 +23,9 @@ import { fetch } from 'codefetch-sdk/worker';
 
 - 🎯 **Unified `fetch()` API** - Single method for GitHub repos, web content, and more
 - 🚀 **Zero nodejs_compat required** - Uses native Web APIs
-- 📦 **Optimized bundle** - Only 23KB for edge performance
-- 🌊 **Native streaming** - Memory-efficient processing
+- 📦 **Optimized bundle** - Only **≈ 24 KB** gzipped for edge performance
+- 🗄️ **Built‑in caching** - Transparent per‑request memoization with optional KV persistence
+- 🌊 **Native streaming** - Memory‑efficient processing
 - 🔒 **Private repo support** - GitHub token authentication
 - ⚡ **Fast GitHub fetching** - Efficient repository processing
 - 🎯 **Simple configuration** - Minimal boilerplate
@@ -144,6 +145,18 @@ interface FetchResult {
     totalPages?: number; // For web crawling
   };
 }
+```
+
+## Caching& KV Persistence
+
+`codefetch-sdk/worker` ships with an **in‑memory LRU cache** that lives
+for the lifetime of the Cloudflare Worker isolate. When you call
+`fetch()` with the same parameters inside the same isolate it returns
+cached results, saving GitHub quota and reducing latency.
+
+```javascript
+// Disable caching for a single request
+await fetch({ source: repoUrl, noCache: true });
 ```
 
 ## Real-World Examples

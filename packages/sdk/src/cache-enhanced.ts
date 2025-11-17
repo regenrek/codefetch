@@ -126,7 +126,9 @@ async function getFromCache(
       typeof metadata.metadata === "object" &&
       "expires" in metadata.metadata
     ) {
-      const expires = new Date(metadata.metadata.expires as string);
+      const expires = new Date(
+        (metadata.metadata as { expires: string }).expires
+      );
       if (expires < new Date()) {
         await kv.delete(key);
         return null;
@@ -143,38 +145,45 @@ async function getFromCache(
 async function storeInCache(
   cacheStorage: CacheStorage,
   key: string,
-  data: FetchResult | string,
+  value: FetchResult | string,
   ttl: number
 ): Promise<void> {
-  const expires = new Date(Date.now() + ttl * 1000);
-
-  if (cacheStorage.type === "cache-api") {
-    const cache = cacheStorage.instance as Cache;
-    const headers = new Headers({
-      "content-type":
-        typeof data === "string" ? "text/plain" : "application/json",
-      expires: expires.toUTCString(),
-      "cache-control": `public, max-age=${ttl}`,
-    });
-
-    const response = new Response(
-      typeof data === "string" ? data : JSON.stringify(data),
-      { headers }
-    );
-
-    await cache.put(key, response);
-  } else {
-    // KV namespace
-    const kv = cacheStorage.instance as KVNamespace;
-    await kv.put(key, JSON.stringify(data), {
-      expirationTtl: ttl,
-      metadata: { expires: expires.toISOString() },
-    });
+  try {
+    if (cacheStorage.type === "cache-api") {
+      const cache = cacheStorage.instance as Cache;
+      const response = new Response(
+        typeof value === "string" ? value : JSON.stringify(value),
+        {
+          headers: {
+            "content-type":
+              typeof value === "string" ? "text/plain" : "application/json",
+            "cache-control": `public, max-age=${ttl}`,
+            expires: new Date(Date.now() + ttl * 1000).toUTCString(),
+          },
+        }
+      );
+      await cache.put(key, response);
+    } else {
+      const kv = cacheStorage.instance as KVNamespace;
+      const metadata = {
+        expires: new Date(Date.now() + ttl * 1000).toISOString(),
+      };
+      await kv.put(
+        key,
+        typeof value === "string" ? value : JSON.stringify(value),
+        {
+          expirationTtl: ttl,
+          metadata,
+        }
+      );
+    }
+  } catch (error) {
+    throw new CacheError(`Failed to store in cache: ${error}`, "write", key);
   }
 }
 
 /**
- * Delete from cache
+ * Delete a specific cache entry
  */
 export async function deleteFromCache(
   cacheStorage: CacheStorage,
@@ -190,11 +199,7 @@ export async function deleteFromCache(
       return true;
     }
   } catch (error) {
-    throw new CacheError(
-      `Failed to delete from cache: ${error}`,
-      "delete",
-      key
-    );
+    throw new CacheError(`Failed to delete cache entry: ${error}`, "delete");
   }
 }
 

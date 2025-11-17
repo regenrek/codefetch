@@ -58,15 +58,3 @@ export const countTokens = async (
   if (!encoder || !text) return 0;
   return getTokenCount(text, encoder);
 };
-
-export const SUPPORTED_MODELS = {
-  simple: ["*"],
-  p50k: ["text-davinci-003", "text-davinci-002", "code-davinci-002"],
-  o200k: [
-    "gpt-4o-2024-11-20",
-    "gpt-4o-2024-08-06",
-    "gpt-4o-2024-05-13",
-    "gpt-4o-mini-2024-07-18",
-  ],
-  cl100k: ["gpt-4", "gpt-3.5-turbo", "gpt-35-turbo"],
-} as const;

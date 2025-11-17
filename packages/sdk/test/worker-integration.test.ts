@@ -6,12 +6,11 @@
 import { describe, test, expect } from "vitest";
 import {
   fetchFromWeb,
-  isCloudflareWorker,
-  getCacheSizeLimit,
   countTokens,
   htmlToMarkdown,
   generateMarkdownFromContent,
 } from "../src/worker.js";
+import { isCloudflareWorker, getCacheSizeLimit } from "../src/env.js";
 
 describe("Worker Integration Tests", () => {
   describe("Environment Detection", () => {

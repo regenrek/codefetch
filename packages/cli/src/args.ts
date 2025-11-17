@@ -20,6 +20,8 @@ export function parseArgs(args: string[]) {
       "token-count-only",
       "no-cache",
       "no-api",
+      "ignore-robots",
+      "ignore-cors",
     ],
     string: [
       "output",
@@ -40,6 +42,10 @@ export function parseArgs(args: string[]) {
       "branch",
       "github-token",
       "format",
+      "max-pages",
+      "max-depth",
+      "ignore-robots",
+      "ignore-cors",
     ],
   });
 
@@ -179,5 +185,11 @@ export function parseArgs(args: string[]) {
     noCache: argv.cache === false, // mri converts --no-cache to cache: false
     noApi: argv.api === false, // mri converts --no-api to api: false
     ...(argv["github-token"] && { githubToken: String(argv["github-token"]) }),
+
+    // Web crawling flags
+    ...(argv["max-pages"] && { maxPages: Number(argv["max-pages"]) }),
+    ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
+    ignoreRobots: Boolean(argv["ignore-robots"]),
+    ignoreCors: Boolean(argv["ignore-cors"]),
   };
 }

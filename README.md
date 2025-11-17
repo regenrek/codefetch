@@ -75,8 +75,17 @@ npx codefetch -p improve --max-tokens 50000
 ### Git Repository Fetching
 
 ```bash
-# Analyze a GitHub repository
+# Analyze a GitHub repository (uses GitHub API by default - no git required!)
 npx codefetch --url github.com/vuejs/vue --branch main -e js,ts
+
+# Private repository with token
+npx codefetch --url github.com/myorg/private-repo --github-token ghp_xxxxx
+
+# Force git clone instead of API
+npx codefetch --url github.com/user/repo --no-api
+
+# Web crawling with advanced options
+npx codefetch --url example.com/docs --max-pages 50 --max-depth 3
 ```
 
 Include or exclude specific files and directories:
@@ -114,6 +123,8 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 
 ## Options
 
+### General Options
+
 | Option                          | Description                                                                                                                                                 |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-o, --output <file>`           | Specify output filename (defaults to codebase.md). Note: If you include "codefetch/" in the path, it will be automatically stripped to avoid double-nesting |
@@ -131,6 +142,26 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--disable-line-numbers`        | Disable line numbers in output                                                                                                                              |
 | `-d, --dry-run`                 | Output markdown to stdout instead of file                                                                                                                   |
 | `-c, --token-count-only`        | Output only the token count without generating markdown file                                                                                                |
+
+### Git Repository Options
+
+| Option                     | Description                                                              |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `--url <URL>`              | Fetch and analyze content from a git repository or website URL           |
+| `--branch <name>`          | Git branch/tag/commit to fetch (for repositories)                       |
+| `--no-cache`               | Skip cache and fetch fresh content                                       |
+| `--cache-ttl <hours>`      | Cache time-to-live in hours (default: 1)                                |
+| `--no-api`                 | Disable GitHub API and use git clone instead                            |
+| `--github-token <token>`   | GitHub API token for private repos (or set GITHUB_TOKEN env var)        |
+
+### Web Crawling Options
+
+| Option                   | Description                                                |
+| ------------------------ | ---------------------------------------------------------- |
+| `--max-pages <number>`   | Maximum pages to crawl (default: 50)                       |
+| `--max-depth <number>`   | Maximum crawl depth (default: 2)                           |
+| `--ignore-robots`        | Ignore robots.txt restrictions                             |
+| `--ignore-cors`          | Ignore CORS restrictions                                   |
 
 All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
 
@@ -324,7 +355,7 @@ import { fetch } from 'codefetch-sdk';
 const result = await fetch({
   source: './src',
   extensions: ['.ts', '.tsx'],
-  maxTokens: 50000,
+  maxTokens: 50_000,
 });
 
 // GitHub repository

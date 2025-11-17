@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import * as browserExports from "../src/browser";
+import * as browserExports from "../src/browser.js";
 
 describe("Browser Exports", () => {
   test("should export all required browser-safe items", () => {
@@ -10,7 +10,6 @@ describe("Browser Exports", () => {
     expect(browserExports.detectLanguage).toBeDefined();
 
     // Constants
-    expect(browserExports.SUPPORTED_MODELS).toBeDefined();
     expect(browserExports.VALID_PROMPTS).toBeDefined();
     expect(browserExports.VALID_ENCODERS).toBeDefined();
     expect(browserExports.VALID_LIMITERS).toBeDefined();

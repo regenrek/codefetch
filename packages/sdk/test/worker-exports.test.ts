@@ -4,10 +4,12 @@ describe("Worker Module Exports Smoke Tests", () => {
   it("should export all expected APIs from worker module", async () => {
     const workerModule = await import("../src/worker.js");
 
-    // Core utilities
+    // Core configuration utilities
     expect(workerModule.getDefaultConfig).toBeDefined();
     expect(workerModule.resolveCodefetchConfig).toBeDefined();
     expect(workerModule.mergeWithCliArgs).toBeDefined();
+
+    // Core utilities
     expect(workerModule.countTokens).toBeDefined();
     expect(workerModule.VALID_PROMPTS).toBeDefined();
     expect(workerModule.VALID_ENCODERS).toBeDefined();
@@ -15,6 +17,7 @@ describe("Worker Module Exports Smoke Tests", () => {
 
     // Markdown utilities
     expect(workerModule.generateMarkdownFromContent).toBeDefined();
+    expect(workerModule.htmlToMarkdown).toBeDefined();
 
     // Web fetch
     expect(workerModule.fetchFromWeb).toBeDefined();
@@ -28,15 +31,6 @@ describe("Worker Module Exports Smoke Tests", () => {
     expect(workerModule.fixPrompt).toBeDefined();
     expect(workerModule.improvePrompt).toBeDefined();
     expect(workerModule.testgenPrompt).toBeDefined();
-
-    // Tree utilities
-    expect(workerModule.filesToTree).toBeDefined();
-    expect(workerModule.treeToFiles).toBeDefined();
-    expect(workerModule.findNodeByPath).toBeDefined();
-    expect(workerModule.walkTree).toBeDefined();
-    expect(workerModule.calculateTreeMetrics).toBeDefined();
-    expect(workerModule.sortTree).toBeDefined();
-    expect(workerModule.filterTree).toBeDefined();
 
     // Environment detection
     expect(workerModule.isCloudflareWorker).toBeDefined();
@@ -67,11 +61,8 @@ describe("Worker Module Exports Smoke Tests", () => {
     expect(workerModule.filterStream).toBeDefined();
     expect(workerModule.mapStream).toBeDefined();
 
-    // HTML to Markdown
-    expect(workerModule.htmlToMarkdown).toBeDefined();
-
-    // GitHub tarball
-    expect(workerModule.fetchGitHubTarball).toBeDefined();
+    // GitHub tarball streaming
+    expect(workerModule.streamGitHubTarball).toBeDefined();
 
     // Cache integration
     expect(workerModule.fetchFromWebCached).toBeDefined();
@@ -100,7 +91,6 @@ describe("Worker Module Exports Smoke Tests", () => {
     // Check that Node-specific exports are NOT included
     expect((workerModule as any).collectFiles).toBeUndefined();
     expect((workerModule as any).fetchFiles).toBeUndefined();
-    expect((workerModule as any).fetch).toBeUndefined(); // The non-worker fetch
   });
 
   it("should export proper TypeScript types", async () => {

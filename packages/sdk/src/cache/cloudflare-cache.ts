@@ -12,7 +12,7 @@ import { createHash } from "../utils.js";
 
 export class CloudflareCache implements CacheInterface {
   private options: CacheOptions;
-  private cacheInstance: Cache;
+  private cacheInstance: any; // Cache API type
 
   constructor(options: CacheOptions = {}) {
     this.options = {
@@ -23,7 +23,7 @@ export class CloudflareCache implements CacheInterface {
     };
 
     // Get the default cache instance
-    this.cacheInstance = (globalThis as any).caches?.default || caches.default;
+    this.cacheInstance = (globalThis as any).caches?.default;
   }
 
   /**
@@ -44,27 +44,14 @@ export class CloudflareCache implements CacheInterface {
   async get(key: string): Promise<CachedResult | null> {
     try {
       const cacheUrl = this.getCacheUrl(key);
-      const request = new Request(cacheUrl);
-
-      const response = await this.cacheInstance.match(request);
+      const response = await this.cacheInstance.match(cacheUrl);
       if (!response) {
         return null;
       }
 
-      // Check if the response is still fresh
-      const ageHeader = response.headers.get("age");
-      const maxAge = this.options.ttl || 3600;
-
-      if (ageHeader && Number.parseInt(ageHeader, 10) > maxAge) {
-        // Cache is stale, delete it
-        await this.delete(key);
-        return null;
-      }
-
-      // Parse the cached data
       const data = (await response.json()) as CachedResult;
 
-      // Validate expiration from metadata
+      // Check metadata expiration
       if (data.metadata?.expiresAt) {
         const expiresAt = new Date(data.metadata.expiresAt);
         if (expiresAt <= new Date()) {
@@ -83,7 +70,6 @@ export class CloudflareCache implements CacheInterface {
   async set(key: string, value: any, ttl?: number): Promise<void> {
     try {
       const cacheUrl = this.getCacheUrl(key);
-      const request = new Request(cacheUrl);
 
       const effectiveTtl = ttl || this.options.ttl || 3600;
       const now = new Date();
@@ -103,7 +89,6 @@ export class CloudflareCache implements CacheInterface {
         type: "serialized",
       };
 
-      // Create response with proper headers
       const response = new Response(JSON.stringify(cachedResult), {
         headers: {
           "Content-Type": "application/json",
@@ -112,8 +97,7 @@ export class CloudflareCache implements CacheInterface {
         },
       });
 
-      // Store in cache
-      await this.cacheInstance.put(request, response);
+      await this.cacheInstance.put(cacheUrl, response);
     } catch (error) {
       console.warn("CloudflareCache.set failed:", error);
       // Fail silently - caching is not critical
@@ -123,8 +107,7 @@ export class CloudflareCache implements CacheInterface {
   async delete(key: string): Promise<void> {
     try {
       const cacheUrl = this.getCacheUrl(key);
-      const request = new Request(cacheUrl);
-      await this.cacheInstance.delete(request);
+      await this.cacheInstance.delete(cacheUrl);
     } catch (error) {
       console.warn("CloudflareCache.delete failed:", error);
     }
@@ -141,14 +124,9 @@ export class CloudflareCache implements CacheInterface {
   async has(key: string): Promise<boolean> {
     try {
       const cacheUrl = this.getCacheUrl(key);
-      const request = new Request(cacheUrl);
-      const response = await this.cacheInstance.match(request);
+      const response = await this.cacheInstance.match(cacheUrl);
+      if (!response) return false;
 
-      if (!response) {
-        return false;
-      }
-
-      // Check if still valid
       const cached = await this.get(key);
       return cached !== null;
     } catch (error) {

@@ -94,21 +94,56 @@ export default async function defaultMain(rawArgs: Argv) {
 
   // Handle URLs using SDK's fetch
   if (isUrl) {
-    logger.info(`Using format: ${config.format || "markdown"}`);
-    const { fetch } = await import("codefetch-sdk");
-    output = await fetch({
-      source,
-      format: config.format,
-      ...config,
-    });
+    // Set a safety timeout for web operations
+    const safetyTimeout = setTimeout(
+      () => {
+        logger.error("Operation timed out after 10 minutes");
+        process.exit(1);
+      },
+      10 * 60 * 1000
+    ); // 10 minutes
 
-    // Calculate tokens if needed
-    if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
-      if (typeof output === "string") {
-        totalTokens = await countTokens(output, config.tokenEncoder);
-      } else if (output && typeof output === "object" && "metadata" in output) {
-        totalTokens = output.metadata.totalTokens || 0;
+    try {
+      logger.info(`Using format: ${config.format || "markdown"}`);
+      const { fetch } = await import("codefetch-sdk");
+
+      // Prepare web-specific options
+      const fetchOptions = {
+        source,
+        format: config.format,
+        ...config,
+        // Web-specific options from args
+        cacheTTL: args.cacheTTL,
+        maxDepth: args.maxDepth,
+        maxPages: args.maxPages,
+        branch: args.branch,
+        noCache: args.noCache,
+        ignoreRobots: args.ignoreRobots,
+        ignoreCors: args.ignoreCors,
+        noApi: args.noApi,
+        githubToken: args.githubToken,
+      };
+
+      output = await fetch(fetchOptions);
+
+      // Calculate tokens if needed
+      if (config.verbose >= 3 || config.maxTokens || config.tokenCountOnly) {
+        if (typeof output === "string") {
+          totalTokens = await countTokens(output, config.tokenEncoder);
+        } else if (
+          output &&
+          typeof output === "object" &&
+          "metadata" in output
+        ) {
+          totalTokens = output.metadata.totalTokens || 0;
+        }
       }
+
+      // Clear the safety timeout
+      clearTimeout(safetyTimeout);
+    } catch (error) {
+      clearTimeout(safetyTimeout);
+      throw error;
     }
   } else {
     // Handle local paths with full prompt support
@@ -249,5 +284,29 @@ export default async function defaultMain(rawArgs: Argv) {
         borderStyle: "round",
       },
     });
+  }
+
+  // Show cache stats for web fetches with high verbosity
+  if (isUrl && config.verbose >= 2) {
+    try {
+      const { createCache } = await import("codefetch-sdk");
+      const cache = await createCache({
+        namespace: "codefetch",
+        ttl: args.cacheTTL ? args.cacheTTL * 3600 : 3600,
+      });
+
+      // Get cache stats if available
+      if ("getStats" in cache && typeof cache.getStats === "function") {
+        const stats = await cache.getStats();
+        logger.info(
+          `Cache stats: ${stats.entryCount} entries, ${stats.sizeMB.toFixed(2)}MB`
+        );
+      }
+    } catch (error) {
+      // Cache stats are optional, don't fail if unavailable
+      if (config.verbose >= 3) {
+        logger.debug("Could not retrieve cache stats:", error);
+      }
+    }
   }
 }

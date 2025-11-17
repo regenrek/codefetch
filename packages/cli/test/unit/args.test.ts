@@ -117,6 +117,10 @@ describe("parseArgs", () => {
       "-o",
       "output.md",
       "--disable-line-numbers",
+      "--max-pages",
+      "50",
+      "--max-depth",
+      "3",
       "--token-encoder",
       "cl100k",
       "-v",
@@ -127,6 +131,8 @@ describe("parseArgs", () => {
     expect(result).toMatchObject({
       outputFile: "output.md",
       disableLineNumbers: true,
+      maxPages: 50,
+      maxDepth: 3,
       tokenEncoder: "cl100k",
       verbose: 2,
     });

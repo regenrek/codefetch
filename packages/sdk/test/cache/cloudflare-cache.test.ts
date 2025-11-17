@@ -14,16 +14,19 @@ describe("CloudflareCache", () => {
     const storage = new Map<string, Response>();
 
     mockCache = {
-      match: vi.fn(async (request: Request) => {
-        const url = request.url;
+      match: vi.fn(async (requestOrUrl: Request | string) => {
+        const url =
+          typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
         return storage.get(url) || null;
       }),
-      put: vi.fn(async (request: Request, response: Response) => {
-        const url = request.url;
+      put: vi.fn(async (requestOrUrl: Request | string, response: Response) => {
+        const url =
+          typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
         storage.set(url, response.clone());
       }),
-      delete: vi.fn(async (request: Request) => {
-        const url = request.url;
+      delete: vi.fn(async (requestOrUrl: Request | string) => {
+        const url =
+          typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
         storage.delete(url);
         return true;
       }),
@@ -45,9 +48,8 @@ describe("CloudflareCache", () => {
 
     expect(mockCache.put).toHaveBeenCalled();
     const call = mockCache.put.mock.calls[0];
-    const request = call[0] as Request;
-
-    expect(request.url).toMatch(/^https:\/\/example\.com\/cache\/test\//);
+    const cacheUrl = call[0] as string;
+    expect(cacheUrl).toMatch(/^https:\/\/example\.com\/cache\/test\//);
   });
 
   it("should store and retrieve data", async () => {

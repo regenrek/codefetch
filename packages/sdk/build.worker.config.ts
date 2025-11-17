@@ -9,11 +9,15 @@ export default defineBuildConfig({
 
   // Target browser environment for Workers
   rollup: {
-    emitCJS: false, // Workers only support ESM
+    treeshake: true,
+    emitCJS: false,
     esbuild: {
       target: "es2022",
-      platform: "browser", // Important for Worker compatibility
+      platform: "browser",
       format: "esm",
+    },
+    output: {
+      inlineDynamicImports: false,
     },
     dts: {
       respectExternal: false,

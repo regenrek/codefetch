@@ -24,6 +24,8 @@ describe("Worker exports", () => {
     expect(workerModule.countTokens).toBeDefined();
     expect(workerModule.htmlToMarkdown).toBeDefined();
     expect(workerModule.generateMarkdownFromContent).toBeDefined();
+    expect(workerModule.streamGitHubFiles).toBeDefined();
+    expect(workerModule.createMarkdownStream).toBeDefined();
 
     // Check that Node-specific exports are NOT included
     expect((workerModule as any).collectFiles).toBeUndefined();

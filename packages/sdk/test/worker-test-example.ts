@@ -22,7 +22,7 @@ export default {
         JSON.stringify({
           status: "ok",
           isCloudflareWorker,
-          hasWebAPIs: typeof caches !== "undefined",
+          hasWebAPIs: (globalThis as any).caches !== undefined,
         }),
         {
           headers: { "Content-Type": "application/json" },

@@ -29,5 +29,8 @@ jobs:
       - name: Build packages
         run: pnpm run build
         
-      - name: Publish Preview
-        run: npx pkg-pr-new publish ./packages/sdk 
+      - name: Publish Preview - SDK
+        run: npx pkg-pr-new publish ./packages/sdk
+        
+      - name: Publish Preview - CLI
+        run: npx pkg-pr-new publish ./packages/cli

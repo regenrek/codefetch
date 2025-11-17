@@ -73,14 +73,14 @@ codefetch --format json -o codebase.json
 
 ### Web Fetching
 
-Fetch and convert websites or Git repositories:
+Fetch and convert Git repositories from GitHub or GitLab:
 
 ```bash
-# Fetch a website
-codefetch --url macherjek.at --max-pages 50 --max-depth 3
-
 # Analyze a GitHub repository (uses API by default - faster!)
 codefetch --url https://github.com/facebook/react --branch main
+
+# Analyze a GitLab repository
+codefetch --url https://gitlab.com/gitlab-org/gitlab-foss --branch master
 
 # Fetch private GitHub repo with token
 codefetch --url https://github.com/org/private-repo --github-token ghp_xxxxx
@@ -91,11 +91,11 @@ codefetch --url https://github.com/org/private-repo
 # Force git clone instead of API
 codefetch --url https://github.com/user/repo --no-api
 
-# Fetch without cache
-codefetch --url example.com --no-cache
+# Fetch repository without cache
+codefetch --url https://github.com/user/repo --no-cache
 
-# Set cache TTL (hours)
-codefetch --url example.com --cache-ttl 24
+# Set cache TTL for repository (hours)
+codefetch --url https://github.com/user/repo --cache-ttl 24
 ```
 
 ### Configuration
@@ -171,10 +171,11 @@ codefetch -e ts,tsx --exclude-dir node_modules,dist \
   --max-tokens 50000 -o typescript-analysis.md
 ```
 
-### Fetch Documentation Website
+### Fetch Documentation Repository
 
 ```bash
-codefetch --url docs.example.com \
+codefetch --url https://github.com/org/docs \
+  --branch main \
   --max-pages 100 \
   --max-depth 5 \
   --output docs-analysis.md

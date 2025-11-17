@@ -10,7 +10,7 @@ npm install codefetch-sdk@latest
 
 ## Features
 
-- 🎯 **Unified `fetch()` API** - Single method for all sources (local, GitHub, web)
+- 🎯 **Unified `fetch()` API** - Single method for local projects and remote Git repositories (GitHub/GitLab)
 - 🚀 **Zero-config defaults** - Works out of the box with sensible defaults
 - 📦 **Optimized bundle** - Small footprint for edge environments
 - 🗄️ **Built‑in caching** - Smart in‑memory cache with pluggable adapters
@@ -23,18 +23,30 @@ npm install codefetch-sdk@latest
 
 ### Basic Usage (Recommended)
 
-```typescript
-import { fetch } from 'codefetch-sdk';
+By default `fetch()` returns markdown as a string. Use `format: 'json'`
+if you need a structured result.
 
-// Local codebase
-const result = await fetch({
+```typescript
+import { fetch, FetchResultImpl } from 'codefetch-sdk';
+
+// Local codebase → markdown string
+const markdown = await fetch({
   source: './src',
   extensions: ['.ts', '.tsx'],
-  maxTokens: 50000,
+  maxTokens: 50_000,
 });
 
-console.log(result.markdown); // AI-ready markdown
-console.log(result.metadata); // Token counts, file stats, etc.
+console.log(markdown); // AI-ready markdown
+
+// Local codebase → structured JSON result
+const jsonResult = (await fetch({
+  source: './src',
+  format: 'json',
+  extensions: ['.ts', '.tsx'],
+  maxTokens: 50_000,
+})) as FetchResultImpl;
+
+console.log(jsonResult.metadata); // Token counts, file stats, etc.
 ```
 
 ### GitHub Repository
@@ -55,12 +67,15 @@ const result = await fetch({
 });
 ```
 
-### Web Content
+### Web Content (Git Repositories)
+
+Currently, remote fetching is supported for Git repositories hosted on
+GitHub and GitLab. Generic websites are **not** yet supported.
 
 ```typescript
-// Website crawling
-const result = await fetch({
-  source: 'https://example.com/docs',
+// GitHub or GitLab-hosted documentation
+const markdown = await fetch({
+  source: 'https://github.com/org/docs',
   maxPages: 10,
   maxDepth: 2,
 });
@@ -68,14 +83,14 @@ const result = await fetch({
 
 ## Core API
 
-### `fetch(options: FetchOptions): Promise<FetchResult>`
+### `fetch(options: FetchOptions): Promise<string | FetchResultImpl>`
 
-The unified API for all content sources.
+The unified API for local paths and Git repositories.
 
 ```typescript
 interface FetchOptions {
   // Source (required)
-  source: string; // Local path, GitHub URL, or web URL
+  source: string; // Local path, GitHub URL, or GitLab URL
 
   // Filtering
   extensions?: string[];
@@ -93,7 +108,7 @@ interface FetchOptions {
   githubToken?: string;
   branch?: string;
 
-  // Web crawling
+  // Web / Git repo crawling
   maxPages?: number;
   maxDepth?: number;
   ignoreRobots?: boolean;
@@ -110,62 +125,44 @@ interface FetchOptions {
 }
 ```
 
-### Response Format
+### Response Format (`format: 'json'`)
+
+When `format: 'json'` is set, `fetch()` returns an instance of
+`FetchResultImpl`:
 
 ```typescript
-interface FetchResult {
-  markdown: string;           // Generated markdown
-  files: File[];              // Processed files
-  metadata: {
-    totalFiles: number;
-    totalTokens: number;
-    totalSize: number;
-    source: string;
-    timestamp: string;
-    tree?: string;           // Project tree if requested
-  };
-  
-  // Helper methods
-  getFileByPath(path: string): File | undefined;
-  getFilesByExtension(ext: string): File[];
-  toMarkdown(): string;
+import { FetchResultImpl } from 'codefetch-sdk';
+
+class FetchResultImpl {
+  root: FileNode;            // Tree of files and directories
+  metadata: FetchMetadata;   // Aggregate statistics
+
+  getFileByPath(path: string): FileNode | null;
+  getAllFiles(): FileNode[];
+  toMarkdown(): string;      // Generate markdown from the tree
 }
 ```
 
+For the default `format: 'markdown'`, `fetch()` returns a plain
+markdown `string`.
+
 ## Cloudflare Workers Support
 
-### Zero-Config Workers
+For Cloudflare Workers, use the dedicated `/worker` entrypoint:
 
 ```typescript
-import { fetch } from 'codefetch-sdk/worker';
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const result = await fetch({
-      source: 'https://github.com/vercel/next.js',
-      maxFiles: 50,
-      extensions: ['.ts', '.tsx'],
-    });
-
-    return new Response(result.markdown, {
-      headers: { 'Content-Type': 'text/markdown' }
-    });
-  }
-};
+import { fetchFromWeb as fetch } from 'codefetch-sdk/worker';
 ```
 
-### Worker-Specific Features
-
-- **No nodejs_compat required** - Uses native Web APIs
-- **35.4KB bundle size** - Optimized for edge performance
-- **Memory efficient** - Streams large repositories
-- **Private repo support** - GitHub token authentication
+The Worker build exposes a subset of the SDK that is safe for
+edge environments (no `fs`, no `process.env`). See
+`packages/sdk/README-Worker.md` for full details and examples.
 
 ## Caching
 
-Every `fetch()` call is cached in memory by default. Re‑using the same
-source URL within a single Node.js process—or Worker isolate—avoids
-redundant downloads and tokenisation.
+Every `fetch()` call may use caching depending on the environment and
+options. Re‑using the same source URL within a single Node.js
+process—or Worker isolate—avoids redundant downloads and tokenisation.
 
 ```typescript
 // Disable cache
@@ -176,8 +173,9 @@ await fetch({ source: repoUrl, cacheTTL: 3600 });
 ```
 
 > **Need persistence on Cloudflare Workers?**
-> The `/worker` build exposes `createCache()` so you can plug in a KV
-> namespace for cross‑isolate caching. See
+> The `/worker` build exposes helpers like `fetchFromWebCached`,
+> `createCacheStorage`, and `withCache` so you can integrate KV
+> or the Cache API for cross‑isolate caching. See
 > **packages/sdk/README‑Worker.md** for details.
 
 ## Advanced Usage

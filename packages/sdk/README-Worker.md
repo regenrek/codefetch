@@ -16,7 +16,7 @@ yarn add codefetch-sdk@latest
 
 ```javascript
 // Use the /worker export for Cloudflare Workers
-import { fetch } from 'codefetch-sdk/worker';
+import { fetchFromWeb as fetch } from 'codefetch-sdk/worker';
 ```
 
 ## Features
@@ -34,19 +34,22 @@ import { fetch } from 'codefetch-sdk/worker';
 
 ### Basic Worker
 
+By default the Worker `fetch()` returns markdown as a string. Use
+`format: 'json'` if you need a structured result.
+
 ```javascript
 export default {
   async fetch(request) {
-    const result = await fetch({
+    const markdown = await fetch({
       source: 'https://github.com/facebook/react',
       extensions: ['.js', '.ts', '.md'],
-      maxFiles: 50
+      maxFiles: 50,
     });
 
-    return new Response(result.markdown, {
-      headers: { 'Content-Type': 'text/markdown' }
+    return new Response(markdown, {
+      headers: { 'Content-Type': 'text/markdown' },
     });
-  }
+  },
 };
 ```
 
@@ -55,48 +58,49 @@ export default {
 ```javascript
 export default {
   async fetch(request, env) {
-    const result = await fetch({
+    const markdown = await fetch({
       source: 'https://github.com/myorg/private-repo',
       githubToken: env.GITHUB_TOKEN,
       extensions: ['.ts', '.tsx'],
-      maxFiles: 100
+      maxFiles: 100,
     });
 
-    return new Response(result.markdown);
-  }
+    return new Response(markdown);
+  },
 };
 ```
 
-### Web Content Crawling
+### Web Content Crawling (Git Repositories)
+
+Currently, the Worker fetcher supports Git repositories hosted on
+GitHub and GitLab. Generic websites are not yet supported.
 
 ```javascript
 export default {
   async fetch(request) {
-    const result = await fetch({
-      source: 'https://example.com/docs',
+    const markdown = await fetch({
+      source: 'https://github.com/org/docs',
       maxPages: 10,
-      maxDepth: 2
+      maxDepth: 2,
     });
 
-    return Response.json({
-      pages: result.metadata.totalPages,
-      tokens: result.metadata.totalTokens,
-      content: result.markdown
+    return new Response(markdown, {
+      headers: { 'Content-Type': 'text/markdown' },
     });
-  }
+  },
 };
 ```
 
 ## API Reference
 
-### `fetch(options: FetchOptions): Promise<FetchResult>`
+### `fetch(options: FetchOptions): Promise<string | FetchResultImpl>`
 
-The unified API for all content sources in Workers.
+The unified API for all Worker-compatible content sources (GitHub/GitLab).
 
 ```typescript
 interface FetchOptions {
   // Source (required)
-  source: string; // GitHub URL, web URL, or local path (ignored in Workers)
+  source: string; // GitHub or GitLab URL
 
   // Filtering
   extensions?: string[];
@@ -115,11 +119,12 @@ interface FetchOptions {
   githubToken?: string;
   branch?: string;
 
-  // Web crawling
+  // Git repo crawling
   maxPages?: number;
   maxDepth?: number;
 
   // Output
+  format?: 'markdown' | 'json';
   includeTree?: boolean | number;
   disableLineNumbers?: boolean;
 
@@ -131,28 +136,16 @@ interface FetchOptions {
 
 ### Response Format
 
-```typescript
-interface FetchResult {
-  markdown: string;
-  files: File[];
-  metadata: {
-    totalFiles: number;
-    totalTokens: number;
-    totalSize: number;
-    source: string;
-    timestamp: string;
-    tree?: string;
-    totalPages?: number; // For web crawling
-  };
-}
-```
+When `format: 'json'` is set, the Worker `fetch()` returns an instance
+of `FetchResultImpl` with a file tree and metadata, identical to the
+Node build. For the default `format: 'markdown'`, it returns a plain
+markdown string.
 
 ## Caching& KV Persistence
 
-`codefetch-sdk/worker` ships with an **in‑memory LRU cache** that lives
-for the lifetime of the Cloudflare Worker isolate. When you call
-`fetch()` with the same parameters inside the same isolate it returns
-cached results, saving GitHub quota and reducing latency.
+`codefetch-sdk/worker` ships with in‑memory and pluggable caching. When
+you call `fetch()` with the same parameters inside the same isolate it
+can return cached results, saving GitHub quota and reducing latency.
 
 ```javascript
 // Disable caching for a single request
@@ -161,7 +154,7 @@ await fetch({ source: repoUrl, noCache: true });
 
 ## Real-World Examples
 
-### 1. GitHub Repository Analyzer API
+### 1. GitHub Repository Analyzer API (JSON result)
 
 ```javascript
 export default {
@@ -185,13 +178,14 @@ export default {
         return response;
       }
 
-      // Fetch repository
+      // Fetch repository as JSON
       const result = await fetch({
         source: `https://github.com/${owner}/${name}`,
         githubToken: env.GITHUB_TOKEN,
         extensions: ['.ts', '.js', '.py', '.go'],
         excludeDirs: ['node_modules', 'vendor', '.git'],
-        maxFiles: 100
+        maxFiles: 100,
+        format: 'json',
       });
 
       // Analyze code
@@ -241,24 +235,23 @@ export default {
   async fetch(request, env) {
     const { searchParams } = new URL(request.url);
     const repo = searchParams.get('repo');
-    const maxTokens = parseInt(searchParams.get('maxTokens') || '50000');
+    const maxTokens = parseInt(searchParams.get('maxTokens') || '50000', 10);
 
-    const result = await fetch({
+    const markdown = await fetch({
       source: `https://github.com/${repo}`,
       githubToken: env.GITHUB_TOKEN,
       extensions: ['.md', '.mdx', '.ts', '.js'],
       excludeDirs: ['node_modules', 'test'],
       maxTokens,
-      includeTree: true
+      includeTree: true,
     });
 
-    return new Response(result.markdown, {
+    return new Response(markdown, {
       headers: {
         'Content-Type': 'text/markdown',
-        'X-Token-Count': result.metadata.totalTokens.toString()
-      }
+      },
     });
-  }
+  },
 };
 ```
 

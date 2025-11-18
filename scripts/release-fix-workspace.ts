@@ -262,9 +262,13 @@ async function publishPackages() {
   const workspacePackages = getWorkspacePackages();
   console.log(`Found ${workspacePackages.size} workspace packages`);
 
-  // Build all packages first
+  // Build all packages first (sequentially to avoid race conditions)
   console.log("🔨 Building all packages...");
-  run("pnpm build", rootPath);
+  // Build SDK first (dependency for CLI)
+  run("pnpm --filter codefetch-sdk build", rootPath);
+  // Then build CLI and MCP
+  run("pnpm --filter codefetch build", rootPath);
+  run("pnpm --filter codefetch-mcp build", rootPath);
 
   // Bump versions in configured packages
   const newVersions = new Map<string, string>();

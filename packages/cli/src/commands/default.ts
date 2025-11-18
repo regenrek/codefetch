@@ -271,7 +271,7 @@ export default async function defaultMain(rawArgs: Argv) {
     }
   }
 
-  if (config.trackedModels?.length) {
+  if (config.trackedModels?.length && !config.noSummary) {
     const { modelDb } = await fetchModels(config.trackedModels);
     const modelInfo = formatModelInfo(config.trackedModels, modelDb);
 

@@ -112,6 +112,13 @@ describe("parseArgs", () => {
     expect(result.disableLineNumbers).toBe(false);
   });
 
+  it("should parse no-summary flag", () => {
+    const args = ["--no-summary"];
+    const result = parseArgs(args);
+
+    expect(result.noSummary).toBe(true);
+  });
+
   it("should handle multiple options together", () => {
     const args = [
       "-o",

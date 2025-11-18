@@ -18,6 +18,7 @@ export function parseArgs(args: string[]) {
       "dry-run",
       "disable-line-numbers",
       "token-count-only",
+      "summary",
       "no-cache",
       "no-api",
       "ignore-robots",
@@ -191,5 +192,7 @@ export function parseArgs(args: string[]) {
     ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
     ignoreRobots: Boolean(argv["ignore-robots"]),
     ignoreCors: Boolean(argv["ignore-cors"]),
+    // mri treats --no-summary as summary: false
+    noSummary: argv.summary === false,
   };
 }

@@ -21,6 +21,7 @@ export interface CodefetchConfig {
   dryRun?: boolean;
   disableLineNumbers?: boolean;
   tokenCountOnly?: boolean;
+  noSummary?: boolean;
   defaultPromptFile: string;
   defaultChat?: string;
   templateVars?: Record<string, string>;
@@ -43,6 +44,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   dryRun: false,
   disableLineNumbers: false,
   tokenCountOnly: false,
+  noSummary: false,
   defaultPromptFile: "default.md",
   defaultChat: "https://chat.com",
   templateVars: {},

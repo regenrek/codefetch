@@ -128,6 +128,7 @@ Create a `.codefetchrc` file for project-specific settings:
 - `--token-encoder` - Token encoder model (cl100k, p50k, r50k, o200k)
 - `--token-count-only, -c` - Only output token count
 - `--disable-line-numbers` - Disable line numbers in code blocks
+- `--no-summary` - Disable the token/model summary box at the end
 
 ### File Filtering
 
@@ -211,6 +212,7 @@ codefetch -p improve --max-tokens 30000
 
 ```bash
 codefetch --tracked-models gpt-4,claude-3-opus,gpt-3.5-turbo
+codefetch --tracked-models gpt-4,claude-3-opus --no-summary  # hide summary box
 ```
 
 ### JSON Output Format

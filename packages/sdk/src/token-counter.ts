@@ -56,5 +56,23 @@ export const countTokens = async (
   encoder: TokenEncoder
 ): Promise<number> => {
   if (!encoder || !text) return 0;
-  return getTokenCount(text, encoder);
+  try {
+    return await getTokenCount(text, encoder);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /Unsupported token encoder/.test(error.message)
+    ) {
+      throw error;
+    }
+
+    // Network or remote tokenizer failure – fall back to simple estimation
+    // instead of failing the entire operation.
+    console.warn(
+      `[codefetch-sdk] Falling back to simple tokenizer for ${encoder}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    return estimateTokens(text);
+  }
 };

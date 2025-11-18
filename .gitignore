@@ -1,5 +1,7 @@
 node_modules/
 dist/
+packages/sdk/dist-browser/
+packages/sdk/dist-worker/
 *.log
 .DS_Store
 coverage/

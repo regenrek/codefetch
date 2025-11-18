@@ -13,12 +13,14 @@ export function parseArgs(args: string[]) {
       d: "dry-run",
       p: "prompt",
       c: "token-count-only",
+      s: "stdout",
     },
     boolean: [
       "dry-run",
       "disable-line-numbers",
       "token-count-only",
       "summary",
+      "stdout",
       "no-cache",
       "no-api",
       "ignore-robots",
@@ -47,6 +49,7 @@ export function parseArgs(args: string[]) {
       "max-depth",
       "ignore-robots",
       "ignore-cors",
+      "tracked-models",
     ],
   });
 
@@ -146,6 +149,11 @@ export function parseArgs(args: string[]) {
     outputFile = outputFile.replace(/^(\.\/)?codefetch\//, "");
   }
 
+  const isStdout = Boolean(argv.stdout);
+
+  const verbose =
+    argv.verbose === undefined ? (isStdout ? 0 : 1) : Number(argv.verbose);
+
   return {
     ...(outputFile && { outputFile }),
     ...(argv["output-path"] && { outputPath: resolve(argv["output-path"]) }),
@@ -169,12 +177,15 @@ export function parseArgs(args: string[]) {
     ...(argv["token-limiter"] && {
       tokenLimiter: argv["token-limiter"] as TokenLimiter,
     }),
+    ...(argv["tracked-models"] && {
+      trackedModels: splitValues(argv["tracked-models"]),
+    }),
     ...(defaultPromptFile && { defaultPromptFile }),
     ...(Object.keys(templateVars).length > 0 && { templateVars }),
-    verbose: argv.verbose === undefined ? 1 : Number(argv.verbose),
+    verbose,
     projectTree: treeDepth,
 
-    dryRun: Boolean(argv["dry-run"]),
+    dryRun: Boolean(argv["dry-run"] || isStdout),
     disableLineNumbers: Boolean(argv["disable-line-numbers"]),
     tokenCountOnly: Boolean(argv["token-count-only"]),
     ...(argv.format && { format: argv.format as "markdown" | "json" }),
@@ -192,7 +203,8 @@ export function parseArgs(args: string[]) {
     ...(argv["max-depth"] && { maxDepth: Number(argv["max-depth"]) }),
     ignoreRobots: Boolean(argv["ignore-robots"]),
     ignoreCors: Boolean(argv["ignore-cors"]),
-    // mri treats --no-summary as summary: false
-    noSummary: argv.summary === false,
+    // mri treats --no-summary as summary: false; stdout implies no summary
+    noSummary: argv.summary === false || isStdout,
+    stdout: isStdout,
   };
 }

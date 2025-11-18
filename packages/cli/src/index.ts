@@ -5,12 +5,6 @@ export { findProjectRoot } from "codefetch-sdk";
 export * from "./args";
 export * from "./config";
 export { countTokens } from "codefetch-sdk";
-export {
-  fetchModels,
-  getLocalModels,
-  type ModelInfo,
-  type ModelDb,
-} from "codefetch-sdk";
 export { processPromptTemplate, resolvePrompt } from "codefetch-sdk";
 export * from "./help-prompt";
 export { formatModelInfo } from "./format-model-info";

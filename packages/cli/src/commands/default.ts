@@ -9,7 +9,6 @@ import {
   DEFAULT_IGNORE_PATTERNS,
   findProjectRoot,
   countTokens,
-  fetchModels,
   VALID_PROMPTS,
   collectFilesAsTree,
   FetchResultImpl,
@@ -104,7 +103,9 @@ export default async function defaultMain(rawArgs: Argv) {
     ); // 10 minutes
 
     try {
-      logger.info(`Using format: ${config.format || "markdown"}`);
+      if (config.verbose > 0) {
+        logger.info(`Using format: ${config.format || "markdown"}`);
+      }
       const { fetch } = await import("codefetch-sdk");
 
       // Prepare web-specific options
@@ -178,11 +179,15 @@ export default async function defaultMain(rawArgs: Argv) {
       verbose: config.verbose,
     });
 
-    logger.info(`Using format: ${config.format || "markdown"}`);
+    if (config.verbose > 0) {
+      logger.info(`Using format: ${config.format || "markdown"}`);
+    }
 
     if (config.format === "json") {
       // Generate JSON format
-      logger.info("Generating JSON format...");
+      if (config.verbose > 0) {
+        logger.info("Generating JSON format...");
+      }
       const {
         root,
         totalSize,
@@ -205,7 +210,9 @@ export default async function defaultMain(rawArgs: Argv) {
       output = new FetchResultImpl(root, metadata);
     } else {
       // Generate markdown format (default)
-      logger.info("Generating markdown format...");
+      if (config.verbose > 0) {
+        logger.info("Generating markdown format...");
+      }
       const markdown = await generateMarkdown(files, {
         maxTokens: config.maxTokens ? Number(config.maxTokens) : null,
         verbose: Number(config.verbose || 0),
@@ -271,13 +278,19 @@ export default async function defaultMain(rawArgs: Argv) {
     }
   }
 
-  if (config.trackedModels?.length && !config.noSummary) {
-    const { modelDb } = await fetchModels(config.trackedModels);
-    const modelInfo = formatModelInfo(config.trackedModels, modelDb);
+  if (!config.noSummary) {
+    let message = `Current Codebase: ${totalTokens.toLocaleString()} tokens`;
+
+    if (config.trackedModels?.length) {
+      const modelInfo = formatModelInfo(config.trackedModels);
+      if (modelInfo) {
+        message += `\n\n${modelInfo}`;
+      }
+    }
 
     logger.box({
       title: `Token Count Overview`,
-      message: `Current Codebase: ${totalTokens.toLocaleString()} tokens\n\nModel Token Limits:\n${modelInfo}`,
+      message,
       style: {
         padding: 0,
         borderColor: "cyan",

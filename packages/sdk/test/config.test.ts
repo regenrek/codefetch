@@ -31,12 +31,7 @@ describe("SDK Config", () => {
       expect(config.defaultPromptFile).toBe("default.md");
       expect(config.defaultChat).toBe("https://chat.com");
       expect(config.format).toBe("markdown");
-      expect(config.trackedModels).toEqual([
-        "o3",
-        "gemini-2.5-pro",
-        "claude-sonnet-4",
-        "claude-opus-4",
-      ]);
+      expect(config.trackedModels).toEqual([]);
     });
 
     test("should have all expected properties", () => {

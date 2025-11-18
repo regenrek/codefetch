@@ -40,7 +40,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   gitignore: true,
   tokenEncoder: "simple",
   tokenLimiter: "truncated",
-  trackedModels: ["o3", "gemini-2.5-pro", "claude-sonnet-4", "claude-opus-4"],
+  trackedModels: [],
   dryRun: false,
   disableLineNumbers: false,
   tokenCountOnly: false,

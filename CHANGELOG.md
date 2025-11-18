@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+### Fixed
+- Fixed tokenizer error handling to gracefully fall back to simple estimation when network or remote tokenizer fetch fails (cl100k, o200k, p50k encoders)
+- Improved error messages with warnings when falling back to simple tokenizer
+- Added browser and worker build directories to .gitignore
+
 ## 2.0.0
 
 ### Added

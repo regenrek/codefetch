@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2
+
+### Added
+- Added `--no-summary` flag to disable the token/model summary box at the end of output
+- Updated config types in SDK to support `noSummary` option
+
 ## 2.0.1
 
 ### Fixed

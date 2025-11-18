@@ -30,16 +30,12 @@ export async function processPromptTemplate(
   // Always process CURRENT_CODEBASE first
   result = result.replace(/{{CURRENT_CODEBASE}}/g, codebase);
 
-  console.log("result", result);
-
   return result;
 }
 
 export async function resolvePrompt(
   promptFile: string
 ): Promise<string | undefined> {
-  console.log("promptFile", promptFile);
-
   // Check built-in prompts
   if (VALID_PROMPTS.has(promptFile)) {
     try {

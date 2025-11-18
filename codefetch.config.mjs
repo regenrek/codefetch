@@ -9,7 +9,6 @@ export default {
   gitignore: true,
   tokenEncoder: "simple",
   tokenLimiter: "truncated",
-  trackedModels: ["o3", "gemini-2.5-pro", "claude-sonnet-4", "claude-opus-4"],
   dryRun: false,
   disableLineNumbers: false,
   defaultPromptFile: undefined,

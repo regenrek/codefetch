@@ -21,6 +21,7 @@ export interface CodefetchConfig {
   gitignore: boolean;
   tokenLimiter: string;
   tokenCountOnly: boolean;
+  noSummary?: boolean;
   promptFile?: string;
   prompt?: string;
   templateVars: Record<string, string>;

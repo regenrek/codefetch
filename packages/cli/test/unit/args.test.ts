@@ -105,11 +105,35 @@ describe("parseArgs", () => {
     expect(result.disableLineNumbers).toBe(true);
   });
 
+  it("should parse tracked-models option into an array", () => {
+    const args = ["--tracked-models", "gpt-4o,claude-3.5-sonnet"];
+    const result = parseArgs(args);
+
+    expect(result.trackedModels).toEqual(["gpt-4o", "claude-3.5-sonnet"]);
+  });
+
   it("should default disable-line-numbers to false when not specified", () => {
     const args = ["-o", "output.md"];
     const result = parseArgs(args);
 
     expect(result.disableLineNumbers).toBe(false);
+  });
+
+  it("should parse no-summary flag", () => {
+    const args = ["--no-summary"];
+    const result = parseArgs(args);
+
+    expect(result.noSummary).toBe(true);
+  });
+
+  it("should treat --stdout as dry-run with no summary and verbose 0", () => {
+    const args = ["--stdout"];
+    const result = parseArgs(args);
+
+    expect(result.stdout).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.noSummary).toBe(true);
+    expect(result.verbose).toBe(0);
   });
 
   it("should handle multiple options together", () => {

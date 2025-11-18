@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -C packages/sdk build && pnpm -C packages/cli build && pnpm -C packages/mcp build",
     "test": "pnpm -r test",
     "cli": "pnpm --filter codefetch run cli",
     "lint": "pnpm -r lint",

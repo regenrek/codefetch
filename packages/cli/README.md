@@ -122,12 +122,14 @@ Create a `.codefetchrc` file for project-specific settings:
 - `-h, --help` - Show help information
 - `-v, --verbose` - Increase verbosity (use multiple times: -vvv)
 - `--dry-run, -d` - Output to console instead of file
+- `--stdout` - Print only the final output to stdout (equivalent to `--dry-run --no-summary --verbose 0`)
 - `-o, --output` - Output filename (default: codefetch-output-[timestamp].md)
 - `--output-path` - Output directory path
 - `--max-tokens` - Maximum token limit
 - `--token-encoder` - Token encoder model (cl100k, p50k, r50k, o200k)
 - `--token-count-only, -c` - Only output token count
 - `--disable-line-numbers` - Disable line numbers in code blocks
+- `--no-summary` - Disable the token/model summary box at the end
 
 ### File Filtering
 
@@ -153,7 +155,7 @@ Create a `.codefetchrc` file for project-specific settings:
 ### Display Options
 
 - `-t, --project-tree` - Show project tree (0=off, 1+=depth)
-- `--tracked-models` - Show token counts for specific models
+- `--tracked-models` - Label the token summary with specific models
 - `--format` - Output format (markdown, json) (default: markdown)
 
 ### Advanced Options
@@ -209,8 +211,11 @@ codefetch -p improve --max-tokens 30000
 
 ### Track Multiple Models
 
+You can tag the summary with the models you care about:
+
 ```bash
-codefetch --tracked-models gpt-4,claude-3-opus,gpt-3.5-turbo
+codefetch --tracked-models gpt-4o,claude-3.5-sonnet
+codefetch --tracked-models gpt-4o,claude-3.5-sonnet --no-summary  # hide summary box
 ```
 
 ### JSON Output Format

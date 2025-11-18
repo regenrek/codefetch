@@ -98,8 +98,7 @@
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.0",
     "js-tiktoken": "^1.0.16",
-    "pathe": "^2.0.1",
-    "tar@latest": "link:jsr:@std/tar@latest"
+    "pathe": "^2.0.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250718.0",

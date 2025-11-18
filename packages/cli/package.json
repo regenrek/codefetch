@@ -1,6 +1,6 @@
 {
   "name": "codefetch",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Fetches all files in the current directory and outputs them in a Markdown file.",
   "repository": "regenrek/codefetch",
   "license": "MIT",

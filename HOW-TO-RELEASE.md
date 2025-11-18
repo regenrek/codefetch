@@ -1,6 +1,6 @@
-# How To Release codex-1up
+# How To Release codefetch
 
-This project ships via the Node script at `scripts/release.ts`. The script bumps versions, builds, publishes to npm, pushes tags, and creates a GitHub Release with notes from `CHANGELOG.md`.
+This project ships via the Node script at `scripts/release-fix-workspace.ts`. The script bumps versions, builds, publishes to npm, pushes tags, and creates a GitHub Release with notes from `CHANGELOG.md`.
 
 ## Prerequisites
 - Node 18+
@@ -15,41 +15,48 @@ This project ships via the Node script at `scripts/release.ts`. The script bumps
 
 ## Quick Release
 - Patch/minor/major bump and publish:
-  - `pnpm dlx tsx scripts/release.ts patch` (or `minor`/`major`)
+  - `pnpm tsx scripts/release-fix-workspace.ts patch` (or `minor`/`major`)
 - The script will:
-  - Bump `cli/package.json#version`
-  - Copy `templates/`, `scripts/`, `sounds/`, `README.md`, `LICENSE` into `cli/` for packaging
-  - Build (`tsup`) and publish with `--access public`
-  - Clean temporary copies from `cli/`
-  - Commit `chore: release vX.Y.Z`, tag `vX.Y.Z`, push
-  - Create/Update a GitHub Release with notes from `CHANGELOG.md`
+  - Build all packages sequentially (SDK first, then CLI and MCP)
+  - Bump versions in `packages/cli/package.json` and `packages/sdk/package.json`
+  - Replace workspace dependencies with actual versions
+  - Create git commit `chore: release vX.Y.Z` and tag `vX.Y.Z`
+  - Publish packages to npm (`codefetch` and `codefetch-sdk`)
+  - Push commit and tags to remote
+  - **Create a GitHub Release** with notes extracted from `CHANGELOG.md` for the current version
 
 ## Sanity Checks (optional but recommended)
 - Build and pack locally:
-  - `pnpm -C cli build`
-  - `pnpm -C cli pack`
-  - `tar -tf cli/codex-1up-*.tgz | grep -E 'package/(templates/|sounds/|README.md|LICENSE)'`
+  - `pnpm build` (builds all packages)
+  - `pnpm --filter codefetch pack` (test CLI package)
+  - `pnpm --filter codefetch-sdk pack` (test SDK package)
 - Verify after publish:
-  - npm page renders README banner
-  - `templates/` and `sounds/` are present in the tarball
-  - Git tag `vX.Y.Z` exists and GitHub Release has notes
+  - npm pages render correctly for both `codefetch` and `codefetch-sdk`
+  - Git tag `vX.Y.Z` exists
+  - GitHub Release exists with changelog notes
+  - Both packages are published to npm with correct versions
 
 ## Release Notes Tips
-- The script extracts notes from `CHANGELOG.md` for the current version.
-- If that section is missing, it falls back to the section named by `GH_NOTES_REF` (default: `0.4`).
-  - Example: `GH_NOTES_REF=0.1.3 pnpm dlx tsx scripts/release.ts patch`
+- The script automatically extracts release notes from `CHANGELOG.md` for the current version.
+- The GitHub Release is created with the changelog content for the version being released.
+- Make sure to update `CHANGELOG.md` before running the release script.
+- The release notes will include all items under the version heading (e.g., `## 2.0.2`).
 
 ## Prereleases / Dist-Tags
-- To ship a prerelease manually, run the script to tag/commit, then publish with a tag:
-  - `pnpm -C cli publish --no-git-checks --tag next`
-- Or extend `scripts/release.ts` to accept a `--tag` flag (future enhancement).
+- To ship a prerelease, use the `--alpha` flag:
+  - `pnpm tsx scripts/release-fix-workspace.ts patch --alpha`
+- This will create an alpha version (e.g., `2.0.3-alpha.0`) and publish with the `alpha` tag.
+- The GitHub Release will be marked as a prerelease.
 
 ## Rollback / Deprecation
 - Prefer deprecation over unpublish:
-  - `npm deprecate codex-1up@X.Y.Z "Reason…"`
-- Only unpublish if necessary and allowed:
-  - `npm unpublish codex-1up@X.Y.Z --force`
+  - `npm deprecate codefetch@X.Y.Z "Reason…"`
+  - `npm deprecate codefetch-sdk@X.Y.Z "Reason…"`
+- Only unpublish if necessary and allowed (within 72 hours):
+  - `npm unpublish codefetch@X.Y.Z --force`
+  - `npm unpublish codefetch-sdk@X.Y.Z --force`
 - Create a follow-up patch release that fixes the issue.
+- Delete the GitHub Release if needed: `gh release delete vX.Y.Z`
 
 ## Troubleshooting
 - `npm ERR! code E403` or auth failures: run `npm login` and retry.

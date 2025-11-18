@@ -345,6 +345,39 @@ async function publishPackages() {
       console.log("Pushing to git...");
       run("git push", rootPath);
       run("git push --tags", rootPath);
+
+      // Create GitHub Release with changelog notes
+      console.log("Creating GitHub Release...");
+      const changelogPath = path.join(rootPath, "CHANGELOG.md");
+      if (fs.existsSync(changelogPath)) {
+        const changelog = fs.readFileSync(changelogPath, "utf8");
+        const versionSectionRegex = new RegExp(
+          `## ${mainVersion.replace(/\./g, "\\.")}([\\s\\S]*?)(?=## |$)`
+        );
+        const match = changelog.match(versionSectionRegex);
+        let releaseNotes = match
+          ? match[1].trim()
+          : `Release ${mainVersion}`;
+
+        // Clean up the release notes (remove leading/trailing whitespace)
+        releaseNotes = releaseNotes.replace(/^\n+|\n+$/g, "");
+
+        try {
+          const releaseCmd = isAlpha
+            ? `gh release create v${mainVersion} --title "v${mainVersion}" --notes "${releaseNotes.replace(/"/g, '\\"')}" --prerelease`
+            : `gh release create v${mainVersion} --title "v${mainVersion}" --notes "${releaseNotes.replace(/"/g, '\\"')}"`;
+          run(releaseCmd, rootPath);
+          console.log(`✓ Created GitHub Release v${mainVersion}`);
+        } catch (error) {
+          console.warn(
+            `⚠️  Failed to create GitHub Release: ${error}. You can create it manually.`
+          );
+        }
+      } else {
+        console.warn(
+          "⚠️  CHANGELOG.md not found. Skipping GitHub Release creation."
+        );
+      }
     }
 
     console.log(`✅ Successfully completed ${isAlpha ? "alpha" : ""} release!`);

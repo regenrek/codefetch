@@ -355,9 +355,7 @@ async function publishPackages() {
           `## ${mainVersion.replace(/\./g, "\\.")}([\\s\\S]*?)(?=## |$)`
         );
         const match = changelog.match(versionSectionRegex);
-        let releaseNotes = match
-          ? match[1].trim()
-          : `Release ${mainVersion}`;
+        let releaseNotes = match ? match[1].trim() : `Release ${mainVersion}`;
 
         // Clean up the release notes (remove leading/trailing whitespace)
         releaseNotes = releaseNotes.replace(/^\n+|\n+$/g, "");

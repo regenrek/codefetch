@@ -19,10 +19,10 @@ Options:
   --project-tree-skip-ignore-files  Include files ignored by git/config in the project tree
   --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
   --token-limiter <type>      Token limiting strategy (sequential, truncated)
-  --disable-line-numbers      Disable line numbers in output
+  --enable-line-numbers       Enable line numbers in output (disabled by default to save tokens)
   --format <type>             Output format (markdown, json) (default: markdown)
   -h, --help                  Display this help message
-  -p, --prompt <type>         Add a default prompt (fix, improve, codegen, testgen) or add a custom prompt file with .md/.txt extension
+  -p, --prompt <text>         Add a prompt: built-in (fix, improve, codegen, testgen), file (.md/.txt), or inline text
 
 Git Repository Options:
   --url <URL>                 Fetch and analyze content from a git repository URL
@@ -41,6 +41,14 @@ Web Crawling Options:
 Examples:
   # Analyze a local project
   codefetch --output analysis.md
+
+  # Use inline prompt
+  codefetch -p "Review this code for security issues"
+  codefetch --prompt "Refactor to use async/await"
+
+  # Use built-in prompts
+  codefetch -p fix "Fix the authentication bug"
+  codefetch -p improve
 
   # Fetch and analyze a GitHub repository (uses API by default)
   codefetch --url https://github.com/user/repo --branch main

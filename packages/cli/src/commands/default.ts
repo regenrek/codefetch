@@ -12,10 +12,24 @@ import {
   VALID_PROMPTS,
   collectFilesAsTree,
   FetchResultImpl,
+  type CodefetchConfig,
 } from "codefetch-sdk";
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
 import type { TokenEncoder, TokenLimiter } from "codefetch-sdk";
+
+// Helper to determine prompt file path
+function getPromptFile(
+  config: CodefetchConfig & { inlinePrompt?: string }
+): string | undefined {
+  if (config.inlinePrompt) {
+    return undefined; // Skip file-based prompt when inline prompt is provided
+  }
+  if (VALID_PROMPTS.has(config.defaultPromptFile)) {
+    return config.defaultPromptFile;
+  }
+  return resolve(config.outputPath, "prompts", config.defaultPromptFile);
+}
 
 export default async function defaultMain(rawArgs: Argv) {
   if (rawArgs.help || rawArgs.h) {
@@ -218,11 +232,10 @@ export default async function defaultMain(rawArgs: Argv) {
         verbose: Number(config.verbose || 0),
         projectTree: Number(config.projectTree || 0),
         tokenEncoder: (config.tokenEncoder as TokenEncoder) || "cl100k",
-        disableLineNumbers: Boolean(config.disableLineNumbers),
+        disableLineNumbers: config.disableLineNumbers !== false, // Default true
         tokenLimiter: (config.tokenLimiter as TokenLimiter) || "truncated",
-        promptFile: VALID_PROMPTS.has(config.defaultPromptFile)
-          ? config.defaultPromptFile
-          : resolve(config.outputPath, "prompts", config.defaultPromptFile),
+        promptFile: getPromptFile(config),
+        inlinePrompt: config.inlinePrompt,
         templateVars: config.templateVars,
         projectTreeBaseDir: process.cwd(),
         projectTreeSkipIgnoreFiles: Boolean(config.projectTreeSkipIgnoreFiles),

@@ -143,7 +143,8 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `-t, --project-tree [depth]`    | Generate visual project tree (optional depth, default: 2). Respects `.gitignore`, `.codefetchignore`, and config filters by default                         |
 | `--project-tree-skip-ignore-files` | Include files ignored by git/config in the project tree output                                                                                            |
 | `--token-encoder <type>`        | Token encoding method (simple, p50k, o200k, cl100k)                                                                                                         |
-| `--disable-line-numbers`        | Disable line numbers in output                                                                                                                              |
+| `--enable-line-numbers`         | Enable line numbers in output (disabled by default to save tokens)                                                                                          |
+| `-p, --prompt <text>`           | Add a prompt: built-in (fix, improve, codegen, testgen), file (.md/.txt), or inline text                                                                    |
 | `-d, --dry-run`                 | Output markdown to stdout instead of file                                                                                                                   |
 | `-c, --token-count-only`        | Output only the token count without generating markdown file                                                                                                |
 
@@ -211,12 +212,12 @@ By default, the project tree hides anything excluded via `.gitignore`, `.codefet
 
 ### Using Prompts
 
-You can add predefined or custom prompts to your output:
+You can add predefined, custom, or inline prompts to your output:
 
 ```bash
-# Use default prompt (looks for codefetch/prompts/default.md)
-npx codefetch -p
-npx codefetch --prompt
+# Use inline prompts (NEW!)
+npx codefetch -p "Review this code for security issues"
+npx codefetch --prompt "Refactor to use async/await"
 
 # Use built-in prompts
 npx codefetch -p fix # fixes codebase
@@ -224,12 +225,26 @@ npx codefetch -p improve # improves codebase
 npx codefetch -p codegen # generates code
 npx codefetch -p testgen # generates tests
 
-# Use custom prompts
+# Use built-in prompts with a message
+npx codefetch -p fix "Fix the authentication bug"
+
+# Use custom prompt files
 npx codefetch --prompt custom-prompt.md
 npx codefetch -p my-architect.txt
 ```
 
-#### Custom Prompts
+#### Inline Prompts
+
+The simplest way to add a prompt is to pass it directly:
+
+```bash
+npx codefetch -p "Analyze this codebase and suggest improvements"
+npx codefetch --prompt "Find potential memory leaks"
+```
+
+Inline prompts are automatically appended with the codebase content.
+
+#### Custom Prompt Files
 
 Create custom prompts in `codefetch/prompts/` directory:
 
@@ -250,11 +265,9 @@ export default {
 
 The prompt resolution order is:
 
-1. CLI argument (`-p` or `--prompt`)
+1. CLI argument (`-p` or `--prompt`) - can be inline text, built-in name, or file path
 2. Config file prompt setting
 3. No prompt if neither is specified
-
-When using just `-p` or `--prompt` without a value, codefetch will look for `codefetch/prompts/default.md`.
 
 ## Token Limiting Strategies
 

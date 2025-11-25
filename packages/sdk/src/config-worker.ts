@@ -45,7 +45,7 @@ export function getDefaultConfig(): CodefetchConfig {
     dryRun: false,
     maxTokens: 50_000,
     tokenEncoder: "cl100k",
-    disableLineNumbers: false,
+    disableLineNumbers: true, // Line numbers disabled by default to save tokens
     defaultIgnore: true,
     gitignore: false, // No file system access in Workers
     tokenLimiter: "truncated",

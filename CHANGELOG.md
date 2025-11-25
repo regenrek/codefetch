@@ -1,9 +1,13 @@
 # Changelog
 
-## 2.1.1
+## 2.1.2
 
 ### Fixed
-- Fixed default model in `codefetch open` command from `gpt-4.1-pro` to `gpt-5.1-pro`
+- Fixed URL format in `codefetch open` command:
+  - Model format corrected from `gpt-5.1-pro` to `gpt-5-1-pro` (dashes instead of dots)
+  - URL now generated without `https://` prefix (as `chatgpt.com/?model=...`)
+  - Prompt parameter now included as URL-encoded query parameter
+  - Default prompt text updated to "Your codebase is in your clipboard just paste it and remove this line"
 
 ## 2.1.0
 

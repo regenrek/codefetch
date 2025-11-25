@@ -1,23 +1,34 @@
 import { spawn } from "node:child_process";
 
 /**
- * Build a chat URL with model parameter
+ * Build a chat URL with model and prompt parameters
  */
-export function buildChatUrl(baseUrl: string, model: string): string {
-  // Normalize URL - add https:// if no protocol
-  let url = baseUrl;
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = `https://${url}`;
+export function buildChatUrl(
+  baseUrl: string,
+  model: string,
+  prompt?: string
+): string {
+  // Remove trailing slash for consistency
+  const url = baseUrl.replace(/\/+$/, "");
+
+  // Ensure URL has a protocol for URL constructor (but we'll remove it from final output)
+  const hasProtocol = url.startsWith("http://") || url.startsWith("https://");
+  const urlWithProtocol = hasProtocol ? url : `https://${url}`;
+
+  // Add model and prompt parameters
+  const urlObj = new URL(urlWithProtocol);
+  urlObj.searchParams.set("model", model);
+  if (prompt) {
+    urlObj.searchParams.set("prompt", prompt);
   }
 
-  // Remove trailing slash for consistency
-  url = url.replace(/\/+$/, "");
-
-  // Add model parameter
-  const urlObj = new URL(url);
-  urlObj.searchParams.set("model", model);
-
-  return urlObj.toString();
+  // Return URL without protocol prefix (as per requirements)
+  const result = urlObj.toString();
+  if (hasProtocol) {
+    return result;
+  }
+  // Remove https:// prefix we added
+  return result.replace(/^https:\/\//, "");
 }
 
 /**
@@ -27,21 +38,28 @@ export function buildChatUrl(baseUrl: string, model: string): string {
 export async function openBrowser(url: string): Promise<void> {
   const platform = process.platform;
 
+  // Add https:// protocol if missing (required for browser to open)
+  // The URL format we generate doesn't include protocol, but browsers need it
+  const urlWithProtocol =
+    url.startsWith("http://") || url.startsWith("https://")
+      ? url
+      : `https://${url}`;
+
   let command: string;
   let args: string[];
 
   if (platform === "darwin") {
     // macOS
     command = "open";
-    args = [url];
+    args = [urlWithProtocol];
   } else if (platform === "win32") {
     // Windows - use start command through cmd
     command = "cmd";
-    args = ["/c", "start", "", url];
+    args = ["/c", "start", "", urlWithProtocol];
   } else {
     // Linux - use xdg-open
     command = "xdg-open";
-    args = [url];
+    args = [urlWithProtocol];
   }
 
   return new Promise((resolve, reject) => {

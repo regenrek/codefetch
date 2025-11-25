@@ -8,7 +8,15 @@ import type { Argv } from "mri";
 const mockCopyToClipboard = vi.fn().mockResolvedValue(undefined);
 const mockOpenBrowser = vi.fn().mockResolvedValue(undefined);
 const mockBuildChatUrl = vi.fn(
-  (url, model) => `https://${url}/?model=${model}`
+  (url: string, model: string, prompt?: string) => {
+    const baseUrl = url.replace(/\/+$/, "");
+    const params = new URLSearchParams({ model });
+    if (prompt) {
+      params.set("prompt", prompt);
+    }
+    // Return URL without https:// prefix (as per requirements)
+    return `${baseUrl}/?${params.toString()}`;
+  }
 );
 const mockSpinner = vi.fn(() => ({
   start: vi.fn(),
@@ -84,10 +92,10 @@ describe("open command", () => {
     const clipboardContent = mockCopyToClipboard.mock.calls[0][0];
     expect(clipboardContent).toContain("index.ts");
 
-    // Verify browser was opened
-    expect(mockOpenBrowser).toHaveBeenCalledWith(
-      "https://chatgpt.com/?model=gpt-5.1-pro"
-    );
+    // Verify browser was opened with correct URL format (no https://, includes prompt)
+    const expectedUrl =
+      "chatgpt.com/?model=gpt-5-1-pro&prompt=Your+codebase+is+in+your+clipboard+just+paste+it+and+remove+this+line";
+    expect(mockOpenBrowser).toHaveBeenCalledWith(expectedUrl);
   });
 
   it("should use custom chat-url and chat-model", async () => {
@@ -107,7 +115,8 @@ describe("open command", () => {
 
     expect(mockBuildChatUrl).toHaveBeenCalledWith(
       "claude.ai",
-      "claude-3.5-sonnet"
+      "claude-3.5-sonnet",
+      "Your codebase is in your clipboard just paste it and remove this line"
     );
     expect(mockOpenBrowser).toHaveBeenCalled();
   });

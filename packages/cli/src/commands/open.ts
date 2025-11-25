@@ -20,7 +20,7 @@ import type { TokenEncoder, TokenLimiter } from "codefetch-sdk";
 // Default values for open command
 const DEFAULTS = {
   url: "chatgpt.com",
-  model: "gpt-4.1-pro",
+  model: "gpt-5.1-pro",
   prompt:
     "Your codebase is in the clipboard - remove this text and paste it here",
 };
@@ -158,7 +158,7 @@ Generates codebase, copies to clipboard, and opens browser to an AI chat.
 
 Options:
   --chat-url <url>            AI chat URL (default: chatgpt.com)
-  --chat-model <model>        Model parameter for URL (default: gpt-4.1-pro)
+    --chat-model <model>        Model parameter for URL (default: gpt-5.1-pro)
   --chat-prompt <text>        Message shown after opening
   --no-browser                Skip opening browser, just copy to clipboard
   -h, --help                  Display this help message
@@ -166,7 +166,7 @@ Options:
 All standard codefetch options are also supported (e.g., -e, -t, --exclude-dir)
 
 Examples:
-  # Default: opens ChatGPT with gpt-4.1-pro
+    # Default: opens ChatGPT with gpt-5.1-pro
   codefetch open
 
   # Custom AI chat URL and model

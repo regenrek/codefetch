@@ -4,7 +4,7 @@
 
 ### Added
 - Added `codefetch open` subcommand that generates codebase, copies to clipboard, and opens AI chat in browser
-  - Default opens ChatGPT with gpt-4.1-pro model
+  - Default opens ChatGPT with gpt-5.1-pro model
   - Configurable via `--chat-url`, `--chat-model`, and `--chat-prompt` options
   - Supports all standard codefetch options (e.g., `-e`, `-t`, `--exclude-dir`)
   - Use `--no-browser` to skip browser opening and just copy to clipboard

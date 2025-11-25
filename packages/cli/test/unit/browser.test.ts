@@ -44,8 +44,8 @@ afterEach(() => {
 describe("browser utils", () => {
   describe("buildChatUrl", () => {
     it("should build URL with model parameter", () => {
-      const url = buildChatUrl("chatgpt.com", "gpt-4.1-pro");
-      expect(url).toBe("https://chatgpt.com/?model=gpt-4.1-pro");
+      const url = buildChatUrl("chatgpt.com", "gpt-5.1-pro");
+      expect(url).toBe("https://chatgpt.com/?model=gpt-5.1-pro");
     });
 
     it("should add https:// if no protocol provided", () => {

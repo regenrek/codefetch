@@ -71,12 +71,12 @@ Open Command (codefetch open):
 
   Options:
     --chat-url <url>            AI chat URL (default: chatgpt.com)
-    --chat-model <model>        Model parameter for URL (default: gpt-4.1-pro)
+    --chat-model <model>        Model parameter for URL (default: gpt-5.1-pro)
     --chat-prompt <text>        Message shown after opening (default: "Your codebase is in the clipboard...")
     --no-browser                Skip opening browser, just copy to clipboard
 
   Examples:
-    # Default: opens ChatGPT with gpt-4.1-pro
+    # Default: opens ChatGPT with gpt-5.1-pro
     codefetch open
 
     # Custom AI chat URL and model

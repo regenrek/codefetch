@@ -86,7 +86,7 @@ describe("open command", () => {
 
     // Verify browser was opened
     expect(mockOpenBrowser).toHaveBeenCalledWith(
-      "https://chatgpt.com/?model=gpt-4.1-pro"
+      "https://chatgpt.com/?model=gpt-5.1-pro"
     );
   });
 

@@ -183,6 +183,11 @@ export default async function defaultMain(rawArgs: Argv) {
       ig.add(codefetchIgnoreContent);
     }
 
+    // Exclude markdown files if the option is enabled
+    if (config.excludeMarkdown) {
+      ig.add(["*.md", "*.markdown", "*.mdx"]);
+    }
+
     const files = await collectFiles(process.cwd(), {
       ig,
       extensionSet: config.extensions ? new Set(config.extensions) : null,

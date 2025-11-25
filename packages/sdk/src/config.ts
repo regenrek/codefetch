@@ -28,6 +28,7 @@ export interface CodefetchConfig {
   defaultChat?: string;
   templateVars?: Record<string, string>;
   format?: OutputFormat;
+  excludeMarkdown?: boolean; // Exclude markdown files from output
 }
 
 const defaultOutput = "codebase.md";
@@ -52,6 +53,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   defaultChat: "https://chat.com",
   templateVars: {},
   format: "markdown",
+  excludeMarkdown: false,
 });
 
 export async function resolveCodefetchConfig(

@@ -113,8 +113,11 @@ export async function collectFiles(
 
   // Apply gitignore patterns
   // Use baseDir instead of process.cwd() for consistency with path resolution
+  // Normalize paths to forward slashes for cross-platform compatibility with the ignore library
   return entries.filter((entry) => {
-    const relativePath = path.relative(baseDir.replace(/\\/g, "/"), entry);
+    const relativePath = path
+      .relative(baseDir.replace(/\\/g, "/"), entry)
+      .replace(/\\/g, "/");
     return !ig.ignores(relativePath);
   });
 }

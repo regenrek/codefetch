@@ -144,6 +144,7 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--project-tree-skip-ignore-files` | Include files ignored by git/config in the project tree output                                                                                            |
 | `--token-encoder <type>`        | Token encoding method (simple, p50k, o200k, cl100k)                                                                                                         |
 | `--enable-line-numbers`         | Enable line numbers in output (disabled by default to save tokens)                                                                                          |
+| `--exclude-markdown`            | Exclude markdown files (*.md, *.markdown, *.mdx) from output                                                                                                |
 | `-p, --prompt <text>`           | Add a prompt: built-in (fix, improve, codegen, testgen), file (.md/.txt), or inline text                                                                    |
 | `-d, --dry-run`                 | Output markdown to stdout instead of file                                                                                                                   |
 | `-c, --token-count-only`        | Output only the token count without generating markdown file                                                                                                |

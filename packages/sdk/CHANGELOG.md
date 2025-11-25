@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.4
+
+### Added
+- Added `excludeMarkdown` option to `CodefetchConfig` and `FetchOptions` interfaces
+  - When enabled, excludes markdown files (*.md, *.markdown, *.mdx) from output
+- Added default ignore patterns for AI agent tools:
+  - `.cursor/.agent-tools` - Cursor AI agent tools directory
+  - `.ckignore` - CodeKit ignore file
+  - `.spezi` - Spezi configuration directory
+- Added default ignore patterns for Rust projects:
+  - `Cargo.lock` - Rust package lock file
+  - `target/` - Rust build output directory
+- Added default ignore patterns for Go projects:
+  - `go.sum` - Go module checksums
+  - `vendor/` - Go vendor directory
+
+### Fixed
+- Fixed ignore patterns containing slashes not being respected
+  - Normalized relative paths in `collectFiles` to use forward slashes for cross-platform compatibility with the `ignore` library
+
 ## 2.0.3
 
 ### Changed

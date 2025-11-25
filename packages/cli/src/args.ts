@@ -26,6 +26,7 @@ export function parseArgs(args: string[]) {
       "ignore-robots",
       "ignore-cors",
       "project-tree-skip-ignore-files",
+      "exclude-markdown",
     ],
     string: [
       "output",
@@ -218,5 +219,6 @@ export function parseArgs(args: string[]) {
     noSummary: argv.summary === false || isStdout,
     stdout: isStdout,
     projectTreeSkipIgnoreFiles: Boolean(argv["project-tree-skip-ignore-files"]),
+    excludeMarkdown: Boolean(argv["exclude-markdown"]),
   };
 }

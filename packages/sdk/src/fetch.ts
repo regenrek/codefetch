@@ -25,6 +25,9 @@ export interface FetchOptions extends Partial<CodefetchConfig> {
 
   // Bypass cache completely
   noCache?: boolean;
+
+  // Exclude markdown files
+  excludeMarkdown?: boolean;
 }
 
 export async function fetch(
@@ -83,6 +86,11 @@ export async function fetch(
   // Add custom excludes
   if (options.excludeFiles) {
     ig.add(options.excludeFiles);
+  }
+
+  // Exclude markdown files if the option is enabled
+  if (options.excludeMarkdown) {
+    ig.add(["*.md", "*.markdown", "*.mdx"]);
   }
 
   // Prepare extension set

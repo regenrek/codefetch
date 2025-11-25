@@ -25,6 +25,16 @@ bun.lockb
 .pnpmrc
 .npmignore
 
+# Rust Package Manager
+Cargo.lock
+target/
+target/**
+
+# Go Package Manager
+go.sum
+vendor/
+vendor/**
+
 # Project Config
 .codefetchignore
 .editorconfig
@@ -188,6 +198,13 @@ bun.lockb
 *.swo
 *.swn
 *.bak
+
+# AI Agent Tools
+.cursor/.agent-tools
+.cursor/.agent-tools/**
+.ckignore
+.spezi
+.spezi/**
 
 # Build and Cache
 dist/

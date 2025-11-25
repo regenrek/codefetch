@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.4
+
+### Added
+- Added `--exclude-markdown` flag to exclude markdown files (*.md, *.markdown, *.mdx) from output
+  - Useful when you want to analyze code without documentation files
+
+### Fixed
+- Fixed ignore patterns containing slashes (e.g., `.cursor/.agent-tools`) not being respected
+  - Normalized file paths for cross-platform compatibility
+
 ## 2.0.3
 
 ### Changed

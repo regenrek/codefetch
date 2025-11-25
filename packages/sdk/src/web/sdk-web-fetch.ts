@@ -147,6 +147,11 @@ export async function fetchFromWeb(
     )
   );
 
+  // Exclude markdown files if the option is enabled
+  if (options.excludeMarkdown) {
+    ig.add(["*.md", "*.markdown", "*.mdx"]);
+  }
+
   // Collect files from the fetched content
   if (isCloudflareWorker) {
     throw new Error(

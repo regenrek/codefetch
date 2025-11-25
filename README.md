@@ -96,6 +96,9 @@ npx codefetch --exclude-dir test,public
 # Include only TypeScript files
 npx codefetch --include-files "*.ts" -o typescript-only.md
 
+# Include specific files and directories with glob patterns
+npx codefetch --include-files "src/components/AgentPanel.tsx,src/lib/llm/**/*" -o selected-files.md
+
 # Include src directory, exclude test files
 npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
 ```
@@ -137,7 +140,8 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--include-dir <dir,...>`       | Include specific directories                                                                                                                                |
 | `--exclude-dir <dir,...>`       | Exclude specific directories                                                                                                                                |
 | `-v, --verbose [level]`         | Show processing information (0=none, 1=basic, 2=debug)                                                                                                      |
-| `-t, --project-tree [depth]`    | Generate visual project tree (optional depth, default: 2)                                                                                                   |
+| `-t, --project-tree [depth]`    | Generate visual project tree (optional depth, default: 2). Respects `.gitignore`, `.codefetchignore`, and config filters by default                         |
+| `--project-tree-skip-ignore-files` | Include files ignored by git/config in the project tree output                                                                                            |
 | `--token-encoder <type>`        | Token encoding method (simple, p50k, o200k, cl100k)                                                                                                         |
 | `--disable-line-numbers`        | Disable line numbers in output                                                                                                                              |
 | `-d, --dry-run`                 | Output markdown to stdout instead of file                                                                                                                   |
@@ -163,17 +167,20 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--ignore-robots`        | Ignore robots.txt restrictions                             |
 | `--ignore-cors`          | Ignore CORS restrictions                                   |
 
-All options that accept multiple values use comma-separated lists. File patterns support simple wildcards:
+All options that accept multiple values use comma-separated lists. File patterns support glob wildcards:
 
-- `*` matches any number of characters
+- `*` matches any number of characters (except path separators)
+- `**` matches any number of directories recursively
 - `?` matches a single character
+- Patterns can include directory paths (e.g., `src/lib/**/*.ts`)
 
 ### Project Tree
 
-You can generate a visual tree representation of your project structure:
+You can generate a visual tree representation of your project structure. By default, the project tree respects `.gitignore`, `.codefetchignore`, and config filters, showing only files that would be included in the codebase analysis:
 
 ```bash
 # Generate tree with default depth (2 levels)
+# Only shows files not ignored by .gitignore, .codefetchignore, or config
 npx codefetch --project-tree
 
 # Generate tree with custom depth
@@ -181,6 +188,9 @@ npx codefetch -t 3
 
 # Generate tree and save code to file
 npx codefetch -t 2 -o output.md
+
+# Include ignored files/folders as well (shows full directory structure)
+npx codefetch -t 2 --project-tree-skip-ignore-files
 ```
 
 Example output:
@@ -196,6 +206,8 @@ Project Tree:
     │   └── index.test.ts
     └── package.json
 ```
+
+By default, the project tree hides anything excluded via `.gitignore`, `.codefetchignore`, or your include/exclude config settings. Use `--project-tree-skip-ignore-files` when you need to inspect the entire directory structure regardless of those rules.
 
 ### Using Prompts
 
@@ -451,7 +463,8 @@ export default {
   maxTokens: 999_000,
 
   // Processing options
-  projectTree: 2,
+  projectTree: 2, // Tree depth (0 to disable)
+  projectTreeSkipIgnoreFiles: false, // Set to true to show ignored files in tree
   tokenEncoder: "cl100k",
   tokenLimiter: "truncated",
 

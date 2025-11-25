@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { relative } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
-import { generateProjectTree } from "./tree";
+import { generateProjectTree, generateProjectTreeFromFiles } from "./tree";
 import { countTokens } from "./token-counter";
 import { processPromptTemplate, resolvePrompt } from "./template-parser";
 
@@ -17,6 +17,8 @@ export interface MarkdownGeneratorOptions {
   promptFile?: string;
   templateVars?: Record<string, string>;
   onVerbose?: (message: string, level: number) => void;
+  projectTreeBaseDir?: string;
+  projectTreeSkipIgnoreFiles?: boolean;
 }
 
 async function readFileWithTokenLimit(
@@ -125,6 +127,8 @@ export async function generateMarkdown(
     promptFile,
     templateVars,
     onVerbose,
+    projectTreeBaseDir,
+    projectTreeSkipIgnoreFiles = false,
   } = options;
 
   let promptTemplate = "";
@@ -162,7 +166,10 @@ export async function generateMarkdown(
   // Handle project tree
   if (projectTree > 0) {
     onVerbose?.("Writing project tree...", 2);
-    const tree = generateProjectTree(process.cwd(), projectTree);
+    const treeBaseDir = projectTreeBaseDir || process.cwd();
+    const tree = projectTreeSkipIgnoreFiles
+      ? generateProjectTree(treeBaseDir, projectTree)
+      : generateProjectTreeFromFiles(treeBaseDir, files, projectTree);
     const treeTokens = await countTokens(tree, tokenEncoder);
 
     if (maxTokens && treeTokens > tokenCounter.remaining) {

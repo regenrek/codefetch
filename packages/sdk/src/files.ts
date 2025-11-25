@@ -37,20 +37,39 @@ export async function collectFiles(
     }
   }
 
+  // Helper to convert absolute paths to relative paths for fast-glob
+  const toRelativePattern = (pattern: string): string => {
+    const normalized = pattern.replace(/\\/g, "/");
+    if (path.isAbsolute(normalized)) {
+      const relative = path.relative(baseDir.replace(/\\/g, "/"), normalized);
+      return relative.startsWith("..") ? normalized : relative;
+    }
+    return normalized;
+  };
+
   // Build glob patterns
   const patterns: string[] = [];
 
   // Handle include directories
   if (includeDirs?.length) {
-    patterns.push(...includeDirs.map((dir) => `${escapeGlobPath(dir)}/**/*`));
+    patterns.push(
+      ...includeDirs.map(
+        (dir) => `${escapeGlobPath(toRelativePattern(dir))}/**/*`
+      )
+    );
   } else {
     patterns.push("**/*");
   }
 
   // Handle exclude directories
   const ignore = [
-    ...(excludeDirs?.map((dir) => `${escapeGlobPath(dir)}/**`) || []),
-    ...(excludeFiles?.map((file) => file.replace(/\\/g, "/")) || []),
+    ...(excludeDirs?.map(
+      (dir) => `${escapeGlobPath(toRelativePattern(dir))}/**`
+    ) || []),
+    ...(excludeFiles?.map((file) => {
+      const normalized = toRelativePattern(file);
+      return normalized.replace(/\\/g, "/");
+    }) || []),
   ];
 
   // Handle file extensions
@@ -60,7 +79,7 @@ export async function collectFiles(
     if (includeDirs?.length) {
       for (const dir of includeDirs) {
         for (const ext of exts) {
-          patterns.push(`${escapeGlobPath(dir)}/**/*${ext}`);
+          patterns.push(`${escapeGlobPath(toRelativePattern(dir))}/**/*${ext}`);
         }
       }
     } else {
@@ -73,8 +92,9 @@ export async function collectFiles(
   // Handle include files
   if (includeFiles?.length) {
     patterns.length = 0; // Clear patterns if we have specific files
-    // Normalize path separators in include files for fast-glob
-    patterns.push(...includeFiles.map((file) => file.replace(/\\/g, "/")));
+    // Convert absolute paths to relative paths relative to baseDir for fast-glob
+    // fast-glob works better with relative paths when cwd is set
+    patterns.push(...includeFiles.map((file) => toRelativePattern(file)));
   }
 
   logVerbose(`Scanning with patterns: ${patterns.join(", ")}`, 2);
@@ -92,8 +112,9 @@ export async function collectFiles(
   });
 
   // Apply gitignore patterns
+  // Use baseDir instead of process.cwd() for consistency with path resolution
   return entries.filter((entry) => {
-    const relativePath = path.relative(process.cwd(), entry);
+    const relativePath = path.relative(baseDir.replace(/\\/g, "/"), entry);
     return !ig.ignores(relativePath);
   });
 }

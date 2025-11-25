@@ -159,6 +159,50 @@ describe("File Collection", () => {
       ]);
     });
 
+    test("should handle mixed absolute paths and glob patterns in includeFiles", async () => {
+      await mkdir(join(tempDir, "src", "components"), { recursive: true });
+      await mkdir(join(tempDir, "src", "lib", "llm"), { recursive: true });
+      await writeFile(
+        join(tempDir, "src", "components", "AgentPanel.tsx"),
+        "component"
+      );
+      await writeFile(
+        join(tempDir, "src", "lib", "llm", "provider.ts"),
+        "provider"
+      );
+      await writeFile(
+        join(tempDir, "src", "lib", "llm", "client.ts"),
+        "client"
+      );
+      await writeFile(join(tempDir, "src", "lib", "other.ts"), "other");
+
+      // Mix absolute path to specific file with glob pattern
+      const absolutePath = join(tempDir, "src", "components", "AgentPanel.tsx");
+      const globPattern = join(tempDir, "src", "lib", "llm", "**", "*");
+
+      const files = await collectFiles(tempDir, {
+        ig,
+        extensionSet: null,
+        excludeFiles: null,
+        includeFiles: [absolutePath, globPattern],
+        excludeDirs: null,
+        includeDirs: null,
+        verbose: 0,
+      });
+
+      expect(files).toHaveLength(3);
+      const relativePaths = files
+        .map((f) => getRelativePath(f, tempDir))
+        .sort();
+      expect(relativePaths).toEqual([
+        "src/components/AgentPanel.tsx",
+        "src/lib/llm/client.ts",
+        "src/lib/llm/provider.ts",
+      ]);
+      // Should not include other.ts since it's not in llm subdirectory
+      expect(relativePaths).not.toContain("src/lib/other.ts");
+    });
+
     test("should handle exclude files pattern", async () => {
       await writeFile(join(tempDir, "file1.js"), "content1");
       await writeFile(join(tempDir, "file2.test.js"), "content2");
@@ -370,6 +414,52 @@ describe("File Collection", () => {
       expect(logs.some((log) => log.includes("Scanning with patterns"))).toBe(
         true
       );
+    });
+
+    test("should use baseDir for ignore checks even when different from process.cwd()", async () => {
+      // Create a subdirectory structure
+      const subDir = join(tempDir, "project", "src");
+      await mkdir(subDir, { recursive: true });
+      await writeFile(join(subDir, "included.js"), "included");
+      await writeFile(join(subDir, "ignored.js"), "ignored");
+
+      // Create gitignore in the project root that ignores ignored.js
+      await writeFile(join(tempDir, "project", ".gitignore"), "ignored.js");
+
+      // Create ignore instance with gitignore patterns
+      const ignoreInstance = {
+        ignores: (path: string) => {
+          // Simulate gitignore behavior: ignore files matching "ignored.js"
+          return path.includes("ignored.js");
+        },
+      };
+
+      // Change to a different directory to test baseDir vs process.cwd()
+      const originalCwd = process.cwd();
+      const otherDir = await mkdtemp(join(tmpdir(), "codefetch-other-"));
+      process.chdir(otherDir);
+
+      try {
+        const files = await collectFiles(join(tempDir, "project", "src"), {
+          ig: ignoreInstance,
+          extensionSet: null,
+          excludeFiles: null,
+          includeFiles: null,
+          excludeDirs: null,
+          includeDirs: null,
+          verbose: 0,
+        });
+
+        // Should only include included.js, not ignored.js
+        const relativePaths = files.map((f) =>
+          getRelativePath(f, join(tempDir, "project", "src"))
+        );
+        expect(relativePaths).toContain("included.js");
+        expect(relativePaths).not.toContain("ignored.js");
+      } finally {
+        process.chdir(originalCwd);
+        await rm(otherDir, { recursive: true, force: true });
+      }
     });
   });
 });

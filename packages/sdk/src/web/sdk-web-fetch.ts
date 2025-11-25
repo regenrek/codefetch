@@ -205,6 +205,8 @@ export async function fetchFromWeb(
         SOURCE_URL: parsedUrl.url,
         FETCHED_FROM: `${parsedUrl.gitProvider}:${parsedUrl.gitOwner}/${parsedUrl.gitRepo}`,
       },
+      projectTreeBaseDir: process.cwd(),
+      projectTreeSkipIgnoreFiles: Boolean(options.projectTreeSkipIgnoreFiles),
     });
 
     output = markdown;

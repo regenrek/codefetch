@@ -25,6 +25,7 @@ export function parseArgs(args: string[]) {
       "no-api",
       "ignore-robots",
       "ignore-cors",
+      "project-tree-skip-ignore-files",
     ],
     string: [
       "output",
@@ -206,5 +207,6 @@ export function parseArgs(args: string[]) {
     // mri treats --no-summary as summary: false; stdout implies no summary
     noSummary: argv.summary === false || isStdout,
     stdout: isStdout,
+    projectTreeSkipIgnoreFiles: Boolean(argv["project-tree-skip-ignore-files"]),
   };
 }

@@ -5,6 +5,7 @@ export default {
   maxTokens: 999_000,
   verbose: 1,
   projectTree: 5,
+  projectTreeSkipIgnoreFiles: false,
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",

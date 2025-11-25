@@ -15,6 +15,8 @@ export async function generateMarkdown(
     tokenLimiter?: MarkdownGeneratorOptions["tokenLimiter"];
     promptFile?: string;
     templateVars?: Record<string, string>;
+    projectTreeBaseDir?: string;
+    projectTreeSkipIgnoreFiles?: boolean;
   }
 ): Promise<string> {
   const sdkOptions: MarkdownGeneratorOptions = {

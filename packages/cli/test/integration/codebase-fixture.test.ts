@@ -125,10 +125,9 @@ describe("Integration: codebase-test fixture", () => {
   });
 
   it("respects an existing .codefetchignore if present", () => {
-    // we use t=0 here because if we show the tree the ignore will be shown in the tree
     const result = spawnSync(
       "node",
-      [cliPath, "-o", "ignore-test.md", "-t", "0"],
+      [cliPath, "-o", "ignore-test.md", "-t", "2"],
       {
         cwd: FIXTURE_DIR,
         encoding: "utf8",
@@ -145,6 +144,44 @@ describe("Integration: codebase-test fixture", () => {
     const content = fs.readFileSync(outPath, "utf8");
     expect(content).not.toContain("ignore-this-file");
     expect(content).not.toContain("ignore-this-file-deep");
+    // ensure tree was shown but still respected ignores
+    expect(content).toMatch(/Project Structure:/);
+  });
+
+  it("can include ignored paths in project tree when requested", () => {
+    const result = spawnSync(
+      "node",
+      [
+        cliPath,
+        "-o",
+        "ignore-tree.md",
+        "-t",
+        "4",
+        "--project-tree-skip-ignore-files",
+      ],
+      {
+        cwd: FIXTURE_DIR,
+        encoding: "utf8",
+        stdio: ["inherit", "pipe", "pipe"],
+      }
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Output written to");
+
+    const outPath = join(CODEFETCH_DIR, "ignore-tree.md");
+    expect(fs.existsSync(outPath)).toBe(true);
+
+    const content = fs.readFileSync(outPath, "utf8");
+    expect(content).toMatch(/Project Structure:/);
+    expect(content).toContain("ignore-this-file");
+    expect(content).toContain("ignore-this-file-deep");
+    // even though tree shows ignored files, content section should still exclude them
+    const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
+    for (const block of codeBlocks) {
+      expect(block).not.toContain("ignore-this-file");
+      expect(block).not.toContain("ignore-this-file-deep");
+    }
   });
 
   it("displays the project tree when using -t", () => {
@@ -189,5 +226,45 @@ describe("Integration: codebase-test fixture", () => {
     const content = fs.readFileSync(outPath, "utf8");
     expect(content).not.toMatch(/^\d+\|/m);
     expect(content).toContain("container.js");
+  });
+
+  it("handles --include-files with mixed specific files and glob patterns", () => {
+    const result = spawnSync(
+      "node",
+      [
+        cliPath,
+        "-o",
+        "mixed-patterns.md",
+        "--include-files",
+        "src/components/button.js,src/utils/**/*",
+        "-t",
+        "3",
+      ],
+      {
+        cwd: FIXTURE_DIR,
+        encoding: "utf8",
+        stdio: ["inherit", "pipe", "pipe"],
+      }
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Output written to");
+
+    const outPath = join(CODEFETCH_DIR, "mixed-patterns.md");
+    expect(fs.existsSync(outPath)).toBe(true);
+
+    const content = fs.readFileSync(outPath, "utf8");
+    // Should include the specific file
+    expect(content).toContain("button.js");
+    // Should include files from utils directory via glob pattern
+    expect(content).toContain("test1.ts");
+    expect(content).toContain("test2.js");
+    // Should not include other files not matching the patterns
+    expect(content).not.toContain("app.js");
+    expect(content).not.toContain("header.js");
+    // Project tree should reflect the filtered files
+    expect(content).toMatch(/Project Structure:/);
+    expect(content).toContain("button.js");
+    expect(content).toContain("utils");
   });
 });

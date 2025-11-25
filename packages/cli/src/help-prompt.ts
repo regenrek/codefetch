@@ -15,7 +15,8 @@ Options:
   --include-dir <dir,...>     Include specific directories
   --exclude-dir <dir,...>     Exclude specific directories
   -v, --verbose [level]       Show processing information (0=none, 1=basic, 2=debug)
-  -t, --project-tree [depth]  Generate visual project tree (optional depth, default: 2)
+  -t, --project-tree [depth]  Generate visual project tree (optional depth, default: 2). Respects .gitignore, .codefetchignore, and config filters by default
+  --project-tree-skip-ignore-files  Include files ignored by git/config in the project tree
   --token-encoder <type>      Token encoding method (simple, p50k, o200k, cl100k)
   --token-limiter <type>      Token limiting strategy (sequential, truncated)
   --disable-line-numbers      Disable line numbers in output

@@ -116,6 +116,22 @@ line3`
       expect(markdown).toContain("Project Structure:");
       expect(markdown).toContain("src");
       expect(markdown).toContain("index.js");
+      expect(markdown).not.toContain("README.md");
+    });
+
+    test("should include ignored files in tree when skip flag set", async () => {
+      await mkdir("src", { recursive: true });
+      await writeFile("src/index.js", "export default {};");
+      await writeFile("README.md", "# Project");
+
+      const markdown = await generateMarkdown(["src/index.js"], {
+        maxTokens: null,
+        tokenEncoder: "simple",
+        projectTree: 2,
+        projectTreeSkipIgnoreFiles: true,
+      });
+
+      expect(markdown).toContain("Project Structure:");
       expect(markdown).toContain("README.md");
     });
 
@@ -300,7 +316,7 @@ line3`
       }
 
       const markdown = await generateMarkdown(["file0.js"], {
-        maxTokens: 20, // Very low limit
+        maxTokens: 1, // Extremely low limit to force skipping the tree
         tokenEncoder: "simple",
         projectTree: 3,
       });

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.4
+
+### Changed
+- `--project-tree` now respects `.gitignore`, `.codefetchignore`, and config filters by default
+  - Project tree output now only shows files that would be included in the codebase analysis
+  - This ensures consistency between the tree structure and the actual files processed
+  - Added new `--project-tree-skip-ignore-files` flag to restore previous behavior (showing all files including ignored ones)
+
+### Added
+- Added `--project-tree-skip-ignore-files` flag to include ignored files in project tree output
+  - Useful when you want to see the full directory structure even for files excluded by ignore patterns
+  - When enabled, the tree will show all files regardless of `.gitignore`, `.codefetchignore`, or config filters
+
+## 2.0.3
+
+### Fixed
+- Fixed `--include-files` option not including specified files when using glob patterns or absolute paths
+  - Resolved issue where absolute paths resolved from config weren't being converted to relative paths for fast-glob
+  - Now correctly handles both specific file paths and glob patterns (e.g., `src/lib/llm/**/*`)
+  - Also fixed `--include-dir`, `--exclude-dir`, and `--exclude-files` to properly handle absolute paths
+
 ## 2.0.2
 
 ### Added

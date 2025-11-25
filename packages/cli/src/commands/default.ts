@@ -224,6 +224,8 @@ export default async function defaultMain(rawArgs: Argv) {
           ? config.defaultPromptFile
           : resolve(config.outputPath, "prompts", config.defaultPromptFile),
         templateVars: config.templateVars,
+        projectTreeBaseDir: process.cwd(),
+        projectTreeSkipIgnoreFiles: Boolean(config.projectTreeSkipIgnoreFiles),
       });
 
       output = markdown;

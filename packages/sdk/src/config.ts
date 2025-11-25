@@ -15,6 +15,7 @@ export interface CodefetchConfig {
   defaultIgnore: boolean;
   gitignore: boolean;
   projectTree: number;
+  projectTreeSkipIgnoreFiles: boolean;
   tokenEncoder: TokenEncoder;
   tokenLimiter: TokenLimiter;
   trackedModels?: string[];
@@ -36,6 +37,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   maxTokens: 999_000, // safety
   verbose: 1,
   projectTree: 2,
+  projectTreeSkipIgnoreFiles: false,
   defaultIgnore: true,
   gitignore: true,
   tokenEncoder: "simple",

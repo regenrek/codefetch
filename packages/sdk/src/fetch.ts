@@ -134,6 +134,8 @@ export async function fetch(
       tokenEncoder: options.tokenEncoder || "simple",
       disableLineNumbers: options.disableLineNumbers || false,
       tokenLimiter: options.tokenLimiter || "truncated",
+      projectTreeBaseDir: cwd,
+      projectTreeSkipIgnoreFiles: Boolean(options.projectTreeSkipIgnoreFiles),
     });
   }
 }

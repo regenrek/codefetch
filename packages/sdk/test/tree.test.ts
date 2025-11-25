@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
-import { generateProjectTree } from "../src/tree";
+import { generateProjectTree, generateProjectTreeFromFiles } from "../src/tree";
 import { collectFilesAsTree } from "../src/files-tree";
 import { FetchResultImpl } from "../src/fetch-result";
 import { tmpdir } from "node:os";
@@ -11,6 +11,42 @@ describe("Tree Generation", () => {
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "codefetch-tree-test-"));
+  });
+
+  describe("generateProjectTreeFromFiles", () => {
+    test("should only include provided files", async () => {
+      await writeFile(join(tempDir, "include-me.js"), "included");
+      await writeFile(join(tempDir, "ignore-me.js"), "ignored");
+
+      const tree = generateProjectTreeFromFiles(tempDir, [
+        join(tempDir, "include-me.js"),
+      ]);
+
+      expect(tree).toContain("include-me.js");
+      expect(tree).not.toContain("ignore-me.js");
+    });
+
+    test("should render nested directories from filtered file list", async () => {
+      await mkdir(join(tempDir, "src", "components"), { recursive: true });
+      await mkdir(join(tempDir, "docs"), { recursive: true });
+      await writeFile(
+        join(tempDir, "src", "components", "button.tsx"),
+        "component"
+      );
+      await writeFile(join(tempDir, "docs", "readme.md"), "# docs");
+
+      const tree = generateProjectTreeFromFiles(
+        tempDir,
+        [join(tempDir, "src", "components", "button.tsx")],
+        3
+      );
+
+      expect(tree).toContain("src");
+      expect(tree).toContain("components");
+      expect(tree).toContain("button.tsx");
+      expect(tree).not.toContain("docs");
+      expect(tree).not.toContain("readme.md");
+    });
   });
 
   afterEach(async () => {

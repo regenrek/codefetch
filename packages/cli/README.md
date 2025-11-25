@@ -111,7 +111,8 @@ Create a `.codefetchrc` file for project-specific settings:
   "outputFile": "codebase.md",
   "outputPath": "./docs",
   "tokenEncoder": "cl100k",
-  "projectTree": 2
+  "projectTree": 2,
+  "projectTreeSkipIgnoreFiles": false
 }
 ```
 
@@ -155,6 +156,7 @@ Create a `.codefetchrc` file for project-specific settings:
 ### Display Options
 
 - `-t, --project-tree` - Show project tree (0=off, 1+=depth)
+- `--project-tree-skip-ignore-files` - Include files ignored by git/config in the project tree
 - `--tracked-models` - Label the token summary with specific models
 - `--format` - Output format (markdown, json) (default: markdown)
 
@@ -266,7 +268,7 @@ coverage/
 
 The generated markdown includes:
 
-1. **Project Structure** - Tree view of the codebase
+1. **Project Structure** - Tree view of the codebase (respects `.gitignore`, `.codefetchignore`, and config filters by default)
 2. **File Contents** - Each file with syntax highlighting
 3. **Token Count** - Total tokens for AI model context
 4. **Metadata** - Timestamps and configuration used
@@ -294,6 +296,8 @@ src/index.ts:
 
 [... more files ...]
 ```
+
+The project tree automatically hides entries excluded via `.gitignore`, `.codefetchignore`, and your include/exclude settings so it lines up with the files that will be embedded into the markdown. Use `--project-tree-skip-ignore-files` if you temporarily need to inspect the entire directory structure, including ignored paths.
 
 ## Caching
 

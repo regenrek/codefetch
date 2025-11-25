@@ -2,6 +2,26 @@
 
 ## Current Version
 
+### Changed
+- `generateProjectTree` and `generateMarkdown` now respect ignore files by default
+  - Added new `generateProjectTreeFromFiles` function that builds tree from filtered file list
+  - Project tree now only shows files that would be included in codebase analysis
+  - Added `projectTreeSkipIgnoreFiles` option to `MarkdownGeneratorOptions` to restore previous behavior
+
+### Added
+- Added `generateProjectTreeFromFiles` function to generate project tree from a filtered file list
+  - Ensures tree structure matches the actual files being processed
+  - Respects all ignore patterns (`.gitignore`, `.codefetchignore`, config filters)
+- Added `projectTreeSkipIgnoreFiles` option to `MarkdownGeneratorOptions` interface
+  - When `true`, uses original `generateProjectTree` behavior (shows all files)
+  - When `false` (default), uses `generateProjectTreeFromFiles` (respects ignore patterns)
+
+### Fixed
+- Fixed file inclusion/exclusion patterns not working correctly with absolute paths
+  - Convert absolute paths to relative paths relative to `baseDir` before passing to fast-glob
+  - Ensures `includeFiles`, `includeDirs`, `excludeDirs`, and `excludeFiles` work correctly with both relative and absolute paths
+  - Fixes issue where glob patterns like `src/lib/llm/**/*` weren't matching files when resolved to absolute paths
+
 ### Major Changes
 
 - **Cache System Overhaul**: Complete rewrite of the caching system to fix Cloudflare Workers compatibility

@@ -25,6 +25,7 @@ describe("SDK Config", () => {
       expect(config.tokenCountOnly).toBe(false);
       expect(config.verbose).toBe(1);
       expect(config.projectTree).toBe(2);
+      expect(config.projectTreeSkipIgnoreFiles).toBe(false);
       expect(config.disableLineNumbers).toBe(false);
       expect(config.tokenEncoder).toBe("simple");
       expect(config.tokenLimiter).toBe("truncated");
@@ -46,6 +47,7 @@ describe("SDK Config", () => {
         "dryRun",
         "verbose",
         "projectTree",
+        "projectTreeSkipIgnoreFiles",
         "disableLineNumbers",
         "tokenEncoder",
         "tokenLimiter",

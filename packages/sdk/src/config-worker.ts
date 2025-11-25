@@ -13,6 +13,7 @@ export interface CodefetchConfig {
   includeDirs: string[];
   verbose: number;
   projectTree: number;
+  projectTreeSkipIgnoreFiles?: boolean;
   dryRun: boolean;
   maxTokens: number;
   tokenEncoder: string;
@@ -40,6 +41,7 @@ export function getDefaultConfig(): CodefetchConfig {
     includeDirs: [],
     verbose: 0,
     projectTree: 0,
+    projectTreeSkipIgnoreFiles: false,
     dryRun: false,
     maxTokens: 50_000,
     tokenEncoder: "cl100k",
@@ -86,6 +88,8 @@ export function mergeWithCliArgs(
   if (args.includeDirs !== undefined) merged.includeDirs = args.includeDirs;
   if (args.verbose !== undefined) merged.verbose = args.verbose;
   if (args.projectTree !== undefined) merged.projectTree = args.projectTree;
+  if (args.projectTreeSkipIgnoreFiles !== undefined)
+    merged.projectTreeSkipIgnoreFiles = args.projectTreeSkipIgnoreFiles;
   if (args.dryRun !== undefined) merged.dryRun = args.dryRun;
   if (args.maxTokens !== undefined) merged.maxTokens = args.maxTokens;
   if (args.tokenEncoder !== undefined) merged.tokenEncoder = args.tokenEncoder;

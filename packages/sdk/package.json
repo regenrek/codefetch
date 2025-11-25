@@ -1,6 +1,6 @@
 {
   "name": "codefetch-sdk",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Core SDK for codefetch functionality",
   "repository": {
     "type": "git",

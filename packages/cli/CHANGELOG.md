@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.2
+## 2.0.3
 
 ### Changed
 - `--project-tree` now respects `.gitignore`, `.codefetchignore`, and config filters by default
@@ -20,8 +20,6 @@
 - Added inline prompt support for `--prompt` / `-p` flag
   - Use `-p "Your prompt text here"` to add a custom prompt directly from command line
 - Added `--enable-line-numbers` flag to enable line numbers in output (disabled by default)
-
-## 2.0.1
 
 ### Fixed
 - Fixed `--include-files` option not including specified files correctly

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.4
+## 2.0.3
 
 ### Changed
 - `--project-tree` now respects `.gitignore`, `.codefetchignore`, and config filters by default
@@ -23,8 +23,6 @@
   - Use `-p "Your prompt text here"` to add a custom prompt directly from command line
   - Inline prompts are automatically wrapped with `{{CURRENT_CODEBASE}}` placeholder
 - Added `--enable-line-numbers` flag to enable line numbers in output (disabled by default)
-
-## 2.0.3
 
 ### Fixed
 - Fixed `--include-files` option not including specified files when using glob patterns or absolute paths

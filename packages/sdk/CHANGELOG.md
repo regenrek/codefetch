@@ -1,6 +1,6 @@
 # Changelog
 
-## Current Version
+## 2.0.3
 
 ### Changed
 - `generateProjectTree` and `generateMarkdown` now respect ignore files by default

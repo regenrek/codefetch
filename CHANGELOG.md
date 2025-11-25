@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1
+
+### Fixed
+- Fixed default model in `codefetch open` command from `gpt-4.1-pro` to `gpt-5.1-pro`
+
 ## 2.1.0
 
 ### Added

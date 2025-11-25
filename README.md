@@ -19,6 +19,7 @@ Codefetch is a powerful tool that converts git repositories and local codebases 
 - 💾 **Intelligent Caching** - Speed up repeated fetches with smart caching
 - 🌲 **Project Structure Visualization** - Generate tree views of your codebase
 - ⚡ **GitHub API Integration** - Fetch repos without git using the GitHub API
+- 🌐 **Open & Send to AI** - Generate codebase, copy to clipboard, and open AI chat in browser
 
 Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 
@@ -27,6 +28,9 @@ Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898
 ```bash
 # Analyze current directory
 npx codefetch
+
+# Generate codebase, copy to clipboard, and open ChatGPT
+npx codefetch open
 
 # Analyze a GitHub repo (uses API - no git needed!)
 npx codefetch --url github.com/facebook/react
@@ -70,6 +74,27 @@ npx codefetch -e ts,tsx -t 3
 
 # Generate with AI prompt template
 npx codefetch -p improve --max-tokens 50000
+```
+
+### Open & Send to AI Chat
+
+The `open` command generates your codebase, copies it to clipboard, and opens your AI chat in the browser:
+
+```bash
+# Default: opens ChatGPT with gpt-5-1-pro model
+npx codefetch open
+
+# Custom AI chat URL and model
+npx codefetch open --chat-url claude.ai --chat-model claude-3.5-sonnet
+
+# Combine with codefetch options (e.g., filter by extension)
+npx codefetch open -e .ts,.js --exclude-dir node_modules
+
+# Just copy to clipboard without opening browser
+npx codefetch open --no-browser
+
+# Custom prompt message
+npx codefetch open --chat-prompt "Review this codebase for security issues"
 ```
 
 ### Git Repository Fetching
@@ -168,6 +193,20 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 | `--max-depth <number>`   | Maximum crawl depth (default: 2)                           |
 | `--ignore-robots`        | Ignore robots.txt restrictions                             |
 | `--ignore-cors`          | Ignore CORS restrictions                                   |
+
+### Open Command Options
+
+The `open` subcommand generates codebase, copies to clipboard, and opens AI chat in browser:
+
+| Option                      | Description                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| `--chat-url <url>`          | AI chat URL (default: chatgpt.com)                                            |
+| `--chat-model <model>`      | Model parameter for URL (default: gpt-5-1-pro)                                |
+| `--chat-prompt <text>`      | Message shown after opening (default: "Your codebase is in your clipboard...") |
+| `--no-browser`              | Skip opening browser, just copy to clipboard                                  |
+| `--copy`                    | Copy output to clipboard (works on macOS, Windows, and Linux)                 |
+
+All standard codefetch options are supported with `open` (e.g., `-e`, `-t`, `--exclude-dir`).
 
 All options that accept multiple values use comma-separated lists. File patterns support glob wildcards:
 
@@ -335,6 +374,27 @@ Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codeb
 ## Use with AI Tools
 
 You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase.
+
+### Quick Workflow: Open & Send to GPT
+
+The fastest way to get your codebase into an AI chat:
+
+```bash
+# Generate codebase, copy to clipboard, and open ChatGPT
+npx codefetch open
+
+# Your codebase is automatically copied to clipboard
+# ChatGPT opens with the model pre-selected (gpt-5-1-pro)
+# Just paste (Cmd/Ctrl+V) and start chatting!
+```
+
+This workflow:
+1. ✅ Generates your codebase as markdown
+2. ✅ Copies it to your clipboard automatically
+3. ✅ Opens ChatGPT (or your preferred AI chat) in your browser
+4. ✅ Pre-fills the model parameter in the URL
+
+Perfect for quick code reviews, refactoring suggestions, or getting help with your codebase!
 
 ## Packages
 

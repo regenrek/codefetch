@@ -185,4 +185,18 @@ describe("parseArgs", () => {
       verbose: 2,
     });
   });
+
+  it("should parse --copy flag", () => {
+    const args = ["--copy"];
+    const result = parseArgs(args);
+
+    expect(result.copy).toBe(true);
+  });
+
+  it("should default copy to false when not specified", () => {
+    const args = ["-o", "output.md"];
+    const result = parseArgs(args);
+
+    expect(result.copy).toBe(false);
+  });
 });

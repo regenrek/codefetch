@@ -25,6 +25,18 @@ describe("help-prompt", () => {
     expect(helpText).toContain("Git Repository Options:");
     expect(helpText).toContain("Web Crawling Options:");
     expect(helpText).toContain("Examples:");
+    expect(helpText).toContain("Open Command");
+  });
+
+  it("should include open command documentation", () => {
+    printHelp();
+    const helpText = consoleSpy.mock.calls[0][0];
+
+    expect(helpText).toContain("open");
+    expect(helpText).toContain("--chat-url");
+    expect(helpText).toContain("--chat-model");
+    expect(helpText).toContain("--no-browser");
+    expect(helpText).toContain("codefetch open");
   });
 
   it("should include all main options", () => {
@@ -42,6 +54,7 @@ describe("help-prompt", () => {
     expect(helpText).toContain("-t, --project-tree");
     expect(helpText).toContain("--enable-line-numbers");
     expect(helpText).toContain("-p, --prompt");
+    expect(helpText).toContain("--copy");
   });
 
   it("should include git repository options", () => {

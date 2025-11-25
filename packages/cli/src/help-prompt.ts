@@ -4,6 +4,7 @@ Usage: codefetch [command] [options]
 
 Commands:
   init                        Initialize a new codefetch project
+  open                        Generate codebase, copy to clipboard, and open AI chat in browser
 
 Options:
   -o, --output <file>         Specify output filename (defaults to codebase.md)
@@ -22,6 +23,7 @@ Options:
   --enable-line-numbers       Enable line numbers in output (disabled by default to save tokens)
   --exclude-markdown          Exclude markdown files (*.md, *.markdown, *.mdx) from output
   --format <type>             Output format (markdown, json) (default: markdown)
+  --copy                      Copy output to clipboard (works on macOS, Windows, and Linux)
   -h, --help                  Display this help message
   -p, --prompt <text>         Add a prompt: built-in (fix, improve, codegen, testgen), file (.md/.txt), or inline text
 
@@ -63,5 +65,27 @@ Examples:
   # Analyze from GitLab or Bitbucket
   codefetch --url https://gitlab.com/user/repo
   codefetch --url https://bitbucket.org/user/repo
+
+Open Command (codefetch open):
+  Generates codebase, copies to clipboard, and opens browser to an AI chat.
+
+  Options:
+    --chat-url <url>            AI chat URL (default: chatgpt.com)
+    --chat-model <model>        Model parameter for URL (default: gpt-4.1-pro)
+    --chat-prompt <text>        Message shown after opening (default: "Your codebase is in the clipboard...")
+    --no-browser                Skip opening browser, just copy to clipboard
+
+  Examples:
+    # Default: opens ChatGPT with gpt-4.1-pro
+    codefetch open
+
+    # Custom AI chat URL and model
+    codefetch open --chat-url claude.ai --chat-model claude-3.5-sonnet
+
+    # Combine with codefetch options
+    codefetch open -e .ts,.js --exclude-dir node_modules -t 3
+
+    # Just copy to clipboard without opening browser
+    codefetch open --no-browser
 `);
 }

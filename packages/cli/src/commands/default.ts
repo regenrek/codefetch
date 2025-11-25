@@ -16,6 +16,7 @@ import {
 } from "codefetch-sdk";
 import { printHelp, parseArgs, loadCodefetchConfig } from "..";
 import { formatModelInfo } from "../format-model-info";
+import { copyToClipboard } from "../utils/clipboard";
 import type { TokenEncoder, TokenLimiter } from "codefetch-sdk";
 
 // Helper to determine prompt file path
@@ -295,6 +296,20 @@ export default async function defaultMain(rawArgs: Argv) {
         : fullPath.replace(/\.md$/, ".json");
       await fsp.writeFile(jsonPath, JSON.stringify(output, null, 2));
       console.log(`Output written to ${jsonPath}`);
+    }
+  }
+
+  // Copy to clipboard if --copy flag is set
+  if (args.copy) {
+    try {
+      const textToCopy =
+        typeof output === "string" ? output : JSON.stringify(output, null, 2);
+      await copyToClipboard(textToCopy);
+      logger.success("Output copied to clipboard");
+    } catch (error) {
+      logger.error(
+        error instanceof Error ? error.message : "Failed to copy to clipboard"
+      );
     }
   }
 

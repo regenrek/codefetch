@@ -39,6 +39,7 @@
     "cli": "node ./dist/cli.mjs"
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "c12": "^2.0.1",
     "codefetch-sdk": "workspace:*",
     "consola": "^3.3.3",

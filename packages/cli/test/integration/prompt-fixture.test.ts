@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve, join } from "pathe";
 
 const cliPath = resolve(__dirname, "../../dist/cli.mjs");
@@ -123,10 +123,12 @@ describe("Integration: prompt functionality", () => {
     expect(content).toContain("fix issue");
   });
 
-  it("fails with invalid prompt name", () => {
+  it("treats unknown prompt names as inline prompts", () => {
+    // With inline prompt support, any string that's not a built-in prompt
+    // or a file path is treated as an inline prompt
     const result = spawnSync(
       "node",
-      [cliPath, "-p", "invalid", "-o", "error-test.md"],
+      [cliPath, "-p", "Review this code", "-o", "inline-prompt-test.md"],
       {
         cwd: FIXTURE_DIR,
         encoding: "utf8",
@@ -134,7 +136,14 @@ describe("Integration: prompt functionality", () => {
       }
     );
 
-    expect(result.stderr).toContain("Invalid prompt");
-    expect(existsSync(join(CODEFETCH_DIR, "error-test.md"))).toBe(false);
+    expect(result.status).toBe(0);
+    expect(existsSync(join(CODEFETCH_DIR, "inline-prompt-test.md"))).toBe(true);
+
+    // Verify the inline prompt is in the output
+    const content = readFileSync(
+      join(CODEFETCH_DIR, "inline-prompt-test.md"),
+      "utf8"
+    );
+    expect(content).toContain("Review this code");
   });
 });

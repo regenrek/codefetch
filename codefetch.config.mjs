@@ -11,7 +11,7 @@ export default {
   tokenEncoder: "simple",
   tokenLimiter: "truncated",
   dryRun: false,
-  disableLineNumbers: false,
+  disableLineNumbers: true, // Line numbers disabled by default to save tokens
   defaultPromptFile: undefined,
   defaultChat: "https://chat.com",
   templateVars: {},

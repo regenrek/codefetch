@@ -14,6 +14,7 @@ export async function generateMarkdown(
     disableLineNumbers?: boolean;
     tokenLimiter?: MarkdownGeneratorOptions["tokenLimiter"];
     promptFile?: string;
+    inlinePrompt?: string;
     templateVars?: Record<string, string>;
     projectTreeBaseDir?: string;
     projectTreeSkipIgnoreFiles?: boolean;

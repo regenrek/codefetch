@@ -159,10 +159,11 @@ Create a `.codefetchrc` file for project-specific settings:
 - `--project-tree-skip-ignore-files` - Include files ignored by git/config in the project tree
 - `--tracked-models` - Label the token summary with specific models
 - `--format` - Output format (markdown, json) (default: markdown)
+- `--enable-line-numbers` - Enable line numbers in output (disabled by default to save tokens)
 
 ### Advanced Options
 
-- `-p, --prompt` - Use a built-in prompt template
+- `-p, --prompt` - Add a prompt: inline text, built-in (fix, improve, codegen, testgen), or file (.md/.txt)
 - `--var` - Set template variables (e.g., --var PROJECT_NAME="My App")
 - `--token-limiter` - Token limiting strategy (truncated, spread)
 

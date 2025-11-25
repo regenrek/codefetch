@@ -181,14 +181,15 @@ line3`
       const markdown = await generateMarkdown(
         ["file1.js", "file2.js", "file3.js"],
         {
-          maxTokens: 30, // Limit that should only allow first file
+          maxTokens: 15, // Very low limit that should only allow first file
           tokenEncoder: "simple",
           tokenLimiter: "sequential",
+          disableLineNumbers: true, // Explicit for test consistency
         }
       );
 
       expect(markdown).toContain("file1.js");
-      // Later files should be skipped due to token limit
+      // With very low token limit, at most 2 files should fit
       const fileCount = (markdown.match(/file\d\.js/g) || []).length;
       expect(fileCount).toBeLessThanOrEqual(2);
     });

@@ -24,6 +24,7 @@ export interface CodefetchConfig {
   tokenCountOnly?: boolean;
   noSummary?: boolean;
   defaultPromptFile: string;
+  inlinePrompt?: string; // Direct prompt string instead of file
   defaultChat?: string;
   templateVars?: Record<string, string>;
   format?: OutputFormat;
@@ -44,7 +45,7 @@ export const getDefaultConfig = (): CodefetchConfig => ({
   tokenLimiter: "truncated",
   trackedModels: [],
   dryRun: false,
-  disableLineNumbers: false,
+  disableLineNumbers: true, // Line numbers disabled by default to save tokens
   tokenCountOnly: false,
   noSummary: false,
   defaultPromptFile: "default.md",

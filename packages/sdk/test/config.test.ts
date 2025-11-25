@@ -26,7 +26,7 @@ describe("SDK Config", () => {
       expect(config.verbose).toBe(1);
       expect(config.projectTree).toBe(2);
       expect(config.projectTreeSkipIgnoreFiles).toBe(false);
-      expect(config.disableLineNumbers).toBe(false);
+      expect(config.disableLineNumbers).toBe(true); // Line numbers disabled by default
       expect(config.tokenEncoder).toBe("simple");
       expect(config.tokenLimiter).toBe("truncated");
       expect(config.defaultPromptFile).toBe("default.md");

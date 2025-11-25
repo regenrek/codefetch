@@ -7,11 +7,22 @@
   - Project tree output now only shows files that would be included in the codebase analysis
   - This ensures consistency between the tree structure and the actual files processed
   - Added new `--project-tree-skip-ignore-files` flag to restore previous behavior (showing all files including ignored ones)
+- **BREAKING**: Line numbers are now disabled by default to save tokens
+  - Use `--enable-line-numbers` to enable line numbers in output
+  - Replaced `--disable-line-numbers` flag with `--enable-line-numbers`
+  - Config option `disableLineNumbers` now defaults to `true`
+- **BREAKING**: `--prompt` / `-p` now supports inline prompt strings
+  - Can now use `-p "Review this code for security issues"` directly
+  - Still supports built-in prompts (fix, improve, codegen, testgen) and file paths (.md/.txt)
 
 ### Added
 - Added `--project-tree-skip-ignore-files` flag to include ignored files in project tree output
   - Useful when you want to see the full directory structure even for files excluded by ignore patterns
   - When enabled, the tree will show all files regardless of `.gitignore`, `.codefetchignore`, or config filters
+- Added inline prompt support for `--prompt` / `-p` flag
+  - Use `-p "Your prompt text here"` to add a custom prompt directly from command line
+  - Inline prompts are automatically wrapped with `{{CURRENT_CODEBASE}}` placeholder
+- Added `--enable-line-numbers` flag to enable line numbers in output (disabled by default)
 
 ## 2.0.3
 

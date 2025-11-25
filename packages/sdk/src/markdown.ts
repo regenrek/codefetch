@@ -15,6 +15,7 @@ export interface MarkdownGeneratorOptions {
   disableLineNumbers?: boolean;
   tokenLimiter?: TokenLimiter;
   promptFile?: string;
+  inlinePrompt?: string; // Direct prompt string instead of file
   templateVars?: Record<string, string>;
   onVerbose?: (message: string, level: number) => void;
   projectTreeBaseDir?: string;
@@ -122,9 +123,10 @@ export async function generateMarkdown(
     verbose: _verbose = 0,
     projectTree = 0,
     tokenEncoder,
-    disableLineNumbers = false,
+    disableLineNumbers = true, // Default to true to save tokens
     tokenLimiter = "truncated",
     promptFile,
+    inlinePrompt,
     templateVars,
     onVerbose,
     projectTreeBaseDir,
@@ -138,8 +140,21 @@ export async function generateMarkdown(
     total: 0,
   };
 
-  // Get the prompt template (not replacement yet)
-  if (promptFile) {
+  // Handle inline prompt (direct string) or file-based prompt
+  if (inlinePrompt) {
+    onVerbose?.("Using inline prompt...", 2);
+    // For inline prompts, wrap with {{CURRENT_CODEBASE}} placeholder
+    promptTemplate = `${inlinePrompt}\n\n{{CURRENT_CODEBASE}}`;
+    const promptTokens = await countTokens(promptTemplate, tokenEncoder);
+
+    if (maxTokens && promptTokens > tokenCounter.remaining) {
+      onVerbose?.(`Prompt exceeds token limit, skipping`, 3);
+      return "";
+    }
+    tokenCounter.remaining -= promptTokens;
+    tokenCounter.total += promptTokens;
+    onVerbose?.(`Token used for inline prompt: ${promptTokens}`, 3);
+  } else if (promptFile) {
     onVerbose?.("Writing prompt template...", 2);
     const resolvedPrompt = await resolvePrompt(promptFile);
 
@@ -247,9 +262,9 @@ export async function generateMarkdown(
 
   onVerbose?.(`Final token count: ${tokenCounter.total}`, 2);
 
-  // Before final return, if we have a template with {{files}}, replace it
+  // Before final return, if we have a template with {{CURRENT_CODEBASE}}, replace it
   const content = markdownContent.join("\n");
-  return !promptFile || promptTemplate === ""
+  return promptTemplate === ""
     ? content
     : processPromptTemplate(promptTemplate, content, templateVars ?? {});
 }

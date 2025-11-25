@@ -98,11 +98,11 @@ describe("parseArgs", () => {
     expect(result.excludeFiles).toContain("test/**/*.ts");
   });
 
-  it("should parse disable-line-numbers flag", () => {
-    const args = ["--disable-line-numbers"];
+  it("should parse enable-line-numbers flag", () => {
+    const args = ["--enable-line-numbers"];
     const result = parseArgs(args);
 
-    expect(result.disableLineNumbers).toBe(true);
+    expect(result.disableLineNumbers).toBe(false);
   });
 
   it("should parse tracked-models option into an array", () => {
@@ -112,11 +112,35 @@ describe("parseArgs", () => {
     expect(result.trackedModels).toEqual(["gpt-4o", "claude-3.5-sonnet"]);
   });
 
-  it("should default disable-line-numbers to false when not specified", () => {
+  it("should default disableLineNumbers to true when not specified (line numbers disabled by default)", () => {
     const args = ["-o", "output.md"];
     const result = parseArgs(args);
 
-    expect(result.disableLineNumbers).toBe(false);
+    expect(result.disableLineNumbers).toBe(true);
+  });
+
+  it("should parse inline prompt string", () => {
+    const args = ["-p", "Review this code for security issues"];
+    const result = parseArgs(args);
+
+    expect(result.inlinePrompt).toBe("Review this code for security issues");
+    expect(result.defaultPromptFile).toBeUndefined();
+  });
+
+  it("should parse built-in prompt name", () => {
+    const args = ["-p", "fix"];
+    const result = parseArgs(args);
+
+    expect(result.defaultPromptFile).toBe("fix");
+    expect(result.inlinePrompt).toBeUndefined();
+  });
+
+  it("should parse prompt file path", () => {
+    const args = ["--prompt", "custom-prompt.md"];
+    const result = parseArgs(args);
+
+    expect(result.defaultPromptFile).toBe("custom-prompt.md");
+    expect(result.inlinePrompt).toBeUndefined();
   });
 
   it("should parse no-summary flag", () => {
@@ -140,7 +164,7 @@ describe("parseArgs", () => {
     const args = [
       "-o",
       "output.md",
-      "--disable-line-numbers",
+      "--enable-line-numbers",
       "--max-pages",
       "50",
       "--max-depth",
@@ -154,7 +178,7 @@ describe("parseArgs", () => {
 
     expect(result).toMatchObject({
       outputFile: "output.md",
-      disableLineNumbers: true,
+      disableLineNumbers: false, // --enable-line-numbers sets this to false
       maxPages: 50,
       maxDepth: 3,
       tokenEncoder: "cl100k",

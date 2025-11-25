@@ -7,6 +7,9 @@
   - Added new `generateProjectTreeFromFiles` function that builds tree from filtered file list
   - Project tree now only shows files that would be included in codebase analysis
   - Added `projectTreeSkipIgnoreFiles` option to `MarkdownGeneratorOptions` to restore previous behavior
+- **BREAKING**: `disableLineNumbers` now defaults to `true` to save tokens
+  - Line numbers in code output are now disabled by default
+  - Set `disableLineNumbers: false` to enable line numbers
 
 ### Added
 - Added `generateProjectTreeFromFiles` function to generate project tree from a filtered file list
@@ -15,6 +18,9 @@
 - Added `projectTreeSkipIgnoreFiles` option to `MarkdownGeneratorOptions` interface
   - When `true`, uses original `generateProjectTree` behavior (shows all files)
   - When `false` (default), uses `generateProjectTreeFromFiles` (respects ignore patterns)
+- Added `inlinePrompt` option to `MarkdownGeneratorOptions` interface
+  - Allows passing a prompt string directly instead of a file path
+  - Inline prompts are automatically wrapped with `{{CURRENT_CODEBASE}}` placeholder
 
 ### Fixed
 - Fixed file inclusion/exclusion patterns not working correctly with absolute paths

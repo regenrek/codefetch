@@ -17,7 +17,7 @@ export function parseArgs(args: string[]) {
     },
     boolean: [
       "dry-run",
-      "disable-line-numbers",
+      "enable-line-numbers",
       "token-count-only",
       "summary",
       "stdout",
@@ -110,17 +110,25 @@ export function parseArgs(args: string[]) {
     );
   }
 
-  // handle --prompt & -p (if only -p then use default)
-  // set argv.prompt to undefined if true then its get overwritten by config default prpmpt
-  const defaultPromptFile = argv.prompt === "" ? undefined : argv.prompt;
-  if (defaultPromptFile !== undefined) {
-    const isValidPrompt =
-      VALID_PROMPTS.has(argv.prompt) || /\.(md|txt)$/.test(argv.prompt);
+  // handle --prompt & -p
+  // Supports: built-in prompts (fix, improve, etc.), file paths (.md/.txt), or inline strings
+  let defaultPromptFile: string | undefined;
+  let inlinePrompt: string | undefined;
 
-    if (!isValidPrompt) {
-      throw new Error(
-        `Invalid prompt. Must be one of: ${[...VALID_PROMPTS].join(", ")} or a file with .md/.txt extension`
-      );
+  if (argv.prompt !== undefined && argv.prompt !== "" && argv.prompt !== true) {
+    const promptValue = String(argv.prompt);
+
+    // Check if it's a built-in prompt
+    if (VALID_PROMPTS.has(promptValue)) {
+      defaultPromptFile = promptValue;
+    }
+    // Check if it's a file path (.md or .txt)
+    else if (/\.(md|txt)$/.test(promptValue)) {
+      defaultPromptFile = promptValue;
+    }
+    // Otherwise treat as inline prompt string
+    else {
+      inlinePrompt = promptValue;
     }
   }
 
@@ -182,12 +190,14 @@ export function parseArgs(args: string[]) {
       trackedModels: splitValues(argv["tracked-models"]),
     }),
     ...(defaultPromptFile && { defaultPromptFile }),
+    ...(inlinePrompt && { inlinePrompt }),
     ...(Object.keys(templateVars).length > 0 && { templateVars }),
     verbose,
     projectTree: treeDepth,
 
     dryRun: Boolean(argv["dry-run"] || isStdout),
-    disableLineNumbers: Boolean(argv["disable-line-numbers"]),
+    // Line numbers are disabled by default to save tokens; use --enable-line-numbers to enable
+    disableLineNumbers: !argv["enable-line-numbers"],
     tokenCountOnly: Boolean(argv["token-count-only"]),
     ...(argv.format && { format: argv.format as "markdown" | "json" }),
 

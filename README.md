@@ -19,7 +19,7 @@ Codefetch is a powerful tool that converts git repositories and local codebases 
 - 💾 **Intelligent Caching** - Speed up repeated fetches with smart caching
 - 🌲 **Project Structure Visualization** - Generate tree views of your codebase
 - ⚡ **GitHub API Integration** - Fetch repos without git using the GitHub API
-- 🌐 **Open & Send to AI** - Generate codebase, copy to clipboard, and open AI chat in browser
+- 🌐 **Open & Send to GPT/Gemini/Claude** - Generate codebase, copy to clipboard, and open ChatGPT, Gemini, or Claude in browser
 
 Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 
@@ -29,7 +29,7 @@ Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898
 # Analyze current directory
 npx codefetch
 
-# Generate codebase, copy to clipboard, and open ChatGPT
+# Generate codebase, copy to clipboard, and open ChatGPT with GPT 5.1 Pro
 npx codefetch open
 
 # Analyze a GitHub repo (uses API - no git needed!)
@@ -76,15 +76,18 @@ npx codefetch -e ts,tsx -t 3
 npx codefetch -p improve --max-tokens 50000
 ```
 
-### Open & Send to AI Chat
+### Open & Send to GPT/Gemini/Claude
 
-The `open` command generates your codebase, copies it to clipboard, and opens your AI chat in the browser:
+The `open` command generates your codebase, copies it to clipboard, and opens ChatGPT, Gemini, Claude, or other AI chats in the browser:
 
 ```bash
-# Default: opens ChatGPT with gpt-5-1-pro model
+# Default: opens ChatGPT with GPT 5.1 Pro model
 npx codefetch open
 
-# Custom AI chat URL and model
+# Open Gemini 3.0
+npx codefetch open --chat-url gemini.google.com --chat-model gemini-3.0
+
+# Open Claude Sonnet
 npx codefetch open --chat-url claude.ai --chat-model claude-3.5-sonnet
 
 # Combine with codefetch options (e.g., filter by extension)
@@ -196,12 +199,12 @@ If no output file is specified (`-o` or `--output`), it will print to `codefetch
 
 ### Open Command Options
 
-The `open` subcommand generates codebase, copies to clipboard, and opens AI chat in browser:
+The `open` subcommand generates codebase, copies to clipboard, and opens ChatGPT, Gemini, Claude, or other AI chats in browser:
 
 | Option                      | Description                                                                    |
 | --------------------------- | ------------------------------------------------------------------------------ |
-| `--chat-url <url>`          | AI chat URL (default: chatgpt.com)                                            |
-| `--chat-model <model>`      | Model parameter for URL (default: gpt-5-1-pro)                                |
+| `--chat-url <url>`          | AI chat URL (default: chatgpt.com) - supports ChatGPT, Gemini, Claude, etc.  |
+| `--chat-model <model>`      | Model parameter for URL (default: gpt-5-1-pro) - e.g., gpt-5-1-pro, gemini-3.0, claude-3.5-sonnet |
 | `--chat-prompt <text>`      | Message shown after opening (default: "Your codebase is in your clipboard...") |
 | `--no-browser`              | Skip opening browser, just copy to clipboard                                  |
 | `--copy`                    | Copy output to clipboard (works on macOS, Windows, and Linux)                 |
@@ -371,30 +374,36 @@ This ensures that:
 
 Add `codefetch/` to your `.gitignore` file to avoid committing the fetched codebase.
 
-## Use with AI Tools
+## Use with GPT, Gemini, Claude, and Other AI Models
 
-You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask the AI chat for guidance about your codebase.
+You can use this command to create code-to-markdown in [bolt.new](https://bolt.new), [cursor.com](https://cursor.com), ... and ask GPT 5.1 Pro, Gemini 3.0, Claude, or other AI models for guidance about your codebase.
 
-### Quick Workflow: Open & Send to GPT
+### Quick Workflow: Open & Send to GPT 5.1 Pro, Gemini 3.0, or Claude
 
-The fastest way to get your codebase into an AI chat:
+The fastest way to get your codebase into ChatGPT, Gemini, Claude, or other AI chats:
 
 ```bash
-# Generate codebase, copy to clipboard, and open ChatGPT
+# Generate codebase, copy to clipboard, and open ChatGPT with GPT 5.1 Pro
 npx codefetch open
 
+# Open Gemini 3.0 instead
+npx codefetch open --chat-url gemini.google.com --chat-model gemini-3.0
+
+# Open Claude Sonnet
+npx codefetch open --chat-url claude.ai --chat-model claude-3.5-sonnet
+
 # Your codebase is automatically copied to clipboard
-# ChatGPT opens with the model pre-selected (gpt-5-1-pro)
+# The AI chat opens with the model pre-selected (GPT 5.1 Pro, Gemini 3.0, etc.)
 # Just paste (Cmd/Ctrl+V) and start chatting!
 ```
 
 This workflow:
 1. ✅ Generates your codebase as markdown
 2. ✅ Copies it to your clipboard automatically
-3. ✅ Opens ChatGPT (or your preferred AI chat) in your browser
+3. ✅ Opens ChatGPT (GPT 5.1 Pro), Gemini 3.0, Claude, or your preferred AI chat in your browser
 4. ✅ Pre-fills the model parameter in the URL
 
-Perfect for quick code reviews, refactoring suggestions, or getting help with your codebase!
+Perfect for quick code reviews, refactoring suggestions, or getting help with your codebase from GPT 5.1 Pro, Gemini 3.0, Claude, and other leading AI models!
 
 ## Packages
 

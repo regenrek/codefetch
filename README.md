@@ -19,7 +19,7 @@ Codefetch is a powerful tool that converts git repositories and local codebases 
 - 💾 **Intelligent Caching** - Speed up repeated fetches with smart caching
 - 🌲 **Project Structure Visualization** - Generate tree views of your codebase
 - ⚡ **GitHub API Integration** - Fetch repos without git using the GitHub API
-- 🌐 **Open & Send to GPT/Gemini/Claude** - Generate codebase, copy to clipboard, and open ChatGPT, Gemini, or Claude in browser
+- 🌐 **Open & Send to GPT 5.1 Pro/Gemini 3.0/Claude** - Generate codebase, copy to clipboard, and open ChatGPT, Gemini, or Claude in browser
 
 Click here for a [Demo & Videos](https://x.com/kregenrek/status/1878487131099898269)
 

@@ -206,7 +206,9 @@ describe("File Collection", () => {
     test("should combine includeDirs and includeFiles additively", async () => {
       // Create directory structure simulating a real project
       await mkdir(join(tempDir, "crates", "core", "src"), { recursive: true });
-      await mkdir(join(tempDir, "crates", "engine", "src"), { recursive: true });
+      await mkdir(join(tempDir, "crates", "engine", "src"), {
+        recursive: true,
+      });
       await mkdir(join(tempDir, "crates", "utils", "src"), { recursive: true });
       await mkdir(join(tempDir, "src"), { recursive: true });
 

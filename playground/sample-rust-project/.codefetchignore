@@ -1,0 +1,5 @@
+# Codefetch specific ignores
+*.log
+temp/
+cache/
+secret.rs

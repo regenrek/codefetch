@@ -203,6 +203,69 @@ describe("File Collection", () => {
       expect(relativePaths).not.toContain("src/lib/other.ts");
     });
 
+    test("should combine includeDirs and includeFiles additively", async () => {
+      // Create directory structure simulating a real project
+      await mkdir(join(tempDir, "crates", "core", "src"), { recursive: true });
+      await mkdir(join(tempDir, "crates", "engine", "src"), { recursive: true });
+      await mkdir(join(tempDir, "crates", "utils", "src"), { recursive: true });
+      await mkdir(join(tempDir, "src"), { recursive: true });
+
+      // Files in core (should be included via includeDirs)
+      await writeFile(
+        join(tempDir, "crates", "core", "src", "lib.rs"),
+        "core lib"
+      );
+      await writeFile(
+        join(tempDir, "crates", "core", "src", "types.rs"),
+        "core types"
+      );
+
+      // Files in engine (should be included via includeFiles - single file)
+      await writeFile(
+        join(tempDir, "crates", "engine", "src", "lib.rs"),
+        "engine lib"
+      );
+      await writeFile(
+        join(tempDir, "crates", "engine", "src", "other.rs"),
+        "engine other"
+      );
+
+      // Files in utils (should NOT be included)
+      await writeFile(
+        join(tempDir, "crates", "utils", "src", "helpers.rs"),
+        "utils helpers"
+      );
+
+      // Root src files (should NOT be included)
+      await writeFile(join(tempDir, "src", "main.rs"), "main");
+
+      const files = await collectFiles(tempDir, {
+        ig,
+        extensionSet: null,
+        excludeFiles: null,
+        includeFiles: [join(tempDir, "crates", "engine", "src", "lib.rs")],
+        excludeDirs: null,
+        includeDirs: [join(tempDir, "crates", "core", "src")],
+        verbose: 0,
+      });
+
+      // Should include: core/src/* (2 files) + engine/src/lib.rs (1 file) = 3 files
+      expect(files).toHaveLength(3);
+      const relativePaths = files
+        .map((f) => getRelativePath(f, tempDir))
+        .sort();
+      expect(relativePaths).toEqual([
+        "crates/core/src/lib.rs",
+        "crates/core/src/types.rs",
+        "crates/engine/src/lib.rs",
+      ]);
+
+      // Should NOT include files from other directories
+      expect(relativePaths).not.toContain("crates/engine/src/other.rs");
+      expect(relativePaths).not.toContain("crates/utils/src/helpers.rs");
+      expect(relativePaths).not.toContain("src/main.rs");
+    });
+
     test("should handle exclude files pattern", async () => {
       await writeFile(join(tempDir, "file1.js"), "content1");
       await writeFile(join(tempDir, "file2.test.js"), "content2");

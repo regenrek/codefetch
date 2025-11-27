@@ -50,17 +50,6 @@ export async function collectFiles(
   // Build glob patterns
   const patterns: string[] = [];
 
-  // Handle include directories
-  if (includeDirs?.length) {
-    patterns.push(
-      ...includeDirs.map(
-        (dir) => `${escapeGlobPath(toRelativePattern(dir))}/**/*`
-      )
-    );
-  } else {
-    patterns.push("**/*");
-  }
-
   // Handle exclude directories
   const ignore = [
     ...(excludeDirs?.map(
@@ -72,29 +61,48 @@ export async function collectFiles(
     }) || []),
   ];
 
-  // Handle file extensions
-  if (extensionSet) {
-    const exts = [...extensionSet];
-    patterns.length = 0; // Clear patterns if we have specific extensions
-    if (includeDirs?.length) {
-      for (const dir of includeDirs) {
-        for (const ext of exts) {
-          patterns.push(`${escapeGlobPath(toRelativePattern(dir))}/**/*${ext}`);
-        }
-      }
-    } else {
-      for (const ext of exts) {
+  // Determine if we have any include filters
+  const hasIncludeDirs = includeDirs?.length;
+  const hasIncludeFiles = includeFiles?.length;
+  const hasExtensions = extensionSet && extensionSet.size > 0;
+
+  // If no include filters specified, include everything
+  if (!hasIncludeDirs && !hasIncludeFiles) {
+    if (hasExtensions) {
+      // Only specific extensions from everywhere
+      for (const ext of extensionSet!) {
         patterns.push(`**/*${ext}`);
       }
+    } else {
+      // Everything
+      patterns.push("**/*");
     }
-  }
+  } else {
+    // Build patterns from includeDirs
+    if (hasIncludeDirs) {
+      if (hasExtensions) {
+        // Specific extensions from specific directories
+        for (const dir of includeDirs!) {
+          for (const ext of extensionSet!) {
+            patterns.push(
+              `${escapeGlobPath(toRelativePattern(dir))}/**/*${ext}`
+            );
+          }
+        }
+      } else {
+        // All files from specific directories
+        patterns.push(
+          ...includeDirs!.map(
+            (dir) => `${escapeGlobPath(toRelativePattern(dir))}/**/*`
+          )
+        );
+      }
+    }
 
-  // Handle include files
-  if (includeFiles?.length) {
-    patterns.length = 0; // Clear patterns if we have specific files
-    // Convert absolute paths to relative paths relative to baseDir for fast-glob
-    // fast-glob works better with relative paths when cwd is set
-    patterns.push(...includeFiles.map((file) => toRelativePattern(file)));
+    // Add specific includeFiles patterns (additive, not replacing)
+    if (hasIncludeFiles) {
+      patterns.push(...includeFiles!.map((file) => toRelativePattern(file)));
+    }
   }
 
   logVerbose(`Scanning with patterns: ${patterns.join(", ")}`, 2);

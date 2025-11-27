@@ -49,8 +49,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1(magicast@0.3.5)
       codefetch-sdk:
-        specifier: workspace:*
-        version: link:../sdk
+        specifier: ^2.1.0
+        version: 2.1.2(magicast@0.3.5)
       consola:
         specifier: ^3.3.3
         version: 3.3.3
@@ -101,8 +101,8 @@ importers:
         specifier: ^1.13.2
         version: 1.13.2
       codefetch-sdk:
-        specifier: workspace:*
-        version: link:../sdk
+        specifier: ^2.1.0
+        version: 2.1.2(magicast@0.3.5)
 
   packages/sdk:
     dependencies:
@@ -1704,6 +1704,9 @@ packages:
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
+
+  codefetch-sdk@2.1.2:
+    resolution: {integrity: sha512-h3y8BJhwkfV++8rdi1XVddTkzoE6aWInTuPNAS2up4ZnWzTKOiZl7uso+BvJ1ohf3pcYlUDD5I48F1uUjHysiw==}
 
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
@@ -5075,6 +5078,19 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
+
+  codefetch-sdk@2.1.2(magicast@0.3.5):
+    dependencies:
+      adm-zip: 0.5.16
+      c12: 2.0.1(magicast@0.3.5)
+      consola: 3.4.2
+      defu: 6.1.4
+      fast-glob: 3.3.3
+      ignore: 7.0.0
+      js-tiktoken: 1.0.16
+      pathe: 2.0.3
+    transitivePeerDependencies:
+      - magicast
 
   color-convert@2.0.1:
     dependencies:

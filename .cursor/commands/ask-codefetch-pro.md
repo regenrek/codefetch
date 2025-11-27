@@ -1,3 +1,8 @@
+---
+description: Generate codebase with codefetch, copy to clipboard, and open AI chat
+argument-hint: [PROMPT=<task-description>]
+---
+
 # Ask Codefetch Pro
 
 Generate codebase, copy to clipboard, open AI chat.
@@ -16,18 +21,6 @@ npx codefetch open --max-tokens 50000 \
   --token-encoder o200k \
   --project-tree 3 \
   --include-files "src/**/*.ts"
-
-# Gemini
-npx codefetch open --chat-url gemini.google.com --chat-model gemini-3.0 \
-  --max-tokens 50000 --include-files "src/**/*.ts"
-
-# Claude
-npx codefetch open --chat-url claude.ai --chat-model claude-3.5-sonnet \
-  --max-tokens 50000 --include-files "src/**/*.ts"
-
-# Copy only (no browser)
-npx codefetch open --no-browser --max-tokens 50000 --include-files "src/**/*.ts"
-```
 
 ## Options
 

@@ -49,8 +49,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1(magicast@0.3.5)
       codefetch-sdk:
-        specifier: ^2.1.0
-        version: 2.1.2(magicast@0.3.5)
+        specifier: workspace:*
+        version: link:../sdk
       consola:
         specifier: ^3.3.3
         version: 3.3.3

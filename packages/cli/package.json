@@ -41,7 +41,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "c12": "^2.0.1",
-    "codefetch-sdk": "^2.1.0",
+    "codefetch-sdk": "workspace:*",
     "consola": "^3.3.3",
     "ignore": "^7.0.0",
     "mri": "^1.2.0",

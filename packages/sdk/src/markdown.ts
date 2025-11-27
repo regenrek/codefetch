@@ -147,8 +147,8 @@ export async function generateMarkdown(
   // Handle inline prompt (direct string) or file-based prompt
   if (inlinePrompt) {
     onVerbose?.("Using inline prompt...", 2);
-    // For inline prompts, wrap with {{CURRENT_CODEBASE}} placeholder
-    promptTemplate = `${inlinePrompt}\n\n{{CURRENT_CODEBASE}}`;
+    // For inline prompts, wrap in <task> tags with {{CURRENT_CODEBASE}} placeholder
+    promptTemplate = `<task>\n${inlinePrompt}\n</task>\n\n{{CURRENT_CODEBASE}}`;
     const promptTokens = await countTokens(promptTemplate, tokenEncoder);
 
     if (maxTokens && promptTokens > tokenCounter.remaining) {
@@ -189,18 +189,22 @@ export async function generateMarkdown(
     const tree = projectTreeSkipIgnoreFiles
       ? generateProjectTree(treeBaseDir, projectTree)
       : generateProjectTreeFromFiles(treeBaseDir, files, projectTree);
-    const treeTokens = await countTokens(tree, tokenEncoder);
+    const treeWithTags = `<filetree>\n${tree}\n</filetree>`;
+    const treeTokens = await countTokens(treeWithTags, tokenEncoder);
 
     if (maxTokens && treeTokens > tokenCounter.remaining) {
       onVerbose?.(`Tree exceeds token limit, skipping`, 3);
       return "";
     }
 
-    markdownContent.push(tree, "");
+    markdownContent.push(treeWithTags, "");
     tokenCounter.remaining -= treeTokens;
     tokenCounter.total += treeTokens;
     onVerbose?.(`Tokens used for tree: ${treeTokens}`, 3);
   }
+
+  // Start source_code section
+  markdownContent.push("<source_code>");
 
   if (tokenLimiter === "truncated" && maxTokens) {
     // Calculate tokens per file to distribute evenly
@@ -264,6 +268,9 @@ export async function generateMarkdown(
     }
   }
 
+  // Close source_code section
+  markdownContent.push("</source_code>");
+
   onVerbose?.(`Final token count: ${tokenCounter.total}`, 2);
 
   // Before final return, process template with codebase content
@@ -274,17 +281,17 @@ export async function generateMarkdown(
   }
 
   // If prompt template has {{CURRENT_CODEBASE}} placeholder, use template processing
-  // Otherwise, prepend the prompt to the codebase content
+  // Otherwise, wrap the prompt in <task> tags and prepend to content
   if (hasCodebasePlaceholder(promptTemplate)) {
     return processPromptTemplate(promptTemplate, content, templateVars ?? {});
   } else {
-    // Process any other variables in the template, then prepend to content
+    // Process any other variables in the template, then wrap in <task> tags and prepend
     const processedPrompt = await processPromptTemplate(
       promptTemplate,
       "",
       templateVars ?? {}
     );
-    return processedPrompt.trim() + "\n\n" + content;
+    return `<task>\n${processedPrompt.trim()}\n</task>\n\n${content}`;
   }
 }
 

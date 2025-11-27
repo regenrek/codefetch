@@ -8,7 +8,8 @@ const UTILS_DIR = join(FIXTURE_DIR, "src/utils");
 
 describe("generateMarkdown with chunk-based token limit", () => {
   it("enforces maxTokens by chunk-based reading", async () => {
-    const MAX_TOKENS = 50;
+    // Note: XML tags (<source_code>, </source_code>) add ~4 tokens overhead
+    const MAX_TOKENS = 55;
     const files = [join(UTILS_DIR, "test1.ts"), join(UTILS_DIR, "test2.js")];
 
     const result = await generateMarkdown(files, {
@@ -72,6 +73,12 @@ describe("generateMarkdown with chunk-based token limit", () => {
       disableLineNumbers: false,
     });
 
+    // Check for XML tags
+    expect(markdown).toContain("<filetree>");
+    expect(markdown).toContain("</filetree>");
+    expect(markdown).toContain("<source_code>");
+    expect(markdown).toContain("</source_code>");
+    // Check content
     expect(markdown).toContain("Project Structure:");
     expect(markdown).toMatch(/└── /);
     expect(markdown).toContain("test1.ts");
@@ -81,8 +88,9 @@ describe("generateMarkdown with chunk-based token limit", () => {
   it("respects token limits with project tree", async () => {
     const files = [join(UTILS_DIR, "test1.ts")];
 
+    // Note: XML tags (<filetree>, <source_code>) add overhead
     const markdown = await generateMarkdown(files, {
-      maxTokens: 20,
+      maxTokens: 40,
       verbose: 0,
       projectTree: 2,
       tokenEncoder: "simple",
@@ -90,7 +98,7 @@ describe("generateMarkdown with chunk-based token limit", () => {
     });
 
     const tokens = await countTokens(markdown, "simple");
-    expect(tokens).toBeLessThanOrEqual(20);
+    expect(tokens).toBeLessThanOrEqual(40);
   });
 });
 

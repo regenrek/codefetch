@@ -160,6 +160,13 @@ Delete the GitHub Release if needed: `gh release delete vX.Y.Z`
 - `npm ERR! code E403` or auth failures: run `npm login` and retry
 - `gh` failures: `gh auth status`; ensure `repo` scope exists
 - Tag push rejected: pull/rebase or fast-forward `main`, then rerun
+- **CI fails with `ERR_PNPM_OUTDATED_LOCKFILE`**: The lockfile is out of sync with `package.json`. This happens when dependencies change (e.g., `workspace:*` → `^2.1.0`). Fix it locally:
+  ```bash
+  pnpm install --no-frozen-lockfile
+  git add pnpm-lock.yaml
+  git commit -m "chore: update pnpm-lock.yaml"
+  git push
+  ```
 
 ## Release Frequency Suggestions
 

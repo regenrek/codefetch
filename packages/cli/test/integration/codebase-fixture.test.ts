@@ -267,4 +267,87 @@ describe("Integration: codebase-test fixture", () => {
     expect(content).toContain("button.js");
     expect(content).toContain("utils");
   });
+
+  it("combines --include-dir and --include-files additively", () => {
+    const result = spawnSync(
+      "node",
+      [
+        cliPath,
+        "-o",
+        "combined-include.md",
+        "--include-dir",
+        "src/utils",
+        "--include-files",
+        "src/components/button.js",
+        "-t",
+        "3",
+      ],
+      {
+        cwd: FIXTURE_DIR,
+        encoding: "utf8",
+        stdio: ["inherit", "pipe", "pipe"],
+      }
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Output written to");
+
+    const outPath = join(CODEFETCH_DIR, "combined-include.md");
+    expect(fs.existsSync(outPath)).toBe(true);
+
+    const content = fs.readFileSync(outPath, "utf8");
+    // Should include files from utils directory (via --include-dir)
+    expect(content).toContain("test1.ts");
+    expect(content).toContain("test2.js");
+    // Should include specific file (via --include-files)
+    expect(content).toContain("button.js");
+    // Should NOT include other files not matching the patterns
+    expect(content).not.toContain("app.js");
+    expect(content).not.toContain("header.js");
+    expect(content).not.toContain("container.js");
+    // Project tree should be present
+    expect(content).toMatch(/Project Structure:/);
+  });
+
+  it("combines multiple --include-dir directories with --include-files", () => {
+    const result = spawnSync(
+      "node",
+      [
+        cliPath,
+        "-o",
+        "multi-dir-include.md",
+        "--include-dir",
+        "src/utils,src/components/base",
+        "--include-files",
+        "src/app.js",
+        "-t",
+        "3",
+      ],
+      {
+        cwd: FIXTURE_DIR,
+        encoding: "utf8",
+        stdio: ["inherit", "pipe", "pipe"],
+      }
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("Output written to");
+
+    const outPath = join(CODEFETCH_DIR, "multi-dir-include.md");
+    expect(fs.existsSync(outPath)).toBe(true);
+
+    const content = fs.readFileSync(outPath, "utf8");
+    // Should include files from utils directory
+    expect(content).toContain("test1.ts");
+    expect(content).toContain("test2.js");
+    // Should include files from components/base directory
+    expect(content).toContain("container.js");
+    // Should include the specific file app.js
+    expect(content).toContain("app.js");
+    // Should NOT include files from other directories
+    expect(content).not.toContain("button.js");
+    expect(content).not.toContain("header.js");
+    // Project tree should be present
+    expect(content).toMatch(/Project Structure:/);
+  });
 });

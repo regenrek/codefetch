@@ -129,6 +129,10 @@ npx codefetch --include-files "src/components/AgentPanel.tsx,src/lib/llm/**/*" -
 
 # Include src directory, exclude test files
 npx codefetch --include-dir src --exclude-files "*.test.ts" -o src-no-tests.md
+
+# Combine --include-dir and --include-files (additive!)
+# This includes ALL files from crates/core/src PLUS the specific lib.rs file
+npx codefetch --include-dir crates/core/src --include-files "crates/engine/src/lib.rs" -o combined.md
 ```
 
 Dry run (only output to console)
@@ -289,10 +293,20 @@ Inline prompts are automatically appended with the codebase content.
 
 #### Custom Prompt Files
 
-Create custom prompts in `codefetch/prompts/` directory:
+You can use custom prompt files in two ways:
 
-1. Create a markdown file (e.g., `codefetch/prompts/my-prompt.md`)
-2. Use it with `--prompt my-prompt.md`
+**1. External prompt files (anywhere in your project):**
+```bash
+# Use a prompt file from anywhere in your project
+npx codefetch -p docs/arch/review-prompt.md
+npx codefetch --prompt ./prompts/security-audit.txt
+```
+
+**2. Prompt files in `codefetch/prompts/` directory:**
+```bash
+# Create codefetch/prompts/my-prompt.md, then use:
+npx codefetch --prompt my-prompt.md
+```
 
 You can also set a default prompt in your `codefetch.config.mjs`:
 
@@ -343,6 +357,41 @@ The `.codefetchignore` file works exactly like `.gitignore` and is useful when y
 Codefetch uses a set of default ignore patterns to exclude common files and directories that typically don't need to be included in code reviews or LLM analysis.
 
 You can view the complete list of default patterns in [default-ignore.ts](packages/sdk/src/default-ignore.ts).
+
+## Output Format
+
+Codefetch generates structured output using semantic XML tags to help AI models better understand the different sections:
+
+```xml
+<task>
+Your prompt or instructions here...
+</task>
+
+<filetree>
+Project Structure:
+└── src
+    ├── index.ts
+    └── utils
+        └── helpers.ts
+</filetree>
+
+<source_code>
+src/index.ts
+```typescript
+// Your code here
+```
+
+src/utils/helpers.ts
+```typescript
+// More code here
+```
+</source_code>
+```
+
+The XML structure provides:
+- `<task>` - Contains your prompt/instructions (from `-p` flag)
+- `<filetree>` - Contains the project tree visualization (from `-t` flag)
+- `<source_code>` - Contains all the source code files with their paths
 
 ## Token Counting
 

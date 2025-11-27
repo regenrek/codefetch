@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0
+
+### Added
+- **XML-structured output format** - Output now uses semantic XML tags for better AI parsing:
+  - `<task>...</task>` - Wraps the prompt/instructions
+  - `<filetree>...</filetree>` - Wraps the project tree structure
+  - `<source_code>...</source_code>` - Wraps all source code files
+- **External prompt file support** - Prompt files with paths (e.g., `-p docs/arch/prompt.md`) are now correctly resolved from the project root
+
+### Fixed
+- Fixed `getPromptFile` not resolving external file paths correctly when they contain directory separators
+
 ## 2.1.2
 
 ### Fixed

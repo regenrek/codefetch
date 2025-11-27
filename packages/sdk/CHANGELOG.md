@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.0
+
+### Added
+- **XML-structured output format** - Output now uses semantic XML tags for better AI parsing:
+  - `<task>...</task>` - Wraps the prompt/instructions
+  - `<filetree>...</filetree>` - Wraps the project tree structure
+  - `<source_code>...</source_code>` - Wraps all source code files
+- **Additive `includeDirs` and `includeFiles`** - These options now work together additively instead of being mutually exclusive
+- Added `hasCodebasePlaceholder` helper function to `template-parser.ts`
+
+### Fixed
+- Fixed `collectFiles` treating `includeDirs` and `includeFiles` as mutually exclusive - now they combine additively
+- Fixed `processPromptTemplate` to prepend prompts without `{{CURRENT_CODEBASE}}` placeholder to the codebase content instead of replacing it
+
 ## 2.0.4
 
 ### Added

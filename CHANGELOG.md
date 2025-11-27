@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.2.0
+
+### Added
+- **XML-structured output format** - Output now uses semantic XML tags for better AI parsing:
+  - `<task>...</task>` - Wraps the prompt/instructions
+  - `<filetree>...</filetree>` - Wraps the project tree structure
+  - `<source_code>...</source_code>` - Wraps all source code files
+- **Additive `--include-dir` and `--include-files`** - These options now work together additively instead of being mutually exclusive. Use both to include specific directories PLUS specific files.
+- **External prompt file support** - Prompt files with paths (e.g., `-p docs/arch/prompt.md`) are now correctly resolved from the project root instead of requiring them to be in `codefetch/prompts/`
+
+### Fixed
+- Fixed `--include-dir` and `--include-files` being mutually exclusive - now they combine additively
+- Fixed external prompt file paths not being found when containing directory separators
+- Fixed prompts without `{{CURRENT_CODEBASE}}` placeholder not including the codebase content
+
 ## 2.1.2
 
 ### Fixed

@@ -35,6 +35,15 @@ function getPromptFile(
   if (VALID_PROMPTS.has(config.defaultPromptFile)) {
     return config.defaultPromptFile;
   }
+  // Check if it's an external file path (contains path separator or is absolute)
+  // External paths should be used as-is, not nested under codefetch/prompts/
+  if (
+    config.defaultPromptFile.includes("/") ||
+    config.defaultPromptFile.includes("\\") ||
+    config.defaultPromptFile.startsWith(".")
+  ) {
+    return resolve(config.defaultPromptFile);
+  }
   return resolve(config.outputPath, "prompts", config.defaultPromptFile);
 }
 

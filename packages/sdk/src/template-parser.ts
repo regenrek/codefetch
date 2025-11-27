@@ -27,10 +27,17 @@ export async function processPromptTemplate(
     result = result.replace(new RegExp(`{{${key}}}`, "g"), value);
   }
 
-  // Always process CURRENT_CODEBASE first
+  // Replace CURRENT_CODEBASE placeholder with codebase content
   result = result.replace(/{{CURRENT_CODEBASE}}/g, codebase);
 
   return result;
+}
+
+/**
+ * Check if a template contains the CURRENT_CODEBASE placeholder
+ */
+export function hasCodebasePlaceholder(template: string): boolean {
+  return template.includes("{{CURRENT_CODEBASE}}");
 }
 
 export async function resolvePrompt(

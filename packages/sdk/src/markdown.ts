@@ -3,7 +3,11 @@ import { relative } from "pathe";
 import type { TokenEncoder, TokenLimiter } from "./types";
 import { generateProjectTree, generateProjectTreeFromFiles } from "./tree";
 import { countTokens } from "./token-counter";
-import { processPromptTemplate, resolvePrompt } from "./template-parser";
+import {
+  processPromptTemplate,
+  resolvePrompt,
+  hasCodebasePlaceholder,
+} from "./template-parser";
 
 const CHUNK_SIZE = 64 * 1024; // 64KB optimal chunk size
 
@@ -262,11 +266,26 @@ export async function generateMarkdown(
 
   onVerbose?.(`Final token count: ${tokenCounter.total}`, 2);
 
-  // Before final return, if we have a template with {{CURRENT_CODEBASE}}, replace it
+  // Before final return, process template with codebase content
   const content = markdownContent.join("\n");
-  return promptTemplate === ""
-    ? content
-    : processPromptTemplate(promptTemplate, content, templateVars ?? {});
+
+  if (promptTemplate === "") {
+    return content;
+  }
+
+  // If prompt template has {{CURRENT_CODEBASE}} placeholder, use template processing
+  // Otherwise, prepend the prompt to the codebase content
+  if (hasCodebasePlaceholder(promptTemplate)) {
+    return processPromptTemplate(promptTemplate, content, templateVars ?? {});
+  } else {
+    // Process any other variables in the template, then prepend to content
+    const processedPrompt = await processPromptTemplate(
+      promptTemplate,
+      "",
+      templateVars ?? {}
+    );
+    return processedPrompt.trim() + "\n\n" + content;
+  }
 }
 
 // Re-export for backward compatibility

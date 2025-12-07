@@ -96,8 +96,8 @@ npx codefetch open -e .ts,.js --exclude-dir node_modules
 # Just copy to clipboard without opening browser
 npx codefetch open --no-browser
 
-# Custom prompt message
-npx codefetch open --chat-prompt "Review this codebase for security issues"
+# Include a prompt in the clipboard content
+npx codefetch open --prompt "Review this codebase for security issues"
 ```
 
 ### Git Repository Fetching
@@ -209,11 +209,11 @@ The `open` subcommand generates codebase, copies to clipboard, and opens ChatGPT
 | --------------------------- | ------------------------------------------------------------------------------ |
 | `--chat-url <url>`          | AI chat URL (default: chatgpt.com) - supports ChatGPT, Gemini, Claude, etc.  |
 | `--chat-model <model>`      | Model parameter for URL (default: gpt-5-1-pro) - e.g., gpt-5-1-pro, gemini-3.0, claude-3.5-sonnet |
-| `--chat-prompt <text>`      | Message shown after opening (default: "Your codebase is in your clipboard...") |
+| `--chat-prompt <text>`      | Short hint added to URL parameter and shown in console (limited length due to URL constraints) |
 | `--no-browser`              | Skip opening browser, just copy to clipboard                                  |
 | `--copy`                    | Copy output to clipboard (works on macOS, Windows, and Linux)                 |
 
-All standard codefetch options are supported with `open` (e.g., `-e`, `-t`, `--exclude-dir`).
+All standard codefetch options are supported with `open` (e.g., `-e`, `-t`, `--exclude-dir`, `--prompt`).
 
 All options that accept multiple values use comma-separated lists. File patterns support glob wildcards:
 

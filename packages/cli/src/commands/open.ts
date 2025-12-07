@@ -168,7 +168,7 @@ Generates codebase, copies to clipboard, and opens browser to an AI chat.
 Options:
   --chat-url <url>            AI chat URL (default: chatgpt.com)
     --chat-model <model>        Model parameter for URL (default: gpt-5-1-pro)
-  --chat-prompt <text>        Message shown after opening
+  --chat-prompt <text>        Short hint for URL parameter (use --prompt for detailed instructions)
   --no-browser                Skip opening browser, just copy to clipboard
   -h, --help                  Display this help message
 

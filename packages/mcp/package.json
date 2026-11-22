@@ -32,6 +32,6 @@
   },
   "dependencies": {
     "codefetch-sdk": "^2.1.0",
-    "@modelcontextprotocol/sdk": "^1.13.2"
+    "@modelcontextprotocol/sdk": "^1.32.0"
   }
 }
